@@ -107,11 +107,15 @@ auto main() -> int {
         std::cout << std::endl;
     }
 
-    // Print the matrix according to the precedence functions
-    std::cout << "\nPrecedence matrix according to precedence functions:" << std::endl;
     auto [f, g] = opg.build_precedence_functions(pm);
 
-    std::cout << " ";
+    std::cout << "\nPrecedence functions:\n";
+
+    for (auto t : lorder) {
+        std::cout << t << " " << f[t] << " " << g[t] << std::endl;
+    }
+
+    std::cout << "\nPrecedence matrix according to precedence functions:\n ";
     for (auto r : rorder) {
         std::cout << " " << r;
     }
