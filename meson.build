@@ -10,6 +10,7 @@ project(
 
 sources = [
     'src/main.cpp',
+    'src/graph.cpp',
 ]
 
 executable(

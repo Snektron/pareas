@@ -1,8 +1,8 @@
 #include <iostream>
 #include <ostream>
 
-#include "grammar.h"
-#include "opg.h"
+#include "grammar.hpp"
+#include "opg.hpp"
 
 enum class NonTerminal {
     E, T, F
@@ -76,7 +76,7 @@ auto main() -> int {
     auto rorder = {Terminal::LPAREN, Terminal::A, Terminal::STAR, Terminal::PLUS, Terminal::RPAREN, Terminal::DELIM};
     auto lorder = {Terminal::RPAREN, Terminal::A, Terminal::STAR, Terminal::PLUS, Terminal::LPAREN, Terminal::DELIM};
 
-    std::cout << " ";
+    std::cout << "Precedence Matrix:\n ";
     for (auto r : rorder) {
         std::cout << " " << r;
     }
@@ -101,6 +101,31 @@ auto main() -> int {
                 case PrecedenceOrder::GREATER:
                     std::cout << " >";
                     break;
+            }
+        }
+
+        std::cout << std::endl;
+    }
+
+    // Print the matrix according to the precedence functions
+    std::cout << "\nPrecedence matrix according to precedence functions:" << std::endl;
+    auto [f, g] = opg.build_precedence_functions(pm);
+
+    std::cout << " ";
+    for (auto r : rorder) {
+        std::cout << " " << r;
+    }
+    std::cout << std::endl;
+
+    for (auto l : lorder) {
+        std::cout << l;
+        for (auto r : rorder) {
+            if (f[l] < g[r]) {
+                std::cout << " <";
+            } else if (f[l] == g[r]) {
+                std::cout << " =";
+            } else {
+                std::cout << " >";
             }
         }
 

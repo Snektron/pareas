@@ -7,7 +7,8 @@
 
 #include <cassert>
 
-#include "grammar.h"
+#include "grammar.hpp"
+#include "graph.hpp"
 
 enum class PrecedenceOrder {
     LESS,
@@ -32,6 +33,7 @@ struct OperatorPrecedenceGrammar {
 
     using TerminalSet = std::unordered_set<Terminal>;
     using PrecedenceMatrix = std::unordered_map<std::pair<Terminal, Terminal>, PrecedenceOrder, TerminalPairHasher>;
+    using PrecedenceFunction = std::unordered_map<Terminal, size_t>;
 
     Grammar* grammar;
 
@@ -48,6 +50,8 @@ struct OperatorPrecedenceGrammar {
     auto first_or_last(NonTerminal start, bool first) -> TerminalSet;
 
     auto build_precedence_matrix() -> PrecedenceMatrix;
+
+    auto build_precedence_functions(const PrecedenceMatrix& pm) -> std::pair<PrecedenceFunction, PrecedenceFunction>;
 };
 
 template <typename Grammar>
@@ -105,18 +109,18 @@ auto OperatorPrecedenceGrammar<Grammar>::build_precedence_matrix() -> Precedence
     };
 
     // Insert relations with delimiter
-    for (auto t : this->first(this->grammar->start)) {
+    for (const auto t : this->first(this->grammar->start)) {
         insert(this->grammar->delim, t, PrecedenceOrder::LESS);
     }
 
-    for (auto t : this->last(this->grammar->start)) {
+    for (const auto t : this->last(this->grammar->start)) {
         insert(t, this->grammar->delim, PrecedenceOrder::GREATER);
     }
 
     // Insert equality relations between pairs of terminals (optionally
     // with a single nonterminal between them)
     auto terminals = std::vector<Terminal>();
-    for (auto& [_, prod] : this->grammar->productions) {
+    for (const auto& [_, prod] : this->grammar->productions) {
         terminals.clear();
         for (auto& sym : prod) {
             if (auto* t = std::get_if<Terminal>(&sym)) {
@@ -130,7 +134,7 @@ auto OperatorPrecedenceGrammar<Grammar>::build_precedence_matrix() -> Precedence
     }
 
     // Insert inequality relations
-    for (auto& [_, prod] : this->grammar->productions) {
+    for (const auto& [_, prod] : this->grammar->productions) {
         for (size_t i = 1; i < prod.size(); ++i) {
             auto* r = std::get_if<Terminal>(&prod[i]);
             auto* nt = std::get_if<NonTerminal>(&prod[i - 1]);
@@ -157,6 +161,106 @@ auto OperatorPrecedenceGrammar<Grammar>::build_precedence_matrix() -> Precedence
     }
 
     return pm;
+}
+
+template <typename Grammar>
+auto OperatorPrecedenceGrammar<Grammar>::build_precedence_functions(
+    const PrecedenceMatrix& pm
+) -> std::pair<PrecedenceFunction, PrecedenceFunction> {
+    // Build initial terminal graph
+    auto symbol_graph = Graph();
+    auto terminals = std::unordered_map<Terminal, std::pair<Graph::VertexId, Graph::VertexId>>();
+    for (const auto& [terms, _] : pm) {
+        for (auto t : {terms.first, terms.second}) {
+            auto it = terminals.find(t);
+            if (it != terminals.end()) {
+                continue;
+            }
+
+            auto fa = symbol_graph.add_vertex();
+            auto ga = symbol_graph.add_vertex();
+            terminals.insert(it, {t, {fa, ga}});
+        }
+    }
+
+    // Unite components with equal precedence order
+    auto ufds = Ufds(&symbol_graph);
+    for (const auto& [terms, order] : pm) {
+        if (order != PrecedenceOrder::EQUAL) {
+            continue;
+        }
+
+        auto fa = terminals[terms.first].first;
+        auto gb = terminals[terms.second].second;
+        ufds.unite(fa, gb);
+    }
+
+    // Build the graph of components
+    // First, do some preprocessing to get a mapping of component -> vertex
+    auto component_graph = Graph();
+    auto component_to_vertex = std::unordered_map<Ufds::ComponentId, Graph::VertexId>();
+    for (const auto& [term, vertices] : terminals) {
+        auto [fa, gb] = vertices;
+        for (auto v : {fa, gb}) {
+            auto c = ufds.find(v);
+            auto it = component_to_vertex.find(c);
+            if (it != component_to_vertex.end()) {
+                continue;
+            }
+
+            auto cv = component_graph.add_vertex();
+            component_to_vertex.insert(it, {c, cv});
+        }
+    }
+
+    // Build the actual graph now
+    for (const auto& [terms, order] : pm) {
+        auto fa = terminals[terms.first].first;
+        auto gb = terminals[terms.second].second;
+        switch (order) {
+            case PrecedenceOrder::LESS:
+                // fa < gb, add an edge from gb -> fa
+                component_graph.add_edge(
+                    component_to_vertex[ufds.find(gb)],
+                    component_to_vertex[ufds.find(fa)]
+                );
+                break;
+            case PrecedenceOrder::GREATER:
+                // fa > gb, add an edge from fa -> gb
+                component_graph.add_edge(
+                    component_to_vertex[ufds.find(fa)],
+                    component_to_vertex[ufds.find(gb)]
+                );
+                break;
+            case PrecedenceOrder::EQUAL:
+                continue;
+        }
+    }
+
+    // Do a topological sort to find the precedence
+    auto maybe_order = component_graph.topological_ordering();
+    if (!maybe_order.has_value()) {
+        throw std::runtime_error("Invalid grammar");
+    }
+
+    // Invert order so that we have a mapping from vertex to precedence
+    auto& order = maybe_order.value();
+    auto vertex_to_precedence = std::vector<size_t>(component_graph.vertices.size());
+    for (size_t i = 0; i < order.size(); ++i) {
+        vertex_to_precedence[order[i]] = order.size() - i;
+    }
+
+    // Build the actual precedence functions
+    auto f = PrecedenceFunction();
+    auto g = PrecedenceFunction();
+    for (const auto& [term, vertices] : terminals) {
+        auto [fa, gb] = vertices;
+
+        f[term] = vertex_to_precedence[component_to_vertex[ufds.find(fa)]];
+        g[term] = vertex_to_precedence[component_to_vertex[ufds.find(gb)]];
+    }
+
+    return {f, g};
 }
 
 #endif
