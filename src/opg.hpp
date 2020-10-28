@@ -247,7 +247,7 @@ auto OperatorPrecedenceGrammar<Grammar>::build_precedence_functions(
     auto& order = maybe_order.value();
     auto vertex_to_precedence = std::vector<size_t>(component_graph.vertices.size());
     for (size_t i = 0; i < order.size(); ++i) {
-        vertex_to_precedence[order[i]] = order.size() - i;
+        vertex_to_precedence[order[i]] = order.size() - i - 1;
     }
 
     // Build the actual precedence functions
