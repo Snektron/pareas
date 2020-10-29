@@ -1,5 +1,5 @@
-#ifndef _PAREAS_OPG_H
-#define _PAREAS_OPG_H
+#ifndef _PAREAS_OPG_HPP
+#define _PAREAS_OPG_HPP
 
 #include <unordered_set>
 #include <deque>

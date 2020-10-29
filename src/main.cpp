@@ -3,6 +3,7 @@
 
 #include "grammar.hpp"
 #include "opg.hpp"
+#include "trie.hpp"
 
 enum class NonTerminal {
     E, T, F
@@ -135,6 +136,8 @@ auto main() -> int {
 
         std::cout << std::endl;
     }
+
+    auto trie = ReverseTrie(&test_grammar);
 
     return 0;
 }

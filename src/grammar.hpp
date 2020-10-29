@@ -1,5 +1,5 @@
-#ifndef _PAREAS_GRAMMAR_H
-#define _PAREAS_GRAMMAR_H
+#ifndef _PAREAS_GRAMMAR_HPP
+#define _PAREAS_GRAMMAR_HPP
 
 #include <unordered_map>
 #include <vector>

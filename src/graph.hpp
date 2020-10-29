@@ -1,5 +1,5 @@
-#ifndef _PAREAS_GRAPH_H
-#define _PAREAS_GRAPH_H
+#ifndef _PAREAS_GRAPH_HPP
+#define _PAREAS_GRAPH_HPP
 
 #include <vector>
 #include <optional>
