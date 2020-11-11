@@ -2,8 +2,9 @@
 #include <ostream>
 
 #include "grammar.hpp"
-#include "opg.hpp"
 #include "trie.hpp"
+#include "opg.hpp"
+#include "opp.hpp"
 
 enum class NonTerminal {
     E, T, F
@@ -137,7 +138,18 @@ auto main() -> int {
         std::cout << std::endl;
     }
 
-    auto trie = ReverseTrie(&test_grammar);
+    auto opp = OperatorPrecedenceParser<G>{.grammar = &test_grammar, .f = &f, .g = &g};
+
+    auto test_input = {
+        Terminal::LPAREN,
+        Terminal::A,
+        Terminal::PLUS,
+        Terminal::A,
+        Terminal::RPAREN,
+    };
+
+    auto result = opp.parse(std::size(test_input), std::data(test_input));
+    std::cout << (result ? "accept" : "reject") << std::endl;
 
     return 0;
 }
