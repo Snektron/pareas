@@ -1,0 +1,1 @@
+let tree_func(a : i32) = a * a
