@@ -5,7 +5,6 @@ project(
     default_options: [
         'cpp_std=c++2a',
         'buildtype=debugoptimized',
-        'warning_level=2',
     ]
 )
 
@@ -13,6 +12,8 @@ add_project_arguments(
     ['-Wno-unused-parameter'],
     language: ['c', 'cpp'],
 )
+
+dependencies = []
 
 # Build futhark library
 futhark = find_program('futhark')
@@ -23,22 +24,14 @@ futhark_generated = custom_target(
     output: ['futhark-generated.c', 'futhark-generated.h'],
     command: [futhark, futhark_backend, '@INPUT@', '--library', '-o', 'futhark-generated']
 )
-futhark_dependencies = []
-if futhark_backend == 'multicore'
-    futhark_dependencies += dependency('threads')
-elif futhark_backend == 'opencl'
-    futhark_dependencies += dependency('OpenCL')
-endif
 
-futhark_generated_lib = static_library(
-    'futhark-generated',
-    [futhark_generated],
-    dependencies: futhark_dependencies,
-)
-futhark_generated_dep = declare_dependency(
-    sources: futhark_generated,
-    link_with: futhark_generated_lib,
-)
+if futhark_backend == 'multicore'
+    dependencies += dependency('threads')
+elif futhark_backend == 'opencl'
+    dependencies += dependency('OpenCL')
+elif futhark_backend == 'cuda'
+    dependencies += dependency('cuda', modules: ['cuda', 'cudart', 'nvrtc'])
+endif
 
 # Final executable
 sources = [
@@ -47,9 +40,9 @@ sources = [
 
 executable(
     'pareas',
-    sources,
+    [sources, futhark_generated],
     install: true,
     build_by_default: true,
-    dependencies: [futhark_generated_dep],
+    dependencies: dependencies,
     include_directories: include_directories('src'),
 )

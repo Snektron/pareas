@@ -1,9 +1,6 @@
 #include <iostream>
 #include <cstdlib>
-
-extern "C" {
-    #include <futhark-generated.h>
-}
+#include <futhark-generated.h>
 
 int main() {
     auto* config = futhark_context_config_new();
