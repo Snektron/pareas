@@ -13,6 +13,23 @@ add_project_arguments(
     language: ['c', 'cpp'],
 )
 
+inc = include_directories('src')
+
+# LLPGEN
+llpgen_sources = [
+    'src/llpgen/configuration.cpp',
+    'src/llpgen/generator.cpp',
+    'src/llpgen/grammar.cpp',
+    'src/llpgen/item.cpp',
+    'src/llpgen/main.cpp',
+]
+
+executable(
+    'pareas-llpgen',
+    llpgen_sources,
+    include_directories: inc,
+)
+
 dependencies = []
 
 # Build futhark library
@@ -44,5 +61,5 @@ executable(
     install: true,
     build_by_default: true,
     dependencies: dependencies,
-    include_directories: include_directories('src'),
+    include_directories: inc,
 )
