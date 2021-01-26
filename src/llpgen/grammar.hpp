@@ -55,6 +55,7 @@ struct Grammar {
 std::ostream& operator<<(std::ostream& os, const Terminal& t);
 std::ostream& operator<<(std::ostream& os, const NonTerminal& nt);
 std::ostream& operator<<(std::ostream& os, const Symbol& sym);
+std::ostream& operator<<(std::ostream& os, const Production& prod);
 
 template <>
 struct std::hash<Terminal> {

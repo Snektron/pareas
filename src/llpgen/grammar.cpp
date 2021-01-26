@@ -1,6 +1,4 @@
 #include "llpgen/grammar.hpp"
-#include "llpgen/item.hpp"
-#include "llpgen/configuration.hpp"
 #include "llpgen/hash_util.hpp"
 
 #include <ostream>
@@ -54,17 +52,13 @@ void Grammar::add_rule(const Production& prod) {
 
 void Grammar::dump(std::ostream& os) const {
     os << "Start symbol: " << Symbol(this->start) << " " << std::endl;
-    for (const auto& [lhs, rhs] : this->productions) {
-        os << Symbol(lhs) << "\t->";
-        for (const auto& sym : rhs) {
-            os << " " << sym;
-        }
-        os << std::endl;
+    for (const auto& prod : this->productions) {
+        os << prod << std::endl;
     }
 }
 
 std::ostream& operator<<(std::ostream& os, const Terminal& t) {
-    return t.is_null() ? os << "(null)" : os << t.name;
+    return t.is_null() ? os << "ε" : os << t.name;
 }
 
 std::ostream& operator<<(std::ostream& os, const NonTerminal& nt) {
@@ -73,11 +67,19 @@ std::ostream& operator<<(std::ostream& os, const NonTerminal& nt) {
 
 std::ostream& operator<<(std::ostream& os, const Symbol& sym) {
     if (sym.is_null())
-        return os << "(null)";
+        return os << "ε";
     else if (sym.is_terminal)
         return os << '"' << sym.name << '"';
     else
         return os << sym.name;
+}
+
+std::ostream& operator<<(std::ostream& os, const Production& prod) {
+    os << Symbol(prod.lhs) << "\t->";
+    for (const auto& sym : prod.rhs) {
+        os << " " << sym;
+    }
+    return os;
 }
 
 size_t std::hash<Terminal>::operator()(const Terminal& t) const {

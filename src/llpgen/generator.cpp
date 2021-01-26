@@ -1,12 +1,13 @@
 #include "llpgen/generator.hpp"
 #include "llpgen/item.hpp"
-#include "llpgen/configuration.hpp"
 
 #include <span>
+#include <deque>
 #include <ostream>
-#include <iostream>
 #include <cstddef>
 #include <cassert>
+
+#include <iostream>
 
 namespace {
     bool merge_terminal_sets_omit_null(TerminalSet& dst, const TerminalSet& src) {
@@ -27,6 +28,42 @@ LLPGenerator::LLPGenerator(const Grammar* g): g(g) {
 
     this->follow_sets = this->compute_follow_or_before_sets(true);
     this->before_sets = this->compute_follow_or_before_sets(false);
+}
+
+void LLPGenerator::generate() {
+    auto sets = std::unordered_set<ItemSet>();
+    auto queue = std::deque<ItemSet>();
+
+    auto enqueue = [&](const ItemSet& set) {
+        bool inserted = sets.insert(set).second;
+        if (inserted) {
+            queue.emplace_back(set);
+        }
+    };
+
+    {
+        auto initial = ItemSet();
+        initial.items.insert(Item::initial(*this->g));
+        enqueue(initial);
+    }
+
+    while (!queue.empty()) {
+        auto set = queue.front();
+        queue.pop_front();
+
+        auto syms = set.syms_before_dots();
+        for (const auto& sym : syms) {
+            auto new_set = this->predecessor(set, sym);
+            this->closure(new_set);
+            enqueue(new_set);
+        }
+    }
+
+    std::cout << "Sets:" << std::endl;
+    for (const auto& set : sets) {
+        set.dump(std::cout);
+        std::cout << "-----" << std::endl;
+    }
 }
 
 void LLPGenerator::dump(std::ostream& os) {
@@ -143,7 +180,9 @@ TerminalSet LLPGenerator::compute_first_or_last_set(std::span<const Symbol> symb
 
     for (size_t i = 0; i < symbols.size(); ++i) {
         const auto& sym = first ? symbols[i] : symbols[symbols.size() - i - 1];
-        if (sym.is_terminal) {
+        if (sym.is_null()) {
+            continue;
+        } if (sym.is_terminal) {
             set.insert(sym.as_terminal());
             return set;
         }
@@ -162,3 +201,84 @@ TerminalSet LLPGenerator::compute_first_or_last_set(std::span<const Symbol> symb
     return set;
 }
 
+ItemSet LLPGenerator::predecessor(const ItemSet& set, const Symbol& sym) {
+    auto new_set = ItemSet();
+    for (const auto& item : set.items) {
+        if (item.is_dot_at_begin() || item.sym_before_dot() != sym)
+            continue;
+
+        auto alpha = item.syms_before_dot();
+        alpha = alpha.subspan(0, alpha.size() - 1);
+
+        auto us = this->compute_first_or_last_set(alpha, false);
+        if (us.contains(Terminal::null())) {
+            const auto& before = this->before_sets[item.prod->lhs];
+            if (!before.empty()) // Special case: Start rule
+                us.erase(Terminal::null());
+            merge_terminal_sets_omit_null(us, before);
+        }
+
+        Symbol xvi[] = {sym, item.lookahead};
+        auto vs = this->compute_first_or_last_set(xvi, true);
+
+        for (const auto& u : us) {
+            for (const auto& v : vs) {
+                auto new_item = Item{
+                    .prod = item.prod,
+                    .dot = item.dot - 1,
+                    .lookback = u,
+                    .lookahead = v,
+                    .gamma = {}, // TODO: Find out what gamma is
+                };
+
+                new_set.items.insert(new_item);
+            }
+        }
+    }
+
+    return new_set;
+}
+
+void LLPGenerator::closure(ItemSet& set) {
+    auto queue = std::deque<Item>();
+    auto enqueue = [&](const Item& item) {
+        bool inserted = set.items.insert(item).second;
+        if (item.is_dot_at_begin() || item.sym_before_dot().is_terminal || !inserted)
+            return;
+        queue.push_back(item);
+    };
+
+    for (const auto& item : set.items) {
+        if (!item.is_dot_at_begin() && !item.sym_before_dot().is_terminal)
+            queue.push_back(item);
+    }
+
+    while (!queue.empty()) {
+        auto item = queue.front();
+        queue.pop_front();
+
+        // These conditions are guaranteed before inserting an item into the queue.
+        auto nt = item.sym_before_dot().as_non_terminal();
+
+        for (const auto& prod : this->g->productions) {
+            if (prod.lhs != nt)
+                continue;
+
+            auto us = this->compute_first_or_last_set(std::span(prod.rhs), false);
+            if (us.contains(Terminal::null())) {
+                us.erase(Terminal::null());
+                merge_terminal_sets_omit_null(us, this->before_sets[prod.lhs]);
+            }
+
+            for (const auto& u : us) {
+                enqueue(Item{
+                    .prod = &prod,
+                    .dot = prod.rhs.size(),
+                    .lookback = u,
+                    .lookahead = item.lookahead,
+                    .gamma = item.gamma,
+                });
+            }
+        }
+    }
+}

@@ -2,6 +2,7 @@
 #define _PAREAS_LLPGEN_GENERATOR_HPP
 
 #include "llpgen/grammar.hpp"
+#include "llpgen/item_set.hpp"
 
 #include <unordered_set>
 #include <unordered_map>
@@ -21,12 +22,15 @@ class LLPGenerator {
 
 public:
     LLPGenerator(const Grammar* g);
+    void generate();
     void dump(std::ostream& os);
 
 private:
     std::unordered_map<NonTerminal, TerminalSet> compute_base_first_or_last_set(bool first);
     TerminalSet compute_first_or_last_set(std::span<const Symbol> symbols, bool first);
     std::unordered_map<NonTerminal, TerminalSet> compute_follow_or_before_sets(bool follow);
+    ItemSet predecessor(const ItemSet& set, const Symbol& sym);
+    void closure(ItemSet& set);
 };
 
 #endif
