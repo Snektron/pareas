@@ -3,6 +3,7 @@
 
 #include "llpgen/grammar.hpp"
 #include "llpgen/item_set.hpp"
+#include "llpgen/psls.hpp"
 
 #include <unordered_set>
 #include <unordered_map>
@@ -20,12 +21,15 @@ class LLPGenerator {
     std::unordered_map<NonTerminal, TerminalSet> follow_sets;
     std::unordered_map<NonTerminal, TerminalSet> before_sets;
 
+    std::unordered_set<ItemSet> item_sets;
+
 public:
     LLPGenerator(const Grammar* g);
-    void generate();
     void dump(std::ostream& os);
+    PSLSTable build_psls_table();
 
 private:
+    std::unordered_set<ItemSet> compute_item_sets();
     std::unordered_map<NonTerminal, TerminalSet> compute_base_first_or_last_set(bool first);
     TerminalSet compute_first_or_last_set(std::span<const Symbol> symbols, bool first);
     std::unordered_map<NonTerminal, TerminalSet> compute_follow_or_before_sets(bool follow);

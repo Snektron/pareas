@@ -22,6 +22,7 @@ llpgen_sources = [
     'src/llpgen/item.cpp',
     'src/llpgen/item_set.cpp',
     'src/llpgen/main.cpp',
+    'src/llpgen/psls.cpp',
 ]
 
 executable(

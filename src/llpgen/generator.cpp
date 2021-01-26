@@ -28,9 +28,60 @@ LLPGenerator::LLPGenerator(const Grammar* g): g(g) {
 
     this->follow_sets = this->compute_follow_or_before_sets(true);
     this->before_sets = this->compute_follow_or_before_sets(false);
+
+    this->item_sets = this->compute_item_sets();
 }
 
-void LLPGenerator::generate() {
+void LLPGenerator::dump(std::ostream& os) {
+    auto dump_nt_ts = [&](const std::unordered_map<NonTerminal, TerminalSet>& sets){
+        for (auto [nt, set] : sets) {
+            os << nt << ":\t";
+            for (const auto& t : set) {
+                os << " " << t;
+            }
+            os << std::endl;
+        }
+    };
+
+    os << "Base first sets: " << std::endl;
+    dump_nt_ts(this->base_first_sets);
+
+    os << "Base last sets: " << std::endl;
+    dump_nt_ts(this->base_last_sets);
+
+    os << "Follow sets: " << std::endl;
+    dump_nt_ts(this->follow_sets);
+
+    os << "Before sets: " << std::endl;
+    dump_nt_ts(this->before_sets);
+
+    os << "Item sets:" << std::endl;
+    for (const auto& set : this->item_sets) {
+        set.dump(os);
+    }
+}
+
+PSLSTable LLPGenerator::build_psls_table() {
+    auto table = PSLSTable();
+
+    for (const auto& set : this->item_sets) {
+        for (const auto& item : set.items) {
+            if (item.is_dot_at_begin())
+                continue;
+            const auto& sym = item.sym_before_dot();
+            if (!sym.is_terminal)
+                continue;
+            else if (item.lookahead.is_null() || item.lookback.is_null())
+                continue;
+
+            table.insert({item.lookback, item.lookahead}, item.gamma);
+        }
+    }
+
+    return table;
+}
+
+std::unordered_set<ItemSet> LLPGenerator::compute_item_sets() {
     auto sets = std::unordered_set<ItemSet>();
     auto queue = std::deque<ItemSet>();
 
@@ -59,35 +110,7 @@ void LLPGenerator::generate() {
         }
     }
 
-    std::cout << "Sets:" << std::endl;
-    for (const auto& set : sets) {
-        set.dump(std::cout);
-        std::cout << "-----" << std::endl;
-    }
-}
-
-void LLPGenerator::dump(std::ostream& os) {
-    auto dump_nt_ts = [&](const std::unordered_map<NonTerminal, TerminalSet>& sets){
-        for (auto [nt, set] : sets) {
-            os << "    " << nt << ":\t";
-            for (const auto& t : set) {
-                os << " " << t;
-            }
-            os << std::endl;
-        }
-    };
-
-    os << "Base first sets: " << std::endl;
-    dump_nt_ts(this->base_first_sets);
-
-    os << "Base last sets: " << std::endl;
-    dump_nt_ts(this->base_last_sets);
-
-    os << "Follow sets: " << std::endl;
-    dump_nt_ts(this->follow_sets);
-
-    os << "Before sets: " << std::endl;
-    dump_nt_ts(this->before_sets);
+    return sets;
 }
 
 std::unordered_map<NonTerminal, TerminalSet> LLPGenerator::compute_base_first_or_last_set(bool first) {
