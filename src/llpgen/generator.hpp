@@ -31,6 +31,7 @@ private:
     std::unordered_map<NonTerminal, TerminalSet> compute_follow_or_before_sets(bool follow);
     ItemSet predecessor(const ItemSet& set, const Symbol& sym);
     void closure(ItemSet& set);
+    std::vector<Symbol> compute_gamma(const Terminal& v, const Symbol& x, std::span<const Symbol> delta);
 };
 
 #endif

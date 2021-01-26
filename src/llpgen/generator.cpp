@@ -223,14 +223,14 @@ ItemSet LLPGenerator::predecessor(const ItemSet& set, const Symbol& sym) {
 
         for (const auto& u : us) {
             for (const auto& v : vs) {
+                auto gamma = this->compute_gamma(v, sym, item.gamma);
                 auto new_item = Item{
                     .prod = item.prod,
                     .dot = item.dot - 1,
                     .lookback = u,
                     .lookahead = v,
-                    .gamma = {}, // TODO: Find out what gamma is
+                    .gamma = gamma,
                 };
-
                 new_set.items.insert(new_item);
             }
         }
@@ -281,4 +281,26 @@ void LLPGenerator::closure(ItemSet& set) {
             }
         }
     }
+}
+
+std::vector<Symbol> LLPGenerator::compute_gamma(const Terminal& v, const Symbol& x, std::span<const Symbol> delta) {
+    assert(!x.is_null());
+    assert(!v.is_null());
+
+    auto gamma = std::vector<Symbol>();
+    if (x.is_terminal) {
+        gamma.push_back(x.as_terminal());
+        return gamma;
+    }
+
+    gamma.push_back(x);
+    auto nt = x.as_non_terminal();
+
+    if (!this->base_first_sets[nt].contains(v)) {
+        assert(this->base_first_sets[nt].contains(Terminal::null()));
+        assert(this->compute_first_or_last_set(delta, true).contains(v));
+        gamma.push_back(v);
+    }
+
+    return gamma;
 }

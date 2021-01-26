@@ -27,7 +27,7 @@ Item Item::initial(const Grammar& g) {
         .dot = start->rhs.size(),
         .lookback = g.right_delim,
         .lookahead = Terminal::null(),
-        .gamma = {}, // TODO: Find out what gamma is
+        .gamma = {},
     };
 }
 
