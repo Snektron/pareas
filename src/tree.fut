@@ -1,3 +1,4 @@
+import "datatypes"
 
 let TREE_SIZE : u32 = 10
 
@@ -41,6 +42,7 @@ type NodeType =
 --Node definition
 type Node = {
     node_type: NodeType,
+    resulting_type: DataType,
     parent: u32,
     depth: u32
 }
@@ -56,8 +58,7 @@ type NodeValue = u32 --Temporary type
 
 --Allocates a tree of a given size
 let alloc_tree (tree_size: i64) =
-    let default_node : Node = {node_type = #invalid, parent = 0, depth = 0}
-    let default_node_value : NodeValue = 0
+    let default_node : Node = {node_type = #invalid, resulting_type = #invalid, parent = 0, depth = 0}
     in {
         nodes = replicate (tree_size) default_node,
         max_depth = 0u32
