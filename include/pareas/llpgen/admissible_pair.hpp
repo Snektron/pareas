@@ -1,7 +1,7 @@
 #ifndef _PAREAS_LLPGEN_ADMISSIBLE_PAIR_HPP
 #define _PAREAS_LLPGEN_ADMISSIBLE_PAIR_HPP
 
-#include "llpgen/grammar.hpp"
+#include "pareas/llpgen/grammar.hpp"
 
 #include <functional>
 #include <cstddef>

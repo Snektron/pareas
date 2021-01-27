@@ -1,5 +1,5 @@
-#include "llpgen/grammar.hpp"
-#include "llpgen/generator.hpp"
+#include "pareas/llpgen/grammar.hpp"
+#include "pareas/llpgen/generator.hpp"
 
 #include <iostream>
 

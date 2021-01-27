@@ -1,8 +1,8 @@
 #ifndef _PAREAS_LLPGEN_PARSE_TABLE_HPP
 #define _PAREAS_LLPGEN_PARSE_TABLE_HPP
 
-#include "llpgen/grammar.hpp"
-#include "llpgen/admissible_pair.hpp"
+#include "pareas/llpgen/grammar.hpp"
+#include "pareas/llpgen/admissible_pair.hpp"
 
 #include <vector>
 #include <unordered_map>

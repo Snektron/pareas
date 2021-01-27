@@ -1,7 +1,7 @@
 #ifndef _PAREAS_LLPGEN_ITEM_SET_HPP
 #define _PAREAS_LLPGEN_ITEM_SET_HPP
 
-#include "llpgen/item.hpp"
+#include "pareas/llpgen/item.hpp"
 
 #include <unordered_set>
 #include <iosfwd>

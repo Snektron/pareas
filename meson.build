@@ -13,7 +13,7 @@ add_project_arguments(
     language: ['c', 'cpp'],
 )
 
-inc = include_directories('src')
+inc = include_directories('include')
 
 # LLPGEN
 llpgen_sources = [

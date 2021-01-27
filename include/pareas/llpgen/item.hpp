@@ -1,7 +1,7 @@
 #ifndef _PAREAS_LLPGEN_ITEM_HPP
 #define _PAREAS_LLPGEN_ITEM_HPP
 
-#include "llpgen/grammar.hpp"
+#include "pareas/llpgen/grammar.hpp"
 
 #include <vector>
 #include <iosfwd>

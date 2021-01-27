@@ -1,4 +1,4 @@
-#include "llpgen/psls_table.hpp"
+#include "pareas/llpgen/psls_table.hpp"
 
 #include <unordered_set>
 #include <ostream>

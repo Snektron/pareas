@@ -1,5 +1,5 @@
-#include "llpgen/grammar.hpp"
-#include "llpgen/hash_util.hpp"
+#include "pareas/llpgen/grammar.hpp"
+#include "pareas/llpgen/hash_util.hpp"
 
 #include <ostream>
 #include <algorithm>

@@ -1,9 +1,9 @@
 #ifndef _PAREAS_LLPGEN_GENERATOR_HPP
 #define _PAREAS_LLPGEN_GENERATOR_HPP
 
-#include "llpgen/grammar.hpp"
-#include "llpgen/item_set.hpp"
-#include "llpgen/psls_table.hpp"
+#include "pareas/llpgen/grammar.hpp"
+#include "pareas/llpgen/item_set.hpp"
+#include "pareas/llpgen/psls_table.hpp"
 
 #include <unordered_set>
 #include <unordered_map>
