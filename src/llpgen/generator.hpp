@@ -3,7 +3,7 @@
 
 #include "llpgen/grammar.hpp"
 #include "llpgen/item_set.hpp"
-#include "llpgen/psls.hpp"
+#include "llpgen/psls_table.hpp"
 
 #include <unordered_set>
 #include <unordered_map>
@@ -24,7 +24,7 @@ class LLPGenerator {
     std::unordered_set<ItemSet> item_sets;
 
 public:
-    LLPGenerator(const Grammar* g);
+    explicit LLPGenerator(const Grammar* g);
     void dump(std::ostream& os);
     PSLSTable build_psls_table();
 

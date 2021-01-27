@@ -17,12 +17,14 @@ inc = include_directories('src')
 
 # LLPGEN
 llpgen_sources = [
+    'src/llpgen/admissible_pair.cpp',
     'src/llpgen/generator.cpp',
     'src/llpgen/grammar.cpp',
     'src/llpgen/item.cpp',
     'src/llpgen/item_set.cpp',
     'src/llpgen/main.cpp',
-    'src/llpgen/psls.cpp',
+    'src/llpgen/llp_table.cpp',
+    'src/llpgen/psls_table.cpp',
 ]
 
 executable(

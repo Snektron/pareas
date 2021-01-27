@@ -1,31 +1,19 @@
-#include "llpgen/psls.hpp"
-#include "llpgen/hash_util.hpp"
+#include "llpgen/psls_table.hpp"
 
 #include <unordered_set>
-#include <stdexcept>
 #include <ostream>
 
-bool operator==(const AdmissiblePair& lhs, const AdmissiblePair& rhs) {
-    return lhs.x == rhs.x && lhs.y == rhs.y;
-}
-
-size_t std::hash<AdmissiblePair>::operator()(const AdmissiblePair& terms) const {
-    auto hasher = std::hash<Terminal>{};
-    return hash_combine(hasher(terms.x), hasher(terms.y));
-}
-
-void PSLSTable::insert(const AdmissiblePair& terms, std::span<const Symbol> symbols) {
-    auto it = this->table.find(terms);
+void PSLSTable::insert(const AdmissiblePair& ap, std::span<const Symbol> symbols) {
+    auto it = this->table.find(ap);
     if (it == this->table.end()) {
         auto sym_vec = std::vector<Symbol>(symbols.begin(), symbols.end());
-        this->table.insert(it, {terms, std::move(sym_vec)});
+        this->table.insert(it, {ap, std::move(sym_vec)});
         return;
     }
 
     const auto& existing_syms = it->second;
-    if (!std::equal(existing_syms.begin(), existing_syms.end(), symbols.begin(), symbols.end())) {
-        throw std::runtime_error("Parse conflict");
-    }
+    if (!std::equal(existing_syms.begin(), existing_syms.end(), symbols.begin(), symbols.end()))
+        throw PSLSConflictError(ap, existing_syms, symbols);
 }
 
 void PSLSTable::dump_csv(std::ostream& os) const {
@@ -48,8 +36,8 @@ void PSLSTable::dump_csv(std::ostream& os) const {
         os << '"';
     };
 
-    for (const auto& [admissible_pair, gamma] : this->table) {
-        const auto& [x, y] = admissible_pair;
+    for (const auto& [ap, gamma] : this->table) {
+        const auto& [x, y] = ap;
         xs.insert(x);
         ys.insert(y);
     }

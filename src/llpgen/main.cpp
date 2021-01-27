@@ -1,6 +1,7 @@
-#include <iostream>
 #include "llpgen/grammar.hpp"
 #include "llpgen/generator.hpp"
+
+#include <iostream>
 
 using literals::operator ""_t;
 using literals::operator ""_nt;
@@ -27,5 +28,5 @@ int main() {
 
     auto gen = LLPGenerator(&test_grammar);
     auto psls = gen.build_psls_table();
-    psls.dump_csv(std::cout);
+    // psls.dump_csv(std::cout);
 }
