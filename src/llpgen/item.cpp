@@ -14,13 +14,13 @@ Item Item::initial(const Grammar& g) {
         if (prod.lhs != g.start)
             continue;
         if (start)
-            throw std::runtime_error("Start rule appears in multiple productions");
+            throw MultipleStartRulesError();
         start = &prod;
     }
 
     // Verify that the starting rule is of the right form
     if (start->rhs.size() == 0 || start->rhs.front() != g.left_delim || start->rhs.back() != g.right_delim)
-        throw std::runtime_error("Start rule not in right form");
+        throw InvalidStartRuleError();
 
     return {
         .prod = start,

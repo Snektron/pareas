@@ -4,7 +4,20 @@
 #include <string>
 #include <vector>
 #include <iosfwd>
+#include <stdexcept>
 #include <cstddef>
+
+struct InvalidGrammarError: std::runtime_error {
+    InvalidGrammarError(const std::string& msg);
+};
+
+struct MultipleStartRulesError: InvalidGrammarError {
+    MultipleStartRulesError();
+};
+
+struct InvalidStartRuleError: InvalidGrammarError {
+    InvalidStartRuleError();
+};
 
 struct Terminal {
     std::string name;

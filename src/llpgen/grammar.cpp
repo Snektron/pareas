@@ -5,6 +5,15 @@
 #include <algorithm>
 #include <cassert>
 
+InvalidGrammarError::InvalidGrammarError(const std::string& msg):
+    std::runtime_error(msg) {}
+
+MultipleStartRulesError::MultipleStartRulesError():
+    InvalidGrammarError("Start rule appears in multiple productions") {};
+
+InvalidStartRuleError::InvalidStartRuleError():
+    InvalidGrammarError("Start rule is not in right form") {}
+
 bool Terminal::operator==(const Terminal& other) const {
     return this->name == other.name;
 }

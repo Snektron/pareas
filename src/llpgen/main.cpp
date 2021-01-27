@@ -28,5 +28,5 @@ int main() {
 
     auto gen = LLPGenerator(&test_grammar);
     auto psls = gen.build_psls_table();
-    // psls.dump_csv(std::cout);
+    psls.dump_csv(std::cout);
 }

@@ -15,9 +15,7 @@ struct PSLSConflictError : public std::runtime_error {
     std::vector<Symbol> a;
     std::vector<Symbol> b;
 
-    PSLSConflictError(const AdmissiblePair& ap, std::span<const Symbol> a, std::span<const Symbol> b):
-        std::runtime_error("PSLS Parse conflict: Grammar is not LLP(1, 1)"),
-        ap(ap), a(a.begin(), a.end()), b(b.begin(), b.end()) {}
+    PSLSConflictError(const AdmissiblePair& ap, std::span<const Symbol> a, std::span<const Symbol> b);
 };
 
 struct PSLSTable {

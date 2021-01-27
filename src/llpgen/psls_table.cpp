@@ -3,6 +3,10 @@
 #include <unordered_set>
 #include <ostream>
 
+PSLSConflictError::PSLSConflictError(const AdmissiblePair& ap, std::span<const Symbol> a, std::span<const Symbol> b):
+    std::runtime_error("PSLS Parse conflict: Grammar is not LLP(1, 1)"),
+    ap(ap), a(a.begin(), a.end()), b(b.begin(), b.end()) {}
+
 void PSLSTable::insert(const AdmissiblePair& ap, std::span<const Symbol> symbols) {
     auto it = this->table.find(ap);
     if (it == this->table.end()) {
