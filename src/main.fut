@@ -1,4 +1,4 @@
-module tree = import "tree"
+import "instr"
 
 -- let main (n : i64) : u32 =
 --     let t = tree.alloc_tree n

@@ -22,6 +22,9 @@ type NodeType =
     #bitand_expr |
     #bitor_expr |
     #bitxor_expr |
+    #lshift_expr |
+    #rshift_expr |
+    #urshift_expr |
     #land_expr |
     #lor_expr |
     #eq_expr |
