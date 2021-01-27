@@ -23,7 +23,7 @@ Terminal Terminal::null() {
 }
 
 bool Terminal::is_null() const {
-    return this->name.size() == 0;
+    return this->name.empty();
 }
 
 bool NonTerminal::operator==(const NonTerminal& other) const {
@@ -35,7 +35,7 @@ Symbol::Symbol(Terminal t): is_terminal(true), name(t.name) {}
 Symbol::Symbol(NonTerminal nt): is_terminal(false), name(nt.name) {}
 
 bool Symbol::is_null() const {
-    return this->is_terminal && this->name.size() == 0;
+    return this->is_terminal && this->name.empty();
 }
 
 bool Symbol::operator==(const Symbol& other) const {
@@ -78,16 +78,20 @@ std::ostream& operator<<(std::ostream& os, const Symbol& sym) {
     if (sym.is_null())
         return os << "ε";
     else if (sym.is_terminal)
-        return os << '"' << sym.name << '"';
+        return os << '\'' << sym.name << '\'';
     else
         return os << sym.name;
 }
 
 std::ostream& operator<<(std::ostream& os, const Production& prod) {
-    os << Symbol(prod.lhs) << "\t->";
-    for (const auto& sym : prod.rhs) {
-        os << " " << sym;
+    os << Symbol(prod.lhs) << " ->";
+    if (prod.rhs.empty()) {
+        os << " ε";
+    } else {
+        for (const auto& sym : prod.rhs)
+            os << " " << sym;
     }
+
     return os;
 }
 

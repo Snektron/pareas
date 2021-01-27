@@ -19,7 +19,7 @@ Item Item::initial(const Grammar& g) {
     }
 
     // Verify that the starting rule is of the right form
-    if (start->rhs.size() == 0 || start->rhs.front() != g.left_delim || start->rhs.back() != g.right_delim)
+    if (start->rhs.empty() || start->rhs.front() != g.left_delim || start->rhs.back() != g.right_delim)
         throw InvalidStartRuleError();
 
     return {

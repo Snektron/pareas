@@ -4,7 +4,7 @@
 #include <ostream>
 
 PSLSConflictError::PSLSConflictError(const AdmissiblePair& ap, std::span<const Symbol> a, std::span<const Symbol> b):
-    std::runtime_error("PSLS Parse conflict: Grammar is not LLP(1, 1)"),
+    InvalidGrammarError("PSLS conflict: Grammar is not LLP(1, 1)"),
     ap(ap), a(a.begin(), a.end()), b(b.begin(), b.end()) {}
 
 void PSLSTable::insert(const AdmissiblePair& ap, std::span<const Symbol> symbols) {
@@ -21,9 +21,6 @@ void PSLSTable::insert(const AdmissiblePair& ap, std::span<const Symbol> symbols
 }
 
 void PSLSTable::dump_csv(std::ostream& os) const {
-    auto ys = std::unordered_set<Terminal>();
-    auto xs = std::unordered_set<Terminal>();
-
     auto dump_syms = [&](const auto& syms) {
         // Custom print of symbols since we need to handle csv escapes
         os << '"';
@@ -39,6 +36,9 @@ void PSLSTable::dump_csv(std::ostream& os) const {
 
         os << '"';
     };
+
+    auto ys = std::unordered_set<Terminal>();
+    auto xs = std::unordered_set<Terminal>();
 
     for (const auto& [ap, gamma] : this->table) {
         const auto& [x, y] = ap;

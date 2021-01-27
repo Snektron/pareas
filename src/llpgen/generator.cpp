@@ -62,8 +62,7 @@ void LLPGenerator::dump(std::ostream& os) {
 }
 
 PSLSTable LLPGenerator::build_psls_table() {
-    auto table = PSLSTable();
-
+    auto psls = PSLSTable();
     for (const auto& set : this->item_sets) {
         for (const auto& item : set.items) {
             if (item.is_dot_at_begin())
@@ -74,11 +73,49 @@ PSLSTable LLPGenerator::build_psls_table() {
             else if (item.lookahead.is_null() || item.lookback.is_null())
                 continue;
 
-            table.insert({item.lookback, item.lookahead}, item.gamma);
+            psls.insert({item.lookback, item.lookahead}, item.gamma);
         }
     }
 
-    return table;
+    return psls;
+}
+
+LLTable LLPGenerator::build_ll_table() {
+    auto ll = LLTable();
+    for (const auto& prod : this->g->productions) {
+        auto first = this->compute_first_or_last_set(prod.rhs, true);
+
+        bool has_null = false;
+        for (const auto& t : first) {
+            if (t.is_null()) {
+                has_null = true;
+                continue;
+            }
+
+            ll.insert({prod.lhs, t}, &prod);
+        }
+
+        if (has_null) {
+            const auto& follow = this->follow_sets[prod.lhs];
+            for (const auto& t : follow) {
+                ll.insert({prod.lhs, t}, &prod);
+            }
+        }
+    }
+
+    return ll;
+}
+
+LLPTable LLPGenerator::build_llp_table(const LLTable& ll, const PSLSTable& psls) {
+    auto llp = LLPTable();
+    for (const auto& [ap, gamma] : psls.table) {
+        auto initial_stack = std::vector<Symbol>(gamma.rbegin(), gamma.rend());
+        auto stack = initial_stack;
+        auto productions = ll.partial_parse(ap.y, stack);
+        llp.table[ap] = {initial_stack, stack, productions};
+    }
+
+    return llp;
 }
 
 std::unordered_set<ItemSet> LLPGenerator::compute_item_sets() {

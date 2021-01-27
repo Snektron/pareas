@@ -22,8 +22,9 @@ llpgen_sources = [
     'src/llpgen/grammar.cpp',
     'src/llpgen/item.cpp',
     'src/llpgen/item_set.cpp',
-    'src/llpgen/main.cpp',
+    'src/llpgen/ll_table.cpp',
     'src/llpgen/llp_table.cpp',
+    'src/llpgen/main.cpp',
     'src/llpgen/psls_table.cpp',
 ]
 

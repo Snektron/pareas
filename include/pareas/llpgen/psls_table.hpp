@@ -10,7 +10,7 @@
 #include <iosfwd>
 #include <stdexcept>
 
-struct PSLSConflictError : public std::runtime_error {
+struct PSLSConflictError : public InvalidGrammarError {
     AdmissiblePair ap;
     std::vector<Symbol> a;
     std::vector<Symbol> b;

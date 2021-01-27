@@ -4,6 +4,8 @@
 #include "pareas/llpgen/grammar.hpp"
 #include "pareas/llpgen/item_set.hpp"
 #include "pareas/llpgen/psls_table.hpp"
+#include "pareas/llpgen/ll_table.hpp"
+#include "pareas/llpgen/llp_table.hpp"
 
 #include <unordered_set>
 #include <unordered_map>
@@ -27,6 +29,8 @@ public:
     explicit LLPGenerator(const Grammar* g);
     void dump(std::ostream& os);
     PSLSTable build_psls_table();
+    LLTable build_ll_table();
+    LLPTable build_llp_table(const LLTable& ll, const PSLSTable& psls);
 
 private:
     std::unordered_set<ItemSet> compute_item_sets();

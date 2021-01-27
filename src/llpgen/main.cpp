@@ -26,7 +26,15 @@ int main() {
     // test_grammar.add_rule({"F"_nt, {"id"_t}});
     // test_grammar.add_rule({"F"_nt, {"("_t, "E"_nt, ")"_t}});
 
+    // test_grammar.dump(std::cout);
+
     auto gen = LLPGenerator(&test_grammar);
     auto psls = gen.build_psls_table();
-    psls.dump_csv(std::cout);
+    // psls.dump_csv(std::cout);
+
+    auto ll = gen.build_ll_table();
+    // ll.dump_csv(std::cout);
+
+    auto llp = gen.build_llp_table(ll, psls);
+    llp.dump_csv(std::cout);
 }
