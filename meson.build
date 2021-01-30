@@ -20,6 +20,7 @@ llpgen_sources = [
     'src/llpgen/admissible_pair.cpp',
     'src/llpgen/generator.cpp',
     'src/llpgen/grammar.cpp',
+    'src/llpgen/grammar_parser.cpp',
     'src/llpgen/item.cpp',
     'src/llpgen/item_set.cpp',
     'src/llpgen/ll_table.cpp',

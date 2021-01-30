@@ -84,7 +84,7 @@ std::ostream& operator<<(std::ostream& os, const Symbol& sym) {
 }
 
 std::ostream& operator<<(std::ostream& os, const Production& prod) {
-    os << Symbol(prod.lhs) << " ->";
+    os << Symbol(prod.lhs) << " [" << prod.tag << "] ->";
     if (prod.rhs.empty()) {
         os << " ε";
     } else {

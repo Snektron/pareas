@@ -26,10 +26,9 @@ void LLTable::insert(const LLTableKey& key, const Production* prod) {
 }
 
 std::vector<const Production*> LLTable::partial_parse(const Terminal& y, std::vector<Symbol>& stack) const {
-    auto productions = std::vector<const Production*>();
-
     // TODO: Convert asserts to errors
 
+    auto productions = std::vector<const Production*>();
     while (true) {
         assert(!stack.empty());
         auto top = stack.back();

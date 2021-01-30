@@ -5,6 +5,7 @@
 #include <vector>
 #include <iosfwd>
 #include <stdexcept>
+#include <string_view>
 #include <cstddef>
 
 struct InvalidGrammarError: std::runtime_error {
@@ -48,6 +49,7 @@ struct Symbol {
 };
 
 struct Production {
+    std::string tag;
     NonTerminal lhs;
     std::vector<Symbol> rhs;
 };
