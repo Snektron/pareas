@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cctype>
 #include <cstdio>
+#include <iostream>
 
 namespace {
     bool is_word_start_char(int c) {
@@ -15,19 +16,46 @@ namespace {
 }
 
 GrammarParser::GrammarParser(ErrorReporter* er, std::string_view source):
-    er(er), source(source), offset(0) {}
+    er(er), source(source), offset(0),
+    start{"", {0}}, left_delim{"", {0}}, right_delim{"", {0}} {}
 
 Grammar GrammarParser::parse() {
-    auto [start, left_delim, right_delim] = this->directives();
-    auto productions = std::vector<Production>();
-    if (!this->productions(productions))
+    bool error = false;
+
+    this->eat_delim();
+    int c;
+    while ((c = this->peek()) != EOF) {
+        bool ok = c == '%' ? this->directive() : this->production();
+        if (!ok) {
+            error = true;
+            this->skip_statement();
+        }
+        this->eat_delim();
+    }
+
+    if (this->start.value.size() == 0) {
+        this->er->error(this->loc(), "Missing directive %start");
+        error = true;
+    }
+
+    if (this->left_delim.value.size() == 0) {
+        this->er->error(this->loc(), "Missing directive %left_delim");
+        error = true;
+    }
+
+    if (this->right_delim.value.size() == 0) {
+        this->er->error(this->loc(), "Missing directive %right_delim");
+        error = true;
+    }
+
+    if (error)
         throw ParseError();
 
     return Grammar(
-        NonTerminal{std::string(start)},
-        Terminal{std::string(left_delim)},
-        Terminal{std::string(right_delim)},
-        std::move(productions)
+        NonTerminal{std::string(this->start.value)},
+        Terminal{std::string(this->left_delim.value)},
+        Terminal{std::string(this->right_delim.value)},
+        std::move(this->productions)
     );
 }
 
@@ -58,7 +86,7 @@ bool GrammarParser::eat(int c) {
     return false;
 }
 
-void GrammarParser::expect(int c) {
+bool GrammarParser::expect(int c) {
     if (!this->eat(c)) {
         int actual = this->peek();
         if (actual == EOF) {
@@ -66,8 +94,9 @@ void GrammarParser::expect(int c) {
         } else {
             this->er->error_fmt(this->loc(), "Unexpected character '", static_cast<char>(actual), "', expected '", static_cast<char>(c), "'");
         }
-        throw ParseError();
+        return false;
     }
+    return true;
 }
 
 bool GrammarParser::eat_delim() {
@@ -94,78 +123,82 @@ bool GrammarParser::eat_delim() {
     }
 }
 
-GrammarParser::Directives GrammarParser::directives() {
-    auto parse_directive = [&](std::string_view name, bool word) {
-        this->eat_delim();
-        auto directive_loc = this->loc();
-        this->expect('%');
-        auto actual_name = this->word();
-
-        if (actual_name != name) {
-            this->er->error_fmt(directive_loc, "Unexpected directive %", actual_name, ", expected %", name);
-            throw ParseError();
-        }
-
-        this->eat_delim();
-        this->expect('=');
-        this->eat_delim();
-        auto value = word ? this->word() : this->terminal();
-        this->eat_delim();
-        this->expect(';');
-        return value;
-    };
-
-    return Directives{
-        .start = parse_directive("start", true),
-        .left_delim = parse_directive("left_delim", false),
-        .right_delim = parse_directive("right_delim", false),
-    };
+void GrammarParser::skip_statement() {
+    while (true) {
+        this->eat_delim(); // make sure to skip comments
+        int c = this->consume();
+        if (c == EOF || c == ';')
+            break;
+    }
 }
 
-bool GrammarParser::productions(std::vector<Production>& productions) {
-    bool all_good = true;
+bool GrammarParser::directive() {
+    auto directive_loc = this->loc();
+    if (!this->expect('%'))
+        return false;
+    auto name = this->word();
+    if (name.size() == 0)
+        return false;
 
-    this->eat_delim();
-    while (this->peek() != EOF) {
-        try {
-            this->production(productions);
-        } catch (const ParseError& e) {
-            all_good = false;
-
-            // Skip until after the next ; (or EOF)
-            while (true) {
-                this->eat_delim(); // make sure to skip comments
-                int c = this->consume();
-                if (c == EOF || c == ';')
-                    break;
-            }
-        }
-        this->eat_delim();
+    Directive* dir = nullptr;
+    bool word = false;
+    if (name == "start") {
+        dir = &this->start;
+        word = true;
+    } else if (name == "left_delim") {
+        dir = &this->left_delim;
+    } else if (name == "right_delim") {
+        dir = &this->right_delim;
+    } else {
+        this->er->error_fmt(directive_loc, "Invalid directive '%", name, "'");
+        return false;
     }
 
-    return all_good;
+    bool error = false;
+    if (dir->value.size() != 0) {
+        this->er->error_fmt(directive_loc, "Duplicate directive '%", name, "'");
+        this->er->note_fmt(dir->loc, "First defined here");
+        error = true;
+    } else {
+        dir->loc = directive_loc;
+    }
+
+    this->eat_delim();
+    if (!this->expect('='))
+        return false;
+    this->eat_delim();
+
+    auto value = word ? this->word() : this->terminal();
+    if (value.size() == 0)
+        return false;
+
+    dir->value = value;
+    this->eat_delim();
+    return this->expect(';') && !error;
 }
 
-void GrammarParser::production(std::vector<Production>& productions) {
+bool GrammarParser::production() {
     auto lhs_loc = this->loc();
     auto lhs = this->word();
-    this->eat_delim();
+    if (lhs.size() == 0)
+        return false;
 
-    if (lhs == "_") {
-        this->er->error(lhs_loc, "Empty symbol cannot be LHS of production");
-        throw ParseError();
-    }
+    this->eat_delim();
 
     auto tag_loc = lhs_loc;
     auto tag = lhs;
     if (this->peek() == '[') {
         tag_loc = this->loc();
         tag = this->tag();
+        if (tag.size() == 0)
+            return false;
+
         this->eat_delim();
     }
 
-    this->expect('-');
-    this->expect('>');
+    if (!this->expect('-') || !this->expect('>'))
+        return false;
+
     this->eat_delim();
 
     auto syms = std::vector<Symbol>();
@@ -176,27 +209,28 @@ void GrammarParser::production(std::vector<Production>& productions) {
         auto sym_loc = this->loc();
         if (c == '\'') {
             auto t = this->terminal();
+            if (t.size() == 0)
+                return false;
             syms.push_back(Terminal{std::string(t)});
         } else if (is_word_start_char(c)) {
             auto nt = this->word();
-
-            if (nt == "_")
-                syms.push_back(Terminal::null());
-            else
-                syms.push_back(NonTerminal{std::string(nt)});
+            if (nt.size() == 0)
+                return false;
+            syms.push_back(NonTerminal{std::string(nt)});
         } else {
             break;
         }
 
         if (!delimited) {
             this->er->error(sym_loc, "Delimiter required between production RHS symbols");
-            throw ParseError();
+            return false;
         }
 
         delimited = this->eat_delim();
     }
 
-    this->expect(';');
+    if (!this->expect(';'))
+        return false;
 
     auto it = this->tags.find(tag);
     if (it == this->tags.end()) {
@@ -204,19 +238,21 @@ void GrammarParser::production(std::vector<Production>& productions) {
     } else {
         this->er->error_fmt(tag_loc, "Duplicate tag '", tag, "'");
         this->er->note(it->second, "First defined here");
-        throw ParseError();
+        return false;
     }
 
-    productions.push_back({std::string(tag), NonTerminal{std::string(lhs)}, syms});
+    this->productions.push_back({std::string(tag), NonTerminal{std::string(lhs)}, syms});
+    return true;
 }
 
 std::string_view GrammarParser::word() {
+    bool error = false;
     size_t start = this->offset;
     int c = this->peek();
 
     if (!is_word_start_char(c)) {
         this->er->error_fmt(this->loc(), "Invalid character '", static_cast<char>(c), "', expected <word>");
-        throw ParseError();
+        error = true;
     }
 
     this->consume();
@@ -227,19 +263,36 @@ std::string_view GrammarParser::word() {
         c = this->peek();
     }
 
+    if (error)
+        return "";
+
     return this->source.substr(start, this->offset - start);
 }
 
 std::string_view GrammarParser::terminal() {
-    this->expect('\'');
+    if (!this->expect('\''))
+        return "";
+
     auto word = this->word();
-    this->expect('\'');
+    if (word.size() == 0)
+        return "";
+
+    if (!this->expect('\''))
+        return "";
+
     return word;
 }
 
 std::string_view GrammarParser::tag() {
-    this->expect('[');
+    if (!this->expect('['))
+        return "";
+
     auto word = this->word();
-    this->expect(']');
+    if (word.size() == 0)
+        return "";
+
+    if (!this->expect(']'))
+        return "";
+
     return word;
 }

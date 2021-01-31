@@ -13,34 +13,35 @@ struct ParseError: InvalidGrammarError {
     ParseError(): InvalidGrammarError("Parse error") {}
 };
 
-struct GrammarParser {
+class GrammarParser {
+    struct Directive {
+        std::string_view value;
+        SourceLocation loc;
+    };
+
     ErrorReporter* er;
     std::string_view source;
     size_t offset;
+    std::vector<Production> productions;
     std::unordered_map<std::string_view, SourceLocation> tags;
+    Directive start, left_delim, right_delim;
 
+public:
     GrammarParser(ErrorReporter* er, std::string_view source);
     Grammar parse();
 
 private:
-    struct Directives {
-        std::string_view start;
-        std::string_view left_delim;
-        std::string_view right_delim;
-    };
-
     SourceLocation loc() const;
 
     int peek();
     int consume();
     bool eat(int c);
-    void expect(int c);
+    bool expect(int c);
     bool eat_delim();
+    void skip_statement();
 
-    Directives directives();
-
-    bool productions(std::vector<Production>& productions);
-    void production(std::vector<Production>& productions);
+    bool directive();
+    bool production();
 
     std::string_view word(); // [a-zA-Z_][a-zA-Z0-9]*
     std::string_view terminal(); // quoted word
