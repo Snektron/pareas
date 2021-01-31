@@ -1,7 +1,9 @@
 #include "pareas/llpgen/error_reporter.hpp"
 #include "pareas/llpgen/grammar.hpp"
 #include "pareas/llpgen/grammar_parser.hpp"
-#include "pareas/llpgen/generator.hpp"
+#include "pareas/llpgen/terminal_set_functions.hpp"
+#include "pareas/llpgen/llp/generator.hpp"
+#include "pareas/llpgen/ll.hpp"
 
 #include <iostream>
 
@@ -30,16 +32,19 @@ int main() {
 
     try {
        auto g = parser.parse();
-       auto gen = LLPGenerator(&g);
-       auto psls = gen.build_psls_table();
-       auto ll = gen.build_ll_table();
-       auto llp = gen.build_llp_table(ll, psls);
-       llp.dump_csv(std::cout);
-    } catch (const ParseError& e) {
-        // Error is already printed by the error reporter
-        return EXIT_FAILURE;
+       auto tsf = TerminalSetFunctions(g);
+       // tsf.dump(std::cout);
+
+       auto gen = llp::Generator(&er, &g, &tsf);
+       auto psls_table = gen.build_psls_table();
+       // psls_table.dump_csv(std::cout);
+
+       auto ll_table = ll::Generator(&er, &g, &tsf).build_parsing_table();
+       // ll_table.dump_csv(std::cout);
+
+       auto llp_table = gen.build_llp_table(ll_table, psls_table);
+       llp_table.dump_csv(std::cout);
     } catch (const InvalidGrammarError& e) {
-        std::cerr << "Grammar error: " << e.what() << std::endl;
         return EXIT_FAILURE;
     }
 }

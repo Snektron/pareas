@@ -9,8 +9,8 @@
 #include <unordered_map>
 #include <cstddef>
 
-struct ParseError: InvalidGrammarError {
-    ParseError(): InvalidGrammarError("Parse error") {}
+struct GrammarParseError: InvalidGrammarError {
+    GrammarParseError(): InvalidGrammarError("Parse error") {}
 };
 
 class GrammarParser {

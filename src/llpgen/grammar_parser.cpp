@@ -49,7 +49,7 @@ Grammar GrammarParser::parse() {
     }
 
     if (error)
-        throw ParseError();
+        throw GrammarParseError();
 
     return Grammar(
         NonTerminal{std::string(this->start.value)},
@@ -241,7 +241,7 @@ bool GrammarParser::production() {
         return false;
     }
 
-    this->productions.push_back({std::string(tag), NonTerminal{std::string(lhs)}, syms});
+    this->productions.push_back({lhs_loc, std::string(tag), NonTerminal{std::string(lhs)}, syms});
     return true;
 }
 
