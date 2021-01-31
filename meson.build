@@ -18,6 +18,7 @@ inc = include_directories('include')
 # LLPGEN
 llpgen_sources = [
     'src/llpgen/admissible_pair.cpp',
+    'src/llpgen/error_reporter.cpp',
     'src/llpgen/generator.cpp',
     'src/llpgen/grammar.cpp',
     'src/llpgen/grammar_parser.cpp',

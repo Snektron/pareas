@@ -55,6 +55,9 @@ NonTerminal Symbol::as_non_terminal() const {
 Grammar::Grammar(NonTerminal start, Terminal left_delim, Terminal right_delim):
     start(start), left_delim(left_delim), right_delim(right_delim) {}
 
+Grammar::Grammar(NonTerminal start, Terminal left_delim, Terminal right_delim, std::vector<Production>&& productions):
+    start(start), left_delim(left_delim), right_delim(right_delim), productions(std::move(productions)) {}
+
 void Grammar::add_rule(const Production& prod) {
     this->productions.push_back(prod);
 }

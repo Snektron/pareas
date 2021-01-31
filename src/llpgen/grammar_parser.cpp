@@ -14,35 +14,25 @@ namespace {
     }
 }
 
-ParseError::ParseError(const std::string& message):
-    InvalidGrammarError(message) {}
-
-GrammarParser::GrammarParser(std::string_view source):
-    source(source), offset(0), line(0), column(0) {}
+GrammarParser::GrammarParser(ErrorReporter* er, std::string_view source):
+    er(er), source(source), offset(0) {}
 
 Grammar GrammarParser::parse() {
     auto [start, left_delim, right_delim] = this->directives();
-    auto g = Grammar(
+    auto productions = std::vector<Production>();
+    if (!this->productions(productions))
+        throw ParseError();
+
+    return Grammar(
         NonTerminal{std::string(start)},
         Terminal{std::string(left_delim)},
-        Terminal{std::string(right_delim)}
+        Terminal{std::string(right_delim)},
+        std::move(productions)
     );
-    this->productions(g);
-    return g;
 }
 
-std::string_view GrammarParser::current_line() const {
-    size_t start = this->source.rfind('\n', std::max(this->offset, size_t{1}) - 1);
-    if (start == std::string_view::npos)
-        start = 0;
-    else
-        ++start;
-
-    size_t end = this->source.find('\n', this->offset);
-    if (end == std::string_view::npos)
-        end = this->source.size();
-
-    return this->source.substr(start, end - start);
+SourceLocation GrammarParser::loc() const {
+    return {this->offset};
 }
 
 int GrammarParser::peek() {
@@ -53,13 +43,6 @@ int GrammarParser::peek() {
 
 int GrammarParser::consume() {
     int c = this->peek();
-    if (c == '\n') {
-        ++this->line;
-        this->column = 0;
-    } else {
-        ++this->column;
-    }
-
     if (c != EOF)
         ++this->offset;
 
@@ -77,7 +60,13 @@ bool GrammarParser::eat(int c) {
 
 void GrammarParser::expect(int c) {
     if (!this->eat(c)) {
-        throw ParseError("Unexpected character");
+        int actual = this->peek();
+        if (actual == EOF) {
+            this->er->error_fmt(this->loc(), "Unexpected EOF, expected '", static_cast<char>(c), "'");
+        } else {
+            this->er->error_fmt(this->loc(), "Unexpected character '", static_cast<char>(actual), "', expected '", static_cast<char>(c), "'");
+        }
+        throw ParseError();
     }
 }
 
@@ -108,10 +97,15 @@ bool GrammarParser::eat_delim() {
 GrammarParser::Directives GrammarParser::directives() {
     auto parse_directive = [&](std::string_view name, bool word) {
         this->eat_delim();
+        auto directive_loc = this->loc();
         this->expect('%');
         auto actual_name = this->word();
-        if (actual_name != name)
-            throw ParseError("Invalid directive");
+
+        if (actual_name != name) {
+            this->er->error_fmt(directive_loc, "Unexpected directive %", actual_name, ", expected %", name);
+            throw ParseError();
+        }
+
         this->eat_delim();
         this->expect('=');
         this->eat_delim();
@@ -128,23 +122,44 @@ GrammarParser::Directives GrammarParser::directives() {
     };
 }
 
-void GrammarParser::productions(Grammar& g) {
+bool GrammarParser::productions(std::vector<Production>& productions) {
+    bool all_good = true;
+
     this->eat_delim();
     while (this->peek() != EOF) {
-        this->production(g);
+        try {
+            this->production(productions);
+        } catch (const ParseError& e) {
+            all_good = false;
+
+            // Skip until after the next ; (or EOF)
+            while (true) {
+                this->eat_delim(); // make sure to skip comments
+                int c = this->consume();
+                if (c == EOF || c == ';')
+                    break;
+            }
+        }
         this->eat_delim();
     }
+
+    return all_good;
 }
 
-void GrammarParser::production(Grammar& g) {
+void GrammarParser::production(std::vector<Production>& productions) {
+    auto lhs_loc = this->loc();
     auto lhs = this->word();
     this->eat_delim();
 
-    if (lhs == "_")
-        throw ParseError("Invalid production LHS");
+    if (lhs == "_") {
+        this->er->error(lhs_loc, "Empty symbol cannot be LHS of production");
+        throw ParseError();
+    }
 
+    auto tag_loc = lhs_loc;
     auto tag = lhs;
     if (this->peek() == '[') {
+        tag_loc = this->loc();
         tag = this->tag();
         this->eat_delim();
     }
@@ -158,16 +173,11 @@ void GrammarParser::production(Grammar& g) {
 
     while (true) {
         int c = this->peek();
+        auto sym_loc = this->loc();
         if (c == '\'') {
-            if (!delimited)
-                throw ParseError("Expected delimiter between rule arm symbols");
-
             auto t = this->terminal();
             syms.push_back(Terminal{std::string(t)});
         } else if (is_word_start_char(c)) {
-            if (!delimited)
-                throw ParseError("Expected delimiter between rule arm symbols");
-
             auto nt = this->word();
 
             if (nt == "_")
@@ -178,24 +188,36 @@ void GrammarParser::production(Grammar& g) {
             break;
         }
 
+        if (!delimited) {
+            this->er->error(sym_loc, "Delimiter required between production RHS symbols");
+            throw ParseError();
+        }
+
         delimited = this->eat_delim();
     }
 
     this->expect(';');
 
-    bool inserted = this->tags.insert(tag).second;
-    if (!inserted)
-        throw ParseError("Duplicate tag");
+    auto it = this->tags.find(tag);
+    if (it == this->tags.end()) {
+        this->tags.insert(it, {tag, tag_loc});
+    } else {
+        this->er->error_fmt(tag_loc, "Duplicate tag '", tag, "'");
+        this->er->note(it->second, "First defined here");
+        throw ParseError();
+    }
 
-    g.add_rule({std::string(tag), NonTerminal{std::string(lhs)}, syms});
+    productions.push_back({std::string(tag), NonTerminal{std::string(lhs)}, syms});
 }
 
 std::string_view GrammarParser::word() {
     size_t start = this->offset;
     int c = this->peek();
 
-    if (!is_word_start_char(c))
-        throw ParseError("Unexpected character");
+    if (!is_word_start_char(c)) {
+        this->er->error_fmt(this->loc(), "Invalid character '", static_cast<char>(c), "', expected <word>");
+        throw ParseError();
+    }
 
     this->consume();
 

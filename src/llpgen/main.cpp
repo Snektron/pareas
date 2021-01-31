@@ -1,3 +1,4 @@
+#include "pareas/llpgen/error_reporter.hpp"
 #include "pareas/llpgen/grammar.hpp"
 #include "pareas/llpgen/grammar_parser.hpp"
 #include "pareas/llpgen/generator.hpp"
@@ -24,7 +25,8 @@ atom [brackets] -> 'lbracket' expr 'rbracket';
 )";
 
 int main() {
-    auto parser = GrammarParser(test_grammar);
+    auto er = ErrorReporter(test_grammar, std::clog);
+    auto parser = GrammarParser(&er, test_grammar);
 
     try {
        auto g = parser.parse();
@@ -34,15 +36,7 @@ int main() {
        auto llp = gen.build_llp_table(ll, psls);
        llp.dump_csv(std::cout);
     } catch (const ParseError& e) {
-        std::cerr << "Parse error at " << (parser.line + 1) << ":"
-            << (parser.column + 1) << ": " << e.what() << std::endl;
-        std::cerr << parser.current_line() << std::endl;
-
-        for (size_t i = 0; i < parser.column; ++i) {
-            std::cerr << ' ';
-        }
-        std::cerr << '^' << std::endl;
-
+        // Error is already printed by the error reporter
         return EXIT_FAILURE;
     } catch (const InvalidGrammarError& e) {
         std::cerr << "Grammar error: " << e.what() << std::endl;

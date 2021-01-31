@@ -62,6 +62,7 @@ struct Grammar {
     std::vector<Production> productions;
 
     Grammar(NonTerminal start, Terminal left_delim, Terminal right_delim);
+    Grammar(NonTerminal start, Terminal left_delim, Terminal right_delim, std::vector<Production>&& productions);
 
     void add_rule(const Production& prod);
     void dump(std::ostream& os) const;

@@ -2,26 +2,25 @@
 #define _PAREAS_LLPGEN_GRAMMAR_PARSER_HPP
 
 #include "pareas/llpgen/grammar.hpp"
+#include "pareas/llpgen/error_reporter.hpp"
 
 #include <string_view>
-#include <variant>
-#include <unordered_set>
+#include <optional>
+#include <unordered_map>
 #include <cstddef>
 
 struct ParseError: InvalidGrammarError {
-    ParseError(const std::string& message);
+    ParseError(): InvalidGrammarError("Parse error") {}
 };
 
 struct GrammarParser {
+    ErrorReporter* er;
     std::string_view source;
     size_t offset;
-    size_t line;
-    size_t column;
-    std::unordered_set<std::string_view> tags;
+    std::unordered_map<std::string_view, SourceLocation> tags;
 
-    GrammarParser(std::string_view source);
+    GrammarParser(ErrorReporter* er, std::string_view source);
     Grammar parse();
-    std::string_view current_line() const;
 
 private:
     struct Directives {
@@ -29,6 +28,8 @@ private:
         std::string_view left_delim;
         std::string_view right_delim;
     };
+
+    SourceLocation loc() const;
 
     int peek();
     int consume();
@@ -38,8 +39,8 @@ private:
 
     Directives directives();
 
-    void productions(Grammar& g);
-    void production(Grammar& g);
+    bool productions(std::vector<Production>& productions);
+    void production(std::vector<Production>& productions);
 
     std::string_view word(); // [a-zA-Z_][a-zA-Z0-9]*
     std::string_view terminal(); // quoted word
