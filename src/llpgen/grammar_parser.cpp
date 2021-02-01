@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <cctype>
 #include <cstdio>
-#include <iostream>
 
 namespace {
     bool is_word_start_char(int c) {

@@ -1,6 +1,5 @@
 #include "pareas/llpgen/llp/generator.hpp"
 
-#include <iostream>
 #include <deque>
 #include <algorithm>
 #include <cassert>
