@@ -16,6 +16,7 @@ namespace llp {
             std::vector<const Production*> productions;
         };
 
+        Entry start;
         std::unordered_map<AdmissiblePair, Entry> table;
 
         void dump_csv(std::ostream& os);

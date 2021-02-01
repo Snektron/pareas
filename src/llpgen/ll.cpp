@@ -10,7 +10,7 @@ namespace ll {
         return lhs.stack_top == rhs.stack_top && lhs.lookahead == rhs.lookahead;
     }
 
-    std::vector<const Production*> ParsingTable::partial_parse(const Terminal& y, std::vector<Symbol>& stack) const {
+    std::vector<const Production*> LLTable::partial_parse(const Terminal& y, std::vector<Symbol>& stack) const {
         // TODO: Convert asserts to errors
 
         auto productions = std::vector<const Production*>();
@@ -39,7 +39,7 @@ namespace ll {
         return productions;
     }
 
-    void ParsingTable::dump_csv(std::ostream& os) const {
+    void LLTable::dump_csv(std::ostream& os) const {
         auto nts = std::unordered_set<NonTerminal>();
         auto ts = std::unordered_set<Terminal>();
 
@@ -72,8 +72,8 @@ namespace ll {
     Generator::Generator(ErrorReporter* er, const Grammar* g, const TerminalSetFunctions* tsf):
         er(er), g(g), tsf(tsf) {}
 
-    ParsingTable Generator::build_parsing_table() {
-        auto ll = ParsingTable();
+    LLTable Generator::build_parsing_table() {
+        auto ll = LLTable();
         bool error = false;
 
         auto insert = [&](const State& state, const Production* prod) {

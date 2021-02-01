@@ -32,6 +32,7 @@ public:
 
 private:
     SourceLocation loc() const;
+    const Production* find_start_rule() const;
 
     int peek();
     int consume();

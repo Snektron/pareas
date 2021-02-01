@@ -25,7 +25,7 @@ namespace ll {
         ConflictError(): InvalidGrammarError("LL conflict: Grammar is not LL(1)") {}
     };
 
-    struct ParsingTable {
+    struct LLTable {
         std::unordered_map<State, const Production*, State::Hash> table;
 
         std::vector<const Production*> partial_parse(const Terminal& y, std::vector<Symbol>& stack) const;
@@ -39,7 +39,7 @@ namespace ll {
 
     public:
         Generator(ErrorReporter* er, const Grammar* g, const TerminalSetFunctions* tsf);
-        ParsingTable build_parsing_table();
+        LLTable build_parsing_table();
     };
 }
 

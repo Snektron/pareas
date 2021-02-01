@@ -8,24 +8,9 @@
 
 namespace llp {
     Item Item::initial(const Grammar& g) {
-        // Find the start rule
-        // Only one is allowed
-        const Production* start = nullptr;
-        for (const auto& prod : g.productions) {
-            if (prod.lhs != g.start)
-                continue;
-            if (start)
-                throw MultipleStartRulesError();
-            start = &prod;
-        }
-
-        // Verify that the starting rule is of the right form
-        if (start->rhs.empty() || start->rhs.front() != g.left_delim || start->rhs.back() != g.right_delim)
-            throw InvalidStartRuleError();
-
         return {
-            .prod = start,
-            .dot = start->rhs.size(),
+            .prod = g.start,
+            .dot = g.start->rhs.size(),
             .lookback = g.right_delim,
             .lookahead = Terminal::null(),
             .gamma = {},

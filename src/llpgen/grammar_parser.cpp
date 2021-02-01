@@ -48,19 +48,58 @@ Grammar GrammarParser::parse() {
         error = true;
     }
 
-    if (error)
+    const auto* start = this->find_start_rule();
+
+    if (error || !start)
         throw GrammarParseError();
 
-    return Grammar(
-        NonTerminal{std::string(this->start.value)},
-        Terminal{std::string(this->left_delim.value)},
-        Terminal{std::string(this->right_delim.value)},
-        std::move(this->productions)
-    );
+    return Grammar{
+        .left_delim = Terminal{std::string(this->left_delim.value)},
+        .right_delim = Terminal{std::string(this->right_delim.value)},
+        .start = start,
+        .productions = std::move(this->productions),
+    };
 }
 
 SourceLocation GrammarParser::loc() const {
     return {this->offset};
+}
+
+const Production* GrammarParser::find_start_rule() const {
+    // Find the start rule
+    // Only one is allowed
+    const Production* start = nullptr;
+    bool error = false;
+
+    auto start_nt = NonTerminal{std::string(this->start.value)};
+
+    for (const auto& prod : this->productions) {
+        if (prod.lhs != start_nt)
+            continue;
+        if (start) {
+            this->er->error(prod.loc, "Duplicate start rule definition");
+            this->er->note(start->loc, "First defined here");
+            error = true;
+        } else {
+            start = &prod;
+        }
+    }
+
+    auto left_delim = Terminal{std::string(this->left_delim.value)};
+    auto right_delim = Terminal{std::string(this->right_delim.value)};
+
+    // Verify that the starting rule is of the right form
+    if (start->rhs.empty() || start->rhs.front() != left_delim || start->rhs.back() != right_delim) {
+        this->er->error(start->loc, "Start rule not in correct form");
+        this->er->note_fmt(start->loc, "Expected form ", start->lhs, " -> '", left_delim, "' ... '", right_delim, "';");
+        error = true;
+    }
+
+    if (error) {
+        return nullptr;
+    }
+
+    return start;
 }
 
 int GrammarParser::peek() {

@@ -69,8 +69,16 @@ namespace llp {
         return psls;
     }
 
-    LLPTable Generator::build_llp_table(const ll::ParsingTable& ll, const PSLSTable& psls) {
+    LLPTable Generator::build_llp_table(const ll::LLTable& ll, const PSLSTable& psls) {
         auto llp = LLPTable();
+
+        {
+            auto initial_stack = std::vector<Symbol>({this->g->start->lhs});
+            auto stack = initial_stack;
+            auto productions = ll.partial_parse(this->g->left_delim, stack);
+            llp.start = {initial_stack, stack, productions};
+        }
+
         for (const auto& [ap, entry] : psls.table) {
             auto initial_stack = std::vector<Symbol>(entry.gamma.rbegin(), entry.gamma.rend());
             auto stack = initial_stack;

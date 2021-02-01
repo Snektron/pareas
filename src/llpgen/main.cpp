@@ -3,6 +3,7 @@
 #include "pareas/llpgen/grammar_parser.hpp"
 #include "pareas/llpgen/terminal_set_functions.hpp"
 #include "pareas/llpgen/llp/generator.hpp"
+#include "pareas/llpgen/llp/test_parser.hpp"
 #include "pareas/llpgen/ll.hpp"
 
 #include <iostream>
@@ -43,7 +44,13 @@ int main() {
        // ll_table.dump_csv(std::cout);
 
        auto llp_table = gen.build_llp_table(ll_table, psls_table);
-       llp_table.dump_csv(std::cout);
+       // llp_table.dump_csv(std::cout);
+
+       auto input = {"soi"_t, "a"_t, "plus"_t, "lbracket"_t, "a"_t, "plus"_t, "a"_t, "rbracket"_t, "eoi"_t};
+       auto test_parser = llp::TestParser(&llp_table, input);
+       auto success = test_parser.parse();
+       std::cout << "Parsing " << (success ? "success" : "failed") << std::endl;
+       test_parser.dump(std::cout);
     } catch (const InvalidGrammarError& e) {
         return EXIT_FAILURE;
     }

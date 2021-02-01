@@ -23,7 +23,7 @@ namespace llp {
     public:
         Generator(ErrorReporter* er, const Grammar* g, const TerminalSetFunctions* tsf);
         PSLSTable build_psls_table();
-        LLPTable build_llp_table(const ll::ParsingTable& ll, const PSLSTable& psls);
+        LLPTable build_llp_table(const ll::LLTable& ll, const PSLSTable& psls);
         void dump(std::ostream& os);
 
     private:
