@@ -14,6 +14,7 @@ type NodeType =
     #else_aux |
     #while_stat |
     #func_call_expr |
+    #func_call_arg |
     #add_expr |
     #sub_expr |
     #mul_expr |
@@ -66,7 +67,3 @@ let alloc_tree (tree_size: i64) =
         nodes = replicate (tree_size) default_node,
         max_depth = 0u32
     }
-
---Walks the tree, reducing the tree to a single result
-let walk_tree [tree_size] (tree: Tree[tree_size]) =
-    tree.max_depth
