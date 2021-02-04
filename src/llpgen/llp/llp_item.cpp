@@ -1,4 +1,4 @@
-#include "pareas/llpgen/llp/item.hpp"
+#include "pareas/llpgen/llp/llp_item.hpp"
 #include "pareas/llpgen/hash_util.hpp"
 
 #include <algorithm>
@@ -7,43 +7,33 @@
 #include <cassert>
 
 namespace llp {
-    Item Item::initial(const Grammar& g) {
-        return {
-            .prod = g.start,
-            .dot = g.start->rhs.size(),
-            .lookback = g.right_delim,
-            .lookahead = Terminal::null(),
-            .gamma = {},
-        };
-    }
-
-    bool Item::is_dot_at_end() const {
+    bool LLPItem::is_dot_at_end() const {
         return this->dot == this->prod->rhs.size();
     }
 
-    bool Item::is_dot_at_begin() const {
+    bool LLPItem::is_dot_at_begin() const {
         return this->dot == 0;
     }
 
-    Symbol Item::sym_at_dot() const {
+    Symbol LLPItem::sym_after_dot() const {
         assert(!this->is_dot_at_end());
         return this->prod->rhs[this->dot];
     }
 
-    Symbol Item::sym_before_dot() const {
+    Symbol LLPItem::sym_before_dot() const {
         assert(!this->is_dot_at_begin());
         return this->prod->rhs[this->dot - 1];
     }
 
-    std::span<const Symbol> Item::syms_before_dot() const {
+    std::span<const Symbol> LLPItem::syms_before_dot() const {
         return std::span(this->prod->rhs).subspan(0, this->dot);
     }
 
-    std::span<const Symbol> Item::syms_after_dot() const {
+    std::span<const Symbol> LLPItem::syms_after_dot() const {
         return std::span(this->prod->rhs).subspan(this->dot + 1);
     }
 
-    bool operator==(const Item& lhs, const Item& rhs) {
+    bool operator==(const LLPItem& lhs, const LLPItem& rhs) {
         return lhs.prod == rhs.prod &&
             lhs.dot == rhs.dot &&
             lhs.lookahead == rhs.lookahead &&
@@ -51,7 +41,7 @@ namespace llp {
             std::equal(lhs.gamma.begin(), lhs.gamma.end(), rhs.gamma.begin(), rhs.gamma.end());
     }
 
-    std::ostream& operator<<(std::ostream& os, const Item& item) {
+    std::ostream& operator<<(std::ostream& os, const LLPItem& item) {
         os << "[" << Symbol(item.prod->lhs) << " ->";
         for (size_t i = 0; i < item.prod->rhs.size(); ++i) {
             if (item.dot == i)
@@ -76,7 +66,7 @@ namespace llp {
     }
 }
 
-size_t std::hash<llp::Item>::operator()(const llp::Item& item) const {
+size_t std::hash<llp::LLPItem>::operator()(const llp::LLPItem& item) const {
     size_t hash = std::hash<const Production*>{}(item.prod);
     hash = hash_combine(hash, std::hash<size_t>{}(item.dot));
     hash = hash_combine(hash, std::hash<Terminal>{}(item.lookahead));

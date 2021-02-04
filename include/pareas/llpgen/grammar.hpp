@@ -64,8 +64,6 @@ struct Grammar {
     const Production* start;
     std::vector<Production> productions;
 
-    // Grammar(Terminal left_delim, Terminal right_delim, std::vector<Production>&& productions, const Production* start);
-
     void dump(std::ostream& os) const;
 };
 

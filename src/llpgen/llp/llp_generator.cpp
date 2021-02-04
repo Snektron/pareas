@@ -1,4 +1,4 @@
-#include "pareas/llpgen/llp/generator.hpp"
+#include "pareas/llpgen/llp/llp_generator.hpp"
 
 #include <deque>
 #include <algorithm>
@@ -18,16 +18,16 @@ namespace {
 }
 
 namespace llp {
-    Generator::Generator(ErrorReporter* er, const Grammar* g, const TerminalSetFunctions* tsf):
+    LLPGenerator::LLPGenerator(ErrorReporter* er, const Grammar* g, const TerminalSetFunctions* tsf):
         er(er), g(g), tsf(tsf) {}
 
-    PSLSTable Generator::build_psls_table() {
+    PSLSTable LLPGenerator::build_psls_table() {
         this->compute_item_sets();
 
         auto psls = PSLSTable();
         bool error = false;
 
-        auto insert = [&](const Item& item) {
+        auto insert = [&](const LLPItem& item) {
             auto ap = AdmissiblePair{item.lookback, item.lookahead};
             auto it = psls.table.find(ap);
 
@@ -68,7 +68,7 @@ namespace llp {
         return psls;
     }
 
-    LLPTable Generator::build_llp_table(const ll::LLTable& ll, const PSLSTable& psls) {
+    LLPTable LLPGenerator::build_llp_table(const ll::LLTable& ll, const PSLSTable& psls) {
         auto llp = LLPTable();
 
         {
@@ -88,20 +88,20 @@ namespace llp {
         return llp;
     }
 
-    void Generator::dump(std::ostream& os) {
+    void LLPGenerator::dump(std::ostream& os) {
         os << "Item sets:" << std::endl;
         for (const auto& set : this->item_sets) {
             set.dump(os);
         }
     }
 
-    void Generator::compute_item_sets() {
+    void LLPGenerator::compute_item_sets() {
         if (!this->item_sets.empty())
             return; // Already computed
 
-        auto queue = std::deque<ItemSet>();
+        auto queue = std::deque<LLPItemSet>();
 
-        auto enqueue = [&](const ItemSet& set) {
+        auto enqueue = [&](const LLPItemSet& set) {
             bool inserted = this->item_sets.insert(set).second;
             if (inserted) {
                 queue.emplace_back(set);
@@ -109,8 +109,15 @@ namespace llp {
         };
 
         {
-            auto initial = ItemSet();
-            initial.items.insert(Item::initial(*this->g));
+            auto initial = LLPItemSet();
+            initial.items.insert({
+                .prod = this->g->start,
+                .dot = this->g->start->rhs.size(),
+                .lookback = this->g->right_delim,
+                .lookahead = Terminal::null(),
+                .gamma = {},
+            });
+
             enqueue(initial);
         }
 
@@ -127,8 +134,8 @@ namespace llp {
         }
     }
 
-    ItemSet Generator::predecessor(const ItemSet& set, const Symbol& sym) {
-        auto new_set = ItemSet();
+    LLPItemSet LLPGenerator::predecessor(const LLPItemSet& set, const Symbol& sym) {
+        auto new_set = LLPItemSet();
         for (const auto& item : set.items) {
             if (item.is_dot_at_begin() || item.sym_before_dot() != sym)
                 continue;
@@ -150,14 +157,13 @@ namespace llp {
             for (const auto& u : us) {
                 for (const auto& v : vs) {
                     auto gamma = this->compute_gamma(v, sym, item.gamma);
-                    auto new_item = Item{
+                    new_set.items.insert({
                         .prod = item.prod,
                         .dot = item.dot - 1,
                         .lookback = u,
                         .lookahead = v,
                         .gamma = gamma,
-                    };
-                    new_set.items.insert(new_item);
+                    });
                 }
             }
         }
@@ -165,9 +171,10 @@ namespace llp {
         return new_set;
     }
 
-    void Generator::closure(ItemSet& set) {
-        auto queue = std::deque<Item>();
-        auto enqueue = [&](const Item& item) {
+    void LLPGenerator::closure(LLPItemSet& set) {
+        auto queue = std::deque<LLPItem>();
+
+        auto enqueue = [&](const LLPItem& item) {
             bool inserted = set.items.insert(item).second;
             if (item.is_dot_at_begin() || item.sym_before_dot().is_terminal || !inserted)
                 return;
@@ -197,7 +204,7 @@ namespace llp {
                 }
 
                 for (const auto& u : us) {
-                    enqueue(Item{
+                    enqueue({
                         .prod = &prod,
                         .dot = prod.rhs.size(),
                         .lookback = u,
@@ -209,7 +216,7 @@ namespace llp {
         }
     }
 
-    std::vector<Symbol> Generator::compute_gamma(const Terminal& v, const Symbol& x, std::span<const Symbol> delta) {
+    std::vector<Symbol> LLPGenerator::compute_gamma(const Terminal& v, const Symbol& x, std::span<const Symbol> delta) {
         assert(!x.is_null());
         assert(!v.is_null());
 
