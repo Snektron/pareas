@@ -1,12 +1,11 @@
-#ifndef _PAREAS_LLPGEN_LL_HPP
-#define _PAREAS_LLPGEN_LL_HPP
+#ifndef _PAREAS_LLPGEN_LL_PARSING_TABLE_HPP
+#define _PAREAS_LLPGEN_LL_PARSING_TABLE_HPP
 
 #include "pareas/llpgen/grammar.hpp"
-#include "pareas/llpgen/terminal_set_functions.hpp"
-#include "pareas/llpgen/error_reporter.hpp"
 
-#include <unordered_map>
 #include <vector>
+#include <unordered_map>
+#include <iosfwd>
 #include <cstddef>
 
 namespace ll {
@@ -25,21 +24,11 @@ namespace ll {
         ConflictError(): InvalidGrammarError("LL conflict: Grammar is not LL(1)") {}
     };
 
-    struct LLTable {
+    struct ParsingTable {
         std::unordered_map<State, const Production*, State::Hash> table;
 
         std::vector<const Production*> partial_parse(const Terminal& y, std::vector<Symbol>& stack) const;
         void dump_csv(std::ostream& os) const;
-    };
-
-    class Generator {
-        ErrorReporter* er;
-        const Grammar* g;
-        const TerminalSetFunctions* tsf;
-
-    public:
-        Generator(ErrorReporter* er, const Grammar* g, const TerminalSetFunctions* tsf);
-        LLTable build_parsing_table();
     };
 }
 

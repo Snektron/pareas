@@ -1,8 +1,11 @@
-#include "pareas/llpgen/ll.hpp"
+#include "pareas/llpgen/ll/parsing_table.hpp"
 #include "pareas/llpgen/hash_util.hpp"
 
+#include <unordered_set>
+#include <ostream>
+
 namespace ll {
-    size_t State::Hash::operator()(const State& key) const {
+        size_t State::Hash::operator()(const State& key) const {
         return hash_combine(std::hash<NonTerminal>{}(key.stack_top), std::hash<Terminal>{}(key.lookahead));
     }
 
@@ -10,7 +13,7 @@ namespace ll {
         return lhs.stack_top == rhs.stack_top && lhs.lookahead == rhs.lookahead;
     }
 
-    std::vector<const Production*> LLTable::partial_parse(const Terminal& y, std::vector<Symbol>& stack) const {
+    std::vector<const Production*> ParsingTable::partial_parse(const Terminal& y, std::vector<Symbol>& stack) const {
         // TODO: Convert asserts to errors
 
         auto productions = std::vector<const Production*>();
@@ -39,7 +42,7 @@ namespace ll {
         return productions;
     }
 
-    void LLTable::dump_csv(std::ostream& os) const {
+    void ParsingTable::dump_csv(std::ostream& os) const {
         auto nts = std::unordered_set<NonTerminal>();
         auto ts = std::unordered_set<Terminal>();
 
@@ -67,52 +70,5 @@ namespace ll {
             }
             os << std::endl;
         }
-    }
-
-    Generator::Generator(ErrorReporter* er, const Grammar* g, const TerminalSetFunctions* tsf):
-        er(er), g(g), tsf(tsf) {}
-
-    LLTable Generator::build_parsing_table() {
-        auto ll = LLTable();
-        bool error = false;
-
-        auto insert = [&](const State& state, const Production* prod) {
-            auto it = ll.table.find(state);
-            if (it != ll.table.end()) {
-                this->er->error_fmt(prod->loc, "LL parse conflict, grammar is not LL(1)");
-                this->er->note(it->second->loc, "Conflicts with this production");
-
-                error = true;
-                return;
-            }
-
-            ll.table.insert(it, {state, prod});
-        };
-
-        for (const auto& prod : this->g->productions) {
-            auto first = this->tsf->compute_first(prod.rhs);
-
-            bool has_null = false;
-            for (const auto& t : first) {
-                if (t.is_null()) {
-                    has_null = true;
-                    continue;
-                }
-
-                insert({prod.lhs, t}, &prod);
-            }
-
-            if (has_null) {
-                const auto& follow = this->tsf->follow(prod.lhs);
-                for (const auto& t : follow) {
-                    insert({prod.lhs, t}, &prod);
-                }
-            }
-        }
-
-        if (error)
-            throw ConflictError();
-
-        return ll;
     }
 }

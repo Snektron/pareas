@@ -1,10 +1,10 @@
-#include "pareas/llpgen/llp/llp_table.hpp"
+#include "pareas/llpgen/llp/parsing_table.hpp"
 
 #include <unordered_set>
 #include <ostream>
 
 namespace llp {
-    void LLPTable::dump_csv(std::ostream& os) {
+    void ParsingTable::dump_csv(std::ostream& os) {
         // Print stacks in reverse to keep it the same as in the paper
         auto dump_syms_rev = [&](const auto& syms) {
             bool first = true;

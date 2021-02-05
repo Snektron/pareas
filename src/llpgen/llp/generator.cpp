@@ -1,4 +1,4 @@
-#include "pareas/llpgen/llp/llp_generator.hpp"
+#include "pareas/llpgen/llp/generator.hpp"
 
 #include <deque>
 #include <algorithm>
@@ -18,16 +18,16 @@ namespace {
 }
 
 namespace llp {
-    LLPGenerator::LLPGenerator(ErrorReporter* er, const Grammar* g, const TerminalSetFunctions* tsf):
+    Generator::Generator(ErrorReporter* er, const Grammar* g, const TerminalSetFunctions* tsf):
         er(er), g(g), tsf(tsf) {}
 
-    PSLSTable LLPGenerator::build_psls_table() {
+    PSLSTable Generator::build_psls_table() {
         this->compute_item_sets();
 
         auto psls = PSLSTable();
         bool error = false;
 
-        auto insert = [&](const LLPItem& item) {
+        auto insert = [&](const Item& item) {
             auto ap = AdmissiblePair{item.lookback, item.lookahead};
             auto it = psls.table.find(ap);
 
@@ -68,8 +68,8 @@ namespace llp {
         return psls;
     }
 
-    LLPTable LLPGenerator::build_llp_table(const ll::LLTable& ll, const PSLSTable& psls) {
-        auto llp = LLPTable();
+    ParsingTable Generator::build_parsing_table(const ll::ParsingTable& ll, const PSLSTable& psls) {
+        auto llp = ParsingTable();
 
         {
             auto initial_stack = std::vector<Symbol>({this->g->start->lhs});
@@ -88,14 +88,14 @@ namespace llp {
         return llp;
     }
 
-    void LLPGenerator::dump(std::ostream& os) {
+    void Generator::dump(std::ostream& os) {
         os << "Item sets:" << std::endl;
         for (const auto& set : this->item_sets) {
             set.dump(os);
         }
     }
 
-    void LLPGenerator::compute_item_sets() {
+    void Generator::compute_item_sets() {
         if (!this->item_sets.empty())
             return; // Already computed
 
@@ -134,7 +134,7 @@ namespace llp {
         }
     }
 
-    LLPItemSet LLPGenerator::predecessor(const LLPItemSet& set, const Symbol& sym) {
+    LLPItemSet Generator::predecessor(const LLPItemSet& set, const Symbol& sym) {
         auto new_set = LLPItemSet();
         for (const auto& item : set.items) {
             if (item.is_dot_at_begin() || item.sym_before_dot() != sym)
@@ -171,10 +171,10 @@ namespace llp {
         return new_set;
     }
 
-    void LLPGenerator::closure(LLPItemSet& set) {
-        auto queue = std::deque<LLPItem>();
+    void Generator::closure(LLPItemSet& set) {
+        auto queue = std::deque<Item>();
 
-        auto enqueue = [&](const LLPItem& item) {
+        auto enqueue = [&](const Item& item) {
             bool inserted = set.items.insert(item).second;
             if (item.is_dot_at_begin() || item.sym_before_dot().is_terminal || !inserted)
                 return;
@@ -216,7 +216,7 @@ namespace llp {
         }
     }
 
-    std::vector<Symbol> LLPGenerator::compute_gamma(const Terminal& v, const Symbol& x, std::span<const Symbol> delta) {
+    std::vector<Symbol> Generator::compute_gamma(const Terminal& v, const Symbol& x, std::span<const Symbol> delta) {
         assert(!x.is_null());
         assert(!v.is_null());
 

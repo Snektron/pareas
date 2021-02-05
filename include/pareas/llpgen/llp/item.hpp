@@ -1,5 +1,5 @@
-#ifndef _PAREAS_LLPGEN_LLP_LLP_ITEM_HPP
-#define _PAREAS_LLPGEN_LLP_LLP_ITEM_HPP
+#ifndef _PAREAS_LLPGEN_LLP_ITEM_HPP
+#define _PAREAS_LLPGEN_LLP_ITEM_HPP
 
 #include "pareas/llpgen/grammar.hpp"
 
@@ -9,7 +9,7 @@
 #include <cstddef>
 
 namespace llp {
-    struct LLPItem {
+    struct Item {
         const Production* prod;
         size_t dot;
         Terminal lookback;
@@ -26,14 +26,14 @@ namespace llp {
         std::span<const Symbol> syms_after_dot() const;
     };
 
-    bool operator==(const LLPItem& lhs, const LLPItem& rhs);
+    bool operator==(const Item& lhs, const Item& rhs);
 
-    std::ostream& operator<<(std::ostream& os, const LLPItem& item);
+    std::ostream& operator<<(std::ostream& os, const Item& item);
 }
 
 template <>
-struct std::hash<llp::LLPItem> {
-    size_t operator()(const llp::LLPItem& item) const;
+struct std::hash<llp::Item> {
+    size_t operator()(const llp::Item& item) const;
 };
 
 #endif

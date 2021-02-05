@@ -1,5 +1,5 @@
-#ifndef _PAREAS_LLPGEN_LLP_LLP_TABLE_HPP
-#define _PAREAS_LLPGEN_LLP_LLP_TABLE_HPP
+#ifndef _PAREAS_LLPGEN_LLP_PARSING_TABLE_HPP
+#define _PAREAS_LLPGEN_LLP_PARSING_TABLE_HPP
 
 #include "pareas/llpgen/grammar.hpp"
 #include "pareas/llpgen/llp/admissible_pair.hpp"
@@ -9,7 +9,7 @@
 #include <iosfwd>
 
 namespace llp {
-    struct LLPTable {
+    struct ParsingTable {
         struct Entry {
             std::vector<Symbol> initial_stack;
             std::vector<Symbol> final_stack;

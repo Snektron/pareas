@@ -1,7 +1,7 @@
 #ifndef _PAREAS_LLPGEN_LR_LR_TABLE_CPP
 #define _PAREAS_LLPGEN_LR_LR_TABLE_CPP
 
-#include "pareas/llpgen/lr/lr_table.hpp"
+#include "pareas/llpgen/lr/parsing_table.hpp"
 #include "pareas/llpgen/hash_util.hpp"
 
 #include <ostream>
@@ -40,23 +40,23 @@ namespace lr {
         return os << "reduce " << action.as_reduce()->tag;
     }
 
-    size_t LRActionKey::Hash::operator()(const LRActionKey& key) const {
+    size_t ActionKey::Hash::operator()(const ActionKey& key) const {
         return hash_combine(std::hash<size_t>{}(key.state), std::hash<Terminal>{}(key.lookahead));
     }
 
-    bool operator==(const LRActionKey& lhs, const LRActionKey& rhs) {
+    bool operator==(const ActionKey& lhs, const ActionKey& rhs) {
         return lhs.state == rhs.state && lhs.lookahead == rhs.lookahead;
     }
 
-    size_t LRGotoKey::Hash::operator()(const LRGotoKey& key) const {
+    size_t GotoKey::Hash::operator()(const GotoKey& key) const {
         return hash_combine(std::hash<size_t>{}(key.state), std::hash<NonTerminal>{}(key.nt));
     }
 
-    bool operator==(const LRGotoKey& lhs, const LRGotoKey& rhs) {
+    bool operator==(const GotoKey& lhs, const GotoKey& rhs) {
         return lhs.state == rhs.state && lhs.nt == rhs.nt;
     }
 
-    bool LRTable::insert_action(const LRActionKey& key, const Action& action) {
+    bool ParsingTable::insert_action(const ActionKey& key, const Action& action) {
         auto it = this->action_table.find(key);
         if (it == this->action_table.end()) {
             this->action_table.insert(it, {key, action});
@@ -66,7 +66,7 @@ namespace lr {
         return false;
     }
 
-    bool LRTable::insert_goto(const LRGotoKey& key, size_t state) {
+    bool ParsingTable::insert_goto(const GotoKey& key, size_t state) {
         auto it = this->goto_table.find(key);
         if (it == this->goto_table.end()) {
             this->goto_table.insert(it, {key, state});
@@ -76,7 +76,7 @@ namespace lr {
         return false;
     }
 
-    void LRTable::dump_csv(std::ostream& os) const {
+    void ParsingTable::dump_csv(std::ostream& os) const {
         size_t states = 0;
         auto ts = std::unordered_set<Terminal>();
         auto nts = std::unordered_set<NonTerminal>();

@@ -1,5 +1,5 @@
-#ifndef _PAREAS_LLPGEN_LR_LR_ITEM_HPP
-#define _PAREAS_LLPGEN_LR_LR_ITEM_HPP
+#ifndef _PAREAS_LLPGEN_LR_ITEM_HPP
+#define _PAREAS_LLPGEN_LR_ITEM_HPP
 
 #include "pareas/llpgen/grammar.hpp"
 
@@ -7,7 +7,7 @@
 #include <cstddef>
 
 namespace lr {
-    struct LRItem {
+    struct Item {
         const Production* prod;
         size_t dot;
         Terminal lookahead;
@@ -21,14 +21,14 @@ namespace lr {
         std::span<const Symbol> syms_after_dot() const;
     };
 
-    bool operator==(const LRItem& lhs, const LRItem& rhs);
+    bool operator==(const Item& lhs, const Item& rhs);
 
-    std::ostream& operator<<(std::ostream& os, const LRItem& item);
+    std::ostream& operator<<(std::ostream& os, const Item& item);
 }
 
 template <>
-struct std::hash<lr::LRItem> {
-    size_t operator()(const lr::LRItem& item) const;
+struct std::hash<lr::Item> {
+    size_t operator()(const lr::Item& item) const;
 };
 
 #endif

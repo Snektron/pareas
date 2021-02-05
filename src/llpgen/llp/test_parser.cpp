@@ -4,7 +4,7 @@
 #include <stdexcept>
 
 namespace llp {
-    TestParser::TestParser(const LLPTable* llp_table, std::span<const Terminal> input):
+    TestParser::TestParser(const ParsingTable* llp_table, std::span<const Terminal> input):
         llp_table(llp_table), input(input) {}
 
     bool TestParser::parse() {
@@ -23,21 +23,21 @@ namespace llp {
     }
 
     bool TestParser::compute_brackets() {
-        auto add_rbr = [&](const LLPTable::Entry& entry) {
+        auto add_rbr = [&](const ParsingTable::Entry& entry) {
             auto syms = entry.initial_stack;
             for (auto it = syms.rbegin(); it != syms.rend(); ++it) {
                 this->brackets.push_back({BracketSide::RIGHT, *it});
             }
         };
 
-        auto add_lbr = [&](const LLPTable::Entry& entry) {
+        auto add_lbr = [&](const ParsingTable::Entry& entry) {
             auto syms = entry.final_stack;
             for (auto it = syms.begin(); it != syms.end(); ++it) {
                 this->brackets.push_back({BracketSide::LEFT, *it});
             }
         };
 
-        auto add_derivation = [&](const LLPTable::Entry& entry) {
+        auto add_derivation = [&](const ParsingTable::Entry& entry) {
             this->derivation.insert(this->derivation.end(), entry.productions.begin(), entry.productions.end());
         };
 

@@ -1,15 +1,15 @@
-#include "pareas/llpgen/lr/lr_generator.hpp"
+#include "pareas/llpgen/lr/generator.hpp"
 
 #include <deque>
 #include <ostream>
 #include <cassert>
 
 namespace lr {
-    LRGenerator::LRGenerator(ErrorReporter* er, const Grammar* g, const TerminalSetFunctions* tsf):
-        er(er), g(g), tsf(tsf) {}
+    Generator::Generator(const Grammar* g, const TerminalSetFunctions* tsf):
+        g(g), tsf(tsf) {}
 
-    LRTable LRGenerator::build_lr_table() {
-        auto lr_table = LRTable();
+    ParsingTable Generator::build_parsing_table() {
+        auto lr_table = ParsingTable();
         auto queue = std::deque<LRItemSet>();
 
         bool error = false;
@@ -71,13 +71,13 @@ namespace lr {
 
         if (error) {
             // TODO: Generate error message
-            throw LRConflictError();
+            throw ConflictError();
         }
 
         return lr_table;
     }
 
-    void LRGenerator::dump(std::ostream& os) const {
+    void Generator::dump(std::ostream& os) const {
         os << "Item sets:" << std::endl;
         for (const auto& [set, id] : this->item_sets) {
             os << "Set " << id << ":" << std::endl;
@@ -85,7 +85,7 @@ namespace lr {
         }
     }
 
-    LRItemSet LRGenerator::successor(const LRItemSet& set, const Symbol& sym) {
+    LRItemSet Generator::successor(const LRItemSet& set, const Symbol& sym) {
         auto new_set = LRItemSet();
 
         for (const auto& item : set.items) {
@@ -102,10 +102,10 @@ namespace lr {
         return new_set;
     }
 
-    void LRGenerator::closure(LRItemSet& set) {
-        auto queue = std::deque<LRItem>();
+    void Generator::closure(LRItemSet& set) {
+        auto queue = std::deque<Item>();
 
-        auto enqueue = [&](const LRItem& item) {
+        auto enqueue = [&](const Item& item) {
             bool inserted = set.items.insert(item).second;
             if (item.is_dot_at_end() || item.sym_after_dot().is_terminal || !inserted)
                 return;

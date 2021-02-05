@@ -2,7 +2,7 @@
 #define _PAREAS_LLPGEN_LLP_TEST_PARSER_HPP
 
 #include "pareas/llpgen/grammar.hpp"
-#include "pareas/llpgen/llp/llp_table.hpp"
+#include "pareas/llpgen/llp/parsing_table.hpp"
 
 #include <vector>
 #include <span>
@@ -20,13 +20,13 @@ namespace llp {
     };
 
     class TestParser {
-        const LLPTable* llp_table;
+        const ParsingTable* llp_table;
         std::span<const Terminal> input;
         std::vector<Bracket> brackets;
         std::vector<const Production*> derivation;
 
     public:
-        TestParser(const LLPTable* llp_table, std::span<const Terminal> input);
+        TestParser(const ParsingTable* llp_table, std::span<const Terminal> input);
         bool parse();
         void dump(std::ostream& out) const;
 
