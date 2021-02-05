@@ -1,0 +1,10 @@
+int a = 2;
+float b = 3;
+int cond = 1;
+float c;
+if(cond >= 5) {
+    c = a * b;
+}
+else {
+    c = a / b;
+}

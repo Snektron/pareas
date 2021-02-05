@@ -35,7 +35,9 @@ endif
 
 # Final executable
 sources = [
-    'src/main.cpp',
+    'src/codegen/lexer.cpp',
+    'src/codegen/token.cpp',
+    'src/main.cpp'
 ]
 
 executable(
@@ -44,5 +46,5 @@ executable(
     install: true,
     build_by_default: true,
     dependencies: dependencies,
-    include_directories: include_directories('src'),
+    include_directories: [include_directories('src'), include_directories('include')],
 )
