@@ -33,17 +33,13 @@ auto lr_test_grammar = R"(
 %left_delim = 'soi';
 %right_delim = 'eoi';
 
-start -> 'soi' if 'eoi';
+start -> 'soi' expr 'eoi';
 
 expr [expr_sum] -> expr 'plus' atom;
 expr [expr_atom] -> atom;
 
 atom [literal] -> 'a';
 atom [brackets] -> 'lbracket' expr 'rbracket';
-
-if [if_else] -> 'if' if 'else' if;
-if -> 'if' if;
-if [if_empty] -> ;
 )";
 
 int main() {

@@ -3,6 +3,9 @@
 
 #include "pareas/llpgen/grammar.hpp"
 
+#include <span>
+#include <cstddef>
+
 namespace lr {
     struct LRItem {
         const Production* prod;
@@ -14,6 +17,8 @@ namespace lr {
 
         Symbol sym_after_dot() const;
         Symbol sym_before_dot() const;
+
+        std::span<const Symbol> syms_after_dot() const;
     };
 
     bool operator==(const LRItem& lhs, const LRItem& rhs);

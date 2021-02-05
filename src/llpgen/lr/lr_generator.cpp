@@ -70,6 +70,7 @@ namespace lr {
         }
 
         if (error) {
+            // TODO: Generate error message
             throw LRConflictError();
         }
 
@@ -127,7 +128,9 @@ namespace lr {
                 if (prod.lhs != nt)
                     continue;
 
-                auto us = this->tsf->compute_first(std::span(prod.rhs));
+                auto v = item.syms_after_dot().subspan(1);
+
+                auto us = this->tsf->compute_first(v);
                 if (us.contains(Terminal::null())) {
                     us.erase(Terminal::null());
                     us.insert(item.lookahead);

@@ -20,6 +20,10 @@ namespace lr {
         return this->prod->rhs[this->dot - 1];
     }
 
+    std::span<const Symbol> LRItem::syms_after_dot() const {
+        return std::span(this->prod->rhs).subspan(this->dot);
+    }
+
     bool operator==(const LRItem& lhs, const LRItem& rhs) {
         return lhs.prod == rhs.prod && lhs.dot == rhs.dot;
     }

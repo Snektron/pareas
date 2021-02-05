@@ -37,7 +37,7 @@ namespace lr {
     std::ostream& operator<<(std::ostream& os, const Action& action) {
         if (action.type == Action::Type::SHIFT)
             return os << "shift " << action.as_shift();
-        return os << "reduce " << *action.as_reduce();
+        return os << "reduce " << action.as_reduce()->tag;
     }
 
     size_t LRActionKey::Hash::operator()(const LRActionKey& key) const {
