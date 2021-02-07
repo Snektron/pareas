@@ -20,7 +20,7 @@ futhark = find_program('futhark')
 futhark_backend = get_option('futhark-backend')
 futhark_generated = custom_target(
     'futhark',
-    input: 'src/main.fut',
+    input: 'src/compiler/main.fut',
     output: ['futhark-generated.c', 'futhark-generated.h'],
     command: [futhark, futhark_backend, '@INPUT@', '--library', '-o', 'futhark-generated']
 )
@@ -35,7 +35,7 @@ endif
 
 # Final executable
 sources = [
-    'src/main.cpp',
+    'src/compiler/main.cpp',
 ]
 
 executable(
