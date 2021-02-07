@@ -1,16 +1,55 @@
-let pack_nonempty_strings [n] (text: []u8) (offsets: [n]i64) (lens: [n]i64): *[]u8 =
-    let ends = map2 (+) offsets lens
-        |> map (+ -1)
-    let diffs = map
-        (\i ->
-            if i == 0
-            then offsets[0]
-            else offsets[i] - ends[i - 1])
-        (iota n)
-    let scatter_indices = scan (+) 0 lens
+-- | Extract strings defined by an array of offsets and an array of lengths from text,
+-- and pack the results into a new array. Note that this version requires all lengths to be
+-- nonzero.
+let pack_nonempty_strings 't [n] (text: []t) (offsets: [n]i64) (lens: [n]i64): *[]t =
+    -- Create an array of indices which will be used to index text
+    -- Each string consisting of (offset, len) will be gathered by constructing
+    -- runs of indices.
+    -- Starts of strings will be replaced with the difference between the end of the
+    -- previous run of indices and the start of the next. The final gather indices will
+    -- then be obtained by scattering these differences in an array of ones and computing
+    -- a prefix sum over the result.
+    let dest = replicate (reduce (+) 0 lens) 1
+    -- Compute the first indices of each string in the final array
+    let scatter_indices =
+        scan (+) 0 lens
         |> rotate (-1)
         |> map2 (\i x -> if i == 0 then 0 else x) (iota n)
+    -- Compute an array of differences between the end of the previous run and
+    -- the start of the next run.
+    let scatter_diffs =
+        map2 (+) offsets lens
+        |> map (+ -1)
+        |> rotate (-1)
+        |> map2 (\i x -> if i == 0 then 0 else x) (iota n)
+        |> map2 (-) offsets
+    -- Compute the final array of indices
+    let gather_indices =
+        scatter dest scatter_indices scatter_diffs
+        |> scan (+) 0
+    -- Finally, perform the gather
+    in map (\i -> text[i]) gather_indices
+
+-- | Extract strings defined by an array of offsets and an array of lengths from text,
+-- and pack the results into a new array. For this version, the lengths may be zero, but is
+-- possibly less efficient.
+let pack_strings 't [n] (text: []t) (offsets: [n]i64) (lens: [n]i64): *[]t =
+    -- This function works similar to pack_nonempty_strings, except that the scatter is
+    -- performed using a reduce_by_index
     let dest = replicate (reduce (+) 0 lens) 1
-    let gather_indices = scatter dest scatter_indices diffs
+    let scatter_indices =
+        scan (+) 0 lens
+        |> rotate (-1)
+        |> map2 (\i x -> if i == 0 then 0 else x) (iota n)
+    let scatter_diffs =
+        map2 (+) offsets lens
+        |> map (+ -1)
+        |> rotate (-1)
+        |> map2 (\i x -> if i == 0 then 0 else x) (iota n)
+        |> map2 (-) offsets
+        -- Subtract one to account for the ones in the existing array
+        |> map (+ -1)
+    let gather_indices =
+        reduce_by_index dest (+) 0 scatter_indices scatter_diffs
         |> scan (+) 0
     in map (\i -> text[i]) gather_indices
