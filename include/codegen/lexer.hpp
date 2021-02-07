@@ -25,6 +25,7 @@ class Lexer {
 
         Token lex();
         void unlex(const Token&);
+        Token lookahead();
 };
 
 #endif

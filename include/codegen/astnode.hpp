@@ -1,0 +1,67 @@
+#ifndef _PAREAS_CODEGEN_ASTNODE_HPP
+#define _PAREAS_CODEGEN_ASTNODE_HPP
+
+#include <vector>
+#include <iosfwd>
+#include <cstddef>
+
+enum class NodeType {
+    INVALID,
+    STATEMENT_LIST,
+    EMPTY_STAT,
+    FUNC_DECL,
+    EXPR_STAT,
+    IF_STAT,
+    IF_ELSE_STAT,
+    ELSE_AUX,
+    WHILE_STAT,
+    FUNC_CALL_EXPR,
+    FUNC_CALL_ARG,
+    ADD_EXPR,
+    SUB_EXPR,
+    MUL_EXPR,
+    DIV_EXPR,
+    MOD_EXPR,
+    BITAND_EXPR,
+    BITOR_EXPR,
+    BITXOR_EXPR,
+    LSHIFT_EXPR,
+    RSHIFT_EXPR,
+    URSHIFT_EXPR,
+    LAND_EXPR,
+    LOR_EXPR,
+    EQ_EXPR,
+    NEQ_EXPR,
+    LESS_EXPR,
+    GREAT_EXPR,
+    LESSEQ_EXPR,
+    GREATEQ_EXPR,
+    BITNOT_EXPR,
+    LNOT_EXPR,
+    NEG_EXPR,
+    LIT_EXPR,
+    CAST_EXPR,
+    ASSIGN_EXPR,
+    DECL_EXPR,
+    ID_EXPR
+};
+
+class ASTNode {
+    private:
+        NodeType type;
+        std::vector<ASTNode*> children;
+    public:
+        ASTNode(NodeType);
+        ASTNode(NodeType, const std::vector<ASTNode*>&);
+        ~ASTNode();
+
+        inline NodeType getType() const {
+            return this->type;
+        }
+
+        void print(std::ostream&, size_t  = 0) const;
+};
+
+std::ostream& operator<<(std::ostream&, const ASTNode&);
+
+#endif

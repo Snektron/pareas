@@ -196,3 +196,9 @@ Token Lexer::lex() {
 void Lexer::unlex(const Token& token) {
     this->token_stack.push(token);
 }
+
+Token Lexer::lookahead() {
+    Token result = this->lex();
+    this->unlex(result);
+    return result;
+}
