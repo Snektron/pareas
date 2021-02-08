@@ -4,6 +4,7 @@
 #include <vector>
 #include <iosfwd>
 #include <cstddef>
+#include <cstdint>
 
 enum class NodeType {
     INVALID,
@@ -46,13 +47,27 @@ enum class NodeType {
     ID_EXPR
 };
 
+enum class DataType {
+    INVALID,
+    VOID,
+    INT,
+    FLOAT,
+    INT_REF,
+    FLOAT_REF
+};
+
 class ASTNode {
     private:
         NodeType type;
+        DataType return_type = DataType::INVALID;
         std::vector<ASTNode*> children;
+
+        uint32_t integer;
     public:
         ASTNode(NodeType);
         ASTNode(NodeType, const std::vector<ASTNode*>&);
+        ASTNode(NodeType, DataType, const std::vector<ASTNode*>&);
+        ASTNode(NodeType, DataType, uint32_t);
         ~ASTNode();
 
         inline NodeType getType() const {
@@ -60,6 +75,7 @@ class ASTNode {
         }
 
         void print(std::ostream&, size_t  = 0) const;
+        void resolveType();
 };
 
 std::ostream& operator<<(std::ostream&, const ASTNode&);

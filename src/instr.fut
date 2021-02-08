@@ -57,7 +57,7 @@ let node_instr_0(node_type: NodeType, data_type: DataType) : u32 =
     case (#lesseq_expr, #int) ->    0b0000000_00000_00000_000_00000_1110011 -- TODO
     case (#greateq_expr, #int) ->   0b0000000_00000_00000_000_00000_1110011 -- TODO
 
-    -- Float comparision
+    -- Float comparision: TODO, change this lookup, return type is int
     case (#eq_expr, #float) ->      0b0000000_00000_00000_000_00000_1110011 -- TODO
     case (#neq_expr, #float) ->     0b0000000_00000_00000_000_00000_1110011 -- TODO
     case (#less_expr, #float) ->    0b0000000_00000_00000_000_00000_1110011 -- TODO

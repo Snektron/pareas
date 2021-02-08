@@ -125,6 +125,8 @@ Token Lexer::next_token() {
             return Token(TokenType::COMMA);
         case ';':
             return Token(TokenType::SEMICOLON);
+        case '@':
+            return Token(TokenType::CAST);
 
         case '=': {
             c = this->read();

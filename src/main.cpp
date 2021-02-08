@@ -20,6 +20,9 @@ int main(int argc, char* argv[]) {
 
         std::unique_ptr<ASTNode> node(parser.parse());
         std::cout << *node << std::endl;
+
+        node->resolveType();
+        std::cout << *node << std::endl;
     }
     catch(const ParseException& e) {
         std::cerr << "Error: " << e.what() << std::endl;

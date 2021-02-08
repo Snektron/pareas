@@ -34,6 +34,7 @@ enum class TokenType {
     CLOSE_CB,
     COMMA,
     SEMICOLON,
+    CAST,
 
     IF,
     ELSE,

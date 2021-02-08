@@ -31,6 +31,7 @@ const char* TOKEN_NAMES[] = {
     "}",
     ",",
     ";",
+    "@",
 
     "if",
     "else",
