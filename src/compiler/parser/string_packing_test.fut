@@ -1,5 +1,5 @@
 -- | ignore
-import "llpgen_rt"
+import "string_packing"
 
 -- ==
 -- entry: test_pack_nonempty_strings

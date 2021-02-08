@@ -4,6 +4,7 @@
 #include "pareas/llpgen/terminal_set_functions.hpp"
 #include "pareas/llpgen/ll/generator.hpp"
 #include "pareas/llpgen/llp/generator.hpp"
+#include "pareas/llpgen/llp/render.hpp"
 #include "pareas/llpgen/llp/test_parser.hpp"
 
 #include <iostream>
@@ -32,26 +33,28 @@ int main() {
     auto parser = GrammarParser(&er, test_grammar);
 
     try {
-       auto g = parser.parse();
-       auto tsf = TerminalSetFunctions(g);
-       // tsf.dump(std::cout);
+        auto g = parser.parse();
+        auto tsf = TerminalSetFunctions(g);
+        // tsf.dump(std::cout);
 
-       auto gen = llp::Generator(&er, &g, &tsf);
-       auto psls_table = gen.build_psls_table();
-       // psls_table.dump_csv(std::cout);
+        auto gen = llp::Generator(&er, &g, &tsf);
+        auto psls_table = gen.build_psls_table();
+        // psls_table.dump_csv(std::cout);
 
-       auto ll_table = ll::Generator(&er, &g, &tsf).build_parsing_table();
-       // ll_table.dump_csv(std::cout);
+        auto ll_table = ll::Generator(&er, &g, &tsf).build_parsing_table();
+        // ll_table.dump_csv(std::cout);
 
-       auto parsing_table = gen.build_parsing_table(ll_table, psls_table);
-       // llp_table.dump_csv(std::cout);
+        auto parsing_table = gen.build_parsing_table(ll_table, psls_table);
+        // llp_table.dump_csv(std::cout);
 
-       auto input = {"soi"_t, "a"_t, "plus"_t, "lbracket"_t, "a"_t, "plus"_t, "a"_t, "rbracket"_t, "eoi"_t};
-       auto test_parser = llp::TestParser(&parsing_table, input);
-       auto success = test_parser.parse();
-       std::cout << "Parsing " << (success ? "success" : "failed") << std::endl;
+        llp::render_parser(std::cout, g, parsing_table);
 
-       test_parser.dump(std::cout);
+        // auto input = {"soi"_t, "a"_t, "plus"_t, "lbracket"_t, "a"_t, "plus"_t, "a"_t, "rbracket"_t, "eoi"_t};
+        // auto test_parser = llp::TestParser(&parsing_table, input);
+        // auto success = test_parser.parse();
+        // std::cout << "Parsing " << (success ? "success" : "failed") << std::endl;
+
+        // test_parser.dump(std::cout);
     } catch (const InvalidGrammarError& e) {
         std::cerr << e.what() << std::endl;
         return EXIT_FAILURE;
