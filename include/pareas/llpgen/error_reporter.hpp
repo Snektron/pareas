@@ -22,11 +22,6 @@ struct ErrorReporter {
     void error(SourceLocation loc, std::string_view msg) const;
     void note(SourceLocation loc, std::string_view msg) const;
 
-    template <typename... Args>
-    void error_fmt(SourceLocation loc, Args&&... args) const;
-
-    template <typename... Args>
-    void note_fmt(SourceLocation loc, Args&&... args) const;
 private:
     void print(SourceLocation loc, std::string_view tag, std::string_view msg) const;
 
@@ -38,19 +33,5 @@ private:
 
     LineInfo line(SourceLocation loc) const;
 };
-
-template <typename... Args>
-void ErrorReporter::error_fmt(SourceLocation loc, Args&&... args) const {
-    std::stringstream ss;
-    static_cast<void>((ss << ... << args));
-    this->error(loc, ss.str());
-}
-
-template <typename... Args>
-void ErrorReporter::note_fmt(SourceLocation loc, Args&&... args) const {
-    std::stringstream ss;
-    static_cast<void>((ss << ... << args));
-    this->note(loc, ss.str());
-}
 
 #endif

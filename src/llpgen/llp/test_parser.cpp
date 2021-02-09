@@ -1,6 +1,7 @@
 #include "pareas/llpgen/llp/test_parser.hpp"
 
-#include <ostream>
+#include <fmt/ostream.h>
+
 #include <stdexcept>
 
 namespace llp {
@@ -12,13 +13,13 @@ namespace llp {
     }
 
     void TestParser::dump(std::ostream& out) const {
-        out << "Brackets:\n\t";
+        fmt::print(out, "Brackets:\n\t");
         for (const auto& bracket : brackets) {
-            out << (bracket.side == BracketSide::LEFT ? "[" : "]") << bracket.sym << " ";
+            fmt::print(out, "{}{} ", bracket.side == BracketSide::LEFT ? "[" : "]", bracket.sym);
         }
-        out << "\nDerivation:" << std::endl;
+        fmt::print(out, "\nDerivation:\n");
         for (const auto* prod : this->derivation) {
-            out << "\t" << *prod << "\n";
+            fmt::print(out, "\t{}\n", *prod);
         }
     }
 

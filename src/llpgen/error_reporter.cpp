@@ -2,6 +2,8 @@
 
 #include <algorithm>
 #include <functional>
+#include <fmt/format.h>
+#include <fmt/ostream.h>
 
 ErrorReporter::ErrorReporter(std::string_view source, std::ostream& out):
     source(source), out(out), count(0) {
@@ -22,12 +24,19 @@ void ErrorReporter::note(SourceLocation loc, std::string_view msg) const {
 
 void ErrorReporter::print(SourceLocation loc, std::string_view tag, std::string_view msg) const {
     auto info = this->line(loc);
-    this->out << tag << " at " << info.line << ":" << info.column << ": " << msg << "\n";
-    this->out << info.text << "\n";
-    for (size_t i = 0; i < info.column; ++i) {
-        this->out << ' ';
-    }
-    this->out << '^' << std::endl;
+
+    fmt::print(
+        this->out,
+        "{tag} at {line}:{column}: {msg}\n"
+        "{src}\n"
+        "{empty:>{column}}^\n",
+        fmt::arg("tag", tag),
+        fmt::arg("line", info.line),
+        fmt::arg("column", info.column),
+        fmt::arg("msg", msg),
+        fmt::arg("src", info.text),
+        fmt::arg("empty", "")
+    );
 }
 
 ErrorReporter::LineInfo ErrorReporter::line(SourceLocation loc) const {

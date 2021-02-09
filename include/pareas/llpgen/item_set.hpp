@@ -3,6 +3,8 @@
 
 #include "pareas/llpgen/hash_util.hpp"
 
+#include <fmt/ostream.h>
+
 #include <unordered_set>
 #include <iosfwd>
 #include <concepts>
@@ -64,17 +66,16 @@ std::unordered_set<Symbol> ItemSet<T>::syms_after_dots() const {
 
 template <Item T>
 void ItemSet<T>::dump(std::ostream& os) const {
-    os << "{ ";
+    fmt::print(os, "{{ ");
     bool first = true;
     for (const auto& item : this->items) {
-        if (first) {
+        if (first)
             first = false;
-        } else {
-            os << std::endl << "  ";
-        }
-        os << item;
+        else
+            fmt::print(os, "\n  ");
+        fmt::print(os, "{}", item);
     }
-    os << " }" << std::endl;
+    fmt::print(os, " }}\n");
 }
 
 template <Item T>

@@ -1,12 +1,12 @@
 #include "pareas/llpgen/llp/render.hpp"
 #include "pareas/llpgen/llp/admissible_pair.hpp"
 
+#include <fmt/ostream.h>
+
 #include <bit>
 #include <unordered_map>
 #include <algorithm>
-#include <ostream>
 #include <iterator>
-#include <sstream>
 #include <cassert>
 
 namespace {
@@ -70,20 +70,22 @@ namespace {
         // Add one for sign
         size_t offset_bits = int_bit_width(1 + this->superstring.size());
 
-        out << "let " << base_var << "_table_size: i" << offset_bits << " = " << this->superstring.size() << "\n";
-        out << "let stack_change_table: []" << table_type << " = [";
+        fmt::print(out, "let {}_table_size: i{} = {}\n", base_var, offset_bits, this->superstring.size());
+        fmt::print(out, "let {}_change_table: []{} = [", base_var, table_type);
         bool first = true;
         for (auto val : this->superstring) {
-            out << (first ? first = false, "" : ", ") << val;
+            fmt::print(out, "{}{}", first ? first = false, "" : ", ", val);
         }
-        out << "]\n";
-        out << "let initial_stack: (i" << offset_bits << ", i" << offset_bits << ") = " << this->start << "\n";
-        out << "let get_stack_change 'terminal (a: terminal) (b: terminal): (i" << offset_bits << ", i" << offset_bits << ") =\n";
-        out << "    match (a, b)\n";
+
+        fmt::print(out, "]\n");
+        fmt::print(out, "let initial_{0}: (i{1}, i{1}) = {2}\n", base_var, offset_bits, this->start);
+        fmt::print(out, "let get_{0} 'terminal (a: terminal) (b: terminal): (i{1}, i{1}) = \n", base_var, offset_bits);
+
+        fmt::print(out, "    match (a, b)\n");
         for (const auto& [ap, string] : this->strings) {
-            out << "    case (#" << ap.x << ", #" << ap.y << ") -> " << string << "\n";
+            fmt::print(out, "    case (#{}, #{}) -> {}\n", ap.x, ap.y, string);
         }
-        out << "    case _ -> (-1, -1)\n";
+        fmt::print(out, "    case _ -> (-1, -1)\n");
     }
 
     struct Renderer {
@@ -129,16 +131,16 @@ namespace {
     }
 
     void Renderer::render_production_type() {
-        this->out << "type production = ";
+        fmt::print(this->out, "type production = ");
         bool first = true;
         for (const auto& prod : this->g.productions) {
             if (first)
                 first = false;
             else
-                this->out << " | ";
-            this->out << "#" << prod.tag;
+                fmt::print(this->out, " | ");
+            fmt::print(this->out, "#{}", prod.tag);
         }
-        this->out << "\n";
+        fmt::print(this->out, "\n");
     }
 
     void Renderer::render_stack_change() {
@@ -172,9 +174,7 @@ namespace {
         );
 
         size_t backing_bits = int_bit_width(1 + this->symbol_mapping.size());
-        std::stringstream ss;
-        ss << "u" << backing_bits;
-        strtab.render(this->out, "stack_change", ss.str());
+        strtab.render(this->out, "stack_change", fmt::format("u{}", backing_bits));
     }
 
     void Renderer::render_partial_parse() {

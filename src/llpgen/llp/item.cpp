@@ -1,9 +1,10 @@
 #include "pareas/llpgen/llp/item.hpp"
 #include "pareas/llpgen/hash_util.hpp"
 
+#include <fmt/ostream.h>
+
 #include <algorithm>
 #include <stdexcept>
-#include <ostream>
 #include <cassert>
 
 namespace llp {
@@ -42,27 +43,29 @@ namespace llp {
     }
 
     std::ostream& operator<<(std::ostream& os, const Item& item) {
-        os << "[" << Symbol(item.prod->lhs) << " ->";
+        fmt::print(os, "[{} ->", Symbol(item.prod->lhs));
+
         for (size_t i = 0; i < item.prod->rhs.size(); ++i) {
             if (item.dot == i)
-                os << " •";
-            os << " " << item.prod->rhs[i];
+                fmt::print(os, " •");
+            fmt::print(os, " {}", item.prod->rhs[i]);
         }
 
         if (item.is_dot_at_end())
-            os << " •";
+            fmt::print(os, " •");
 
-        os << ", " << item.lookback << ", " << item.lookahead << ",";
+        fmt::print(os, ", {}, {},", item.lookback, item.lookahead);
 
         if (item.gamma.empty()) {
-            os << " ε";
+            fmt::print(os, " ε");
         } else {
             for (const auto& sym : item.gamma) {
-                os << " " << sym;
+                fmt::print(os, " {}", sym);
             }
         }
 
-        return os << "]";
+        fmt::print(os, "]");
+        return os;
     }
 }
 

@@ -1,7 +1,8 @@
 #include "pareas/llpgen/lr/generator.hpp"
 
+#include <fmt/ostream.h>
+
 #include <deque>
-#include <ostream>
 #include <cassert>
 
 namespace lr {
@@ -78,9 +79,9 @@ namespace lr {
     }
 
     void Generator::dump(std::ostream& os) const {
-        os << "Item sets:" << std::endl;
+        fmt::print(os, "Item sets:\n");
         for (const auto& [set, id] : this->item_sets) {
-            os << "Set " << id << ":" << std::endl;
+            fmt::print(os, "Set {}:\n", id);
             set.dump(os);
         }
     }

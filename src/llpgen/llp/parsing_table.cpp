@@ -1,5 +1,7 @@
 #include "pareas/llpgen/llp/parsing_table.hpp"
 
+#include <fmt/ostream.h>
+
 #include <unordered_set>
 #include <ostream>
 
@@ -8,41 +10,39 @@ namespace llp {
         // Print stacks in reverse to keep it the same as in the paper
         auto dump_syms_rev = [&](const auto& syms) {
             bool first = true;
-            os << "{";
+            fmt::print(os, "{{");
             for (auto it = syms.rbegin(); it != syms.rend(); ++it) {
                 if (first)
                     first = false;
                 else
-                    os << " ";
-
-                os << it->name;
+                    fmt::print(os, " ");
+                fmt::print("{}", it->name);
             }
-            os << "}";
+            fmt::print(os, "}}");
         };
 
         auto dump_prods = [&](const auto& prods) {
             bool first = true;
-            os << "{";
+            fmt::print(os, "{{");
             for (const auto& prod : prods) {
                 if (first)
                     first = false;
                 else
-                    os << ", ";
-
-                os << *prod;
+                    fmt::print(os, ", ");
+                fmt::print("{}", *prod);
             }
-            os << "}";
+            fmt::print(os, "}}");
         };
 
         auto dump_entry = [&](const auto& entry) {
             // Custom print of symbols since we need to handle csv escapes
-            os << "\"(";
+            fmt::print(os, "\"(");
             dump_syms_rev(entry.initial_stack);
-            os << ", ";
+            fmt::print(os, ", ");
             dump_syms_rev(entry.final_stack);
-            os << ", ";
+            fmt::print(os, ", ");
             dump_prods(entry.productions);
-            os << ")\"";
+            fmt::print(os, ")\"");
         };
 
         auto ys = std::unordered_set<Terminal>();
@@ -55,22 +55,22 @@ namespace llp {
         }
 
         for (const auto& y : ys) {
-            os << "," << y;
+            fmt::print(os, ",{}", y);
         }
-        os << std::endl;
+        fmt::print(os, "\n");
 
         for (const auto& x : xs) {
-            os << x;
+            fmt::print(os, "{}", x);
             // Hope that this iterates in the same order
             for (const auto& y : ys) {
-                os << ",";
+                fmt::print(os, ",", y);
                 auto it = this->table.find({x, y});
                 if (it == this->table.end())
                     continue;
 
                 dump_entry(it->second);
             }
-            os << std::endl;
+            fmt::print(os, "\n");
         }
     }
 }

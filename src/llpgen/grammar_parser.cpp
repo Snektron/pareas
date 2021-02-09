@@ -1,5 +1,7 @@
 #include "pareas/llpgen/grammar_parser.hpp"
 
+#include <fmt/ostream.h>
+
 #include <algorithm>
 #include <cctype>
 #include <cstdio>
@@ -90,7 +92,7 @@ const Production* GrammarParser::find_start_rule() const {
     // Verify that the starting rule is of the right form
     if (start->rhs.empty() || start->rhs.front() != left_delim || start->rhs.back() != right_delim) {
         this->er->error(start->loc, "Start rule not in correct form");
-        this->er->note_fmt(start->loc, "Expected form ", start->lhs, " -> '", left_delim, "' ... '", right_delim, "';");
+        this->er->note(start->loc, fmt::format("Expected form {} -> '{}' ... '{}';", start->lhs, left_delim, right_delim));
         error = true;
     }
 
@@ -128,9 +130,16 @@ bool GrammarParser::expect(int c) {
     if (!this->eat(c)) {
         int actual = this->peek();
         if (actual == EOF) {
-            this->er->error_fmt(this->loc(), "Unexpected EOF, expected '", static_cast<char>(c), "'");
+            this->er->error(this->loc(), fmt::format(
+                "Unexpected EOF, expected '{}'",
+                static_cast<char>(c)
+            ));
         } else {
-            this->er->error_fmt(this->loc(), "Unexpected character '", static_cast<char>(actual), "', expected '", static_cast<char>(c), "'");
+            this->er->error(this->loc(), fmt::format(
+                "Unexpected character '{}', expected '{}'",
+                static_cast<char>(actual),
+                static_cast<char>(c)
+            ));
         }
         return false;
     }
@@ -188,14 +197,14 @@ bool GrammarParser::directive() {
     } else if (name == "right_delim") {
         dir = &this->right_delim;
     } else {
-        this->er->error_fmt(directive_loc, "Invalid directive '%", name, "'");
+        this->er->error(directive_loc, fmt::format("Invalid directive '%{}'", name));
         return false;
     }
 
     bool error = false;
     if (dir->value.size() != 0) {
-        this->er->error_fmt(directive_loc, "Duplicate directive '%", name, "'");
-        this->er->note_fmt(dir->loc, "First defined here");
+        this->er->error(directive_loc, fmt::format("Duplicate directive '%{}'", name));
+        this->er->note(dir->loc, "First defined here");
         error = true;
     } else {
         dir->loc = directive_loc;
@@ -274,7 +283,7 @@ bool GrammarParser::production() {
     if (it == this->tags.end()) {
         this->tags.insert(it, {tag, tag_loc});
     } else {
-        this->er->error_fmt(tag_loc, "Duplicate tag '", tag, "'");
+        this->er->error(tag_loc, fmt::format("Duplicate tag '{}'", tag));
         this->er->note(it->second, "First defined here");
         return false;
     }
@@ -289,7 +298,10 @@ std::string_view GrammarParser::word() {
     int c = this->peek();
 
     if (!is_word_start_char(c)) {
-        this->er->error_fmt(this->loc(), "Invalid character '", static_cast<char>(c), "', expected <word>");
+        this->er->error(this->loc(), fmt::format(
+            "Invalid character '{}', expected <word>",
+            static_cast<char>(c)
+        ));
         error = true;
     }
 

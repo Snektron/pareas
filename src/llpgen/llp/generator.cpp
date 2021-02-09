@@ -1,5 +1,8 @@
 #include "pareas/llpgen/llp/generator.hpp"
 
+#include <fmt/format.h>
+#include <fmt/ostream.h>
+
 #include <deque>
 #include <algorithm>
 #include <cassert>
@@ -40,7 +43,7 @@ namespace llp {
             if (std::equal(gamma.begin(), gamma.end(), item.gamma.begin(), item.gamma.end()))
                 return;
 
-            this->er->error_fmt(item.prod->loc, "PSLS conflict between terminals '", ap.x, "' and '", ap.y, "', grammar is not LLP(1, 1)");
+            this->er->error(item.prod->loc, fmt::format("PSLS conflict between terminals '{}' and '{}', grammar is not LLP(1, 1)", ap.x, ap.y));
 
             if (it->second.prod != item.prod)
                 this->er->note(it->second.prod->loc, "Conflicts with this production");
@@ -89,7 +92,7 @@ namespace llp {
     }
 
     void Generator::dump(std::ostream& os) {
-        os << "Item sets:" << std::endl;
+        fmt::print(os, "Item sets:\n");
         for (const auto& set : this->item_sets) {
             set.dump(os);
         }

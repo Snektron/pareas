@@ -1,8 +1,9 @@
 #include "pareas/llpgen/ll/parsing_table.hpp"
 #include "pareas/llpgen/hash_util.hpp"
 
+#include <fmt/ostream.h>
+
 #include <unordered_set>
-#include <ostream>
 
 namespace ll {
         size_t State::Hash::operator()(const State& key) const {
@@ -53,22 +54,22 @@ namespace ll {
         }
 
         for (const auto& t : ts) {
-            os << "," << t;
+            fmt::print(os, ",{}", t);
         }
-        os << std::endl;
+        fmt::print(os, "\n");
 
         for (const auto& nt : nts) {
-            os << nt;
+            fmt::print(os, "{}", nt);
             // Hope that this iterates in the same order
             for (const auto& t : ts) {
-                os << ",";
+                fmt::print(os, ",");
                 auto it = this->table.find({nt, t});
                 if (it == this->table.end())
                     continue;
 
-                os << '"' << *it->second << '"';
+                fmt::print(os, "\"{}\"", *it->second);
             }
-            os << std::endl;
+            fmt::print(os, "\n");
         }
     }
 }

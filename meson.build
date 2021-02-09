@@ -39,6 +39,7 @@ llpgen_sources = [
 executable(
     'pareas-llpgen',
     llpgen_sources,
+    dependencies: [subproject('fmt').get_variable('fmt_dep')],
     include_directories: inc,
 )
 

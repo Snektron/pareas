@@ -1,6 +1,8 @@
 #include "pareas/llpgen/lr/item.hpp"
 #include "pareas/llpgen/hash_util.hpp"
 
+#include <fmt/ostream.h>
+
 namespace lr {
     bool Item::is_dot_at_end() const {
         return this->dot == this->prod->rhs.size();
@@ -29,17 +31,18 @@ namespace lr {
     }
 
     std::ostream& operator<<(std::ostream& os, const Item& item) {
-        os << "[" << Symbol(item.prod->lhs) << " ->";
+        fmt::print(os, "[{} ->", Symbol(item.prod->lhs));
         for (size_t i = 0; i < item.prod->rhs.size(); ++i) {
             if (item.dot == i)
-                os << " •";
-            os << " " << item.prod->rhs[i];
+                fmt::print(os, " •");
+            fmt::print(os, " {}", item.prod->rhs[i]);
         }
 
         if (item.is_dot_at_end())
-            os << " •";
+            fmt::print(" •");
 
-        return os << ", " << item.lookahead << "]";
+        fmt::print(os, ", {}]", item.lookahead);
+        return os;
     }
 }
 

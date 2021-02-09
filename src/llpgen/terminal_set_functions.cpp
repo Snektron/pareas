@@ -1,6 +1,7 @@
 #include "pareas/llpgen/terminal_set_functions.hpp"
 
-#include <ostream>
+#include <fmt/ostream.h>
+
 #include <cassert>
 
 namespace {
@@ -59,24 +60,24 @@ TerminalSet TerminalSetFunctions::compute_last(std::span<const Symbol> symbols) 
 void TerminalSetFunctions::dump(std::ostream& os) {
     auto dump_nt_ts = [&](const std::unordered_map<NonTerminal, TerminalSet>& sets){
         for (auto [nt, set] : sets) {
-            os << nt << ":\t";
+            fmt::print(os, "{}:\t", nt);
             for (const auto& t : set) {
-                os << " " << t;
+                fmt::print(os, " {}", t);
             }
-            os << std::endl;
+            fmt::print(os, "\n");
         }
     };
 
-    os << "Base first sets: " << std::endl;
+    fmt::print(os, "Base first sets:\n");
     dump_nt_ts(this->base_first_sets);
 
-    os << "Base last sets: " << std::endl;
+    fmt::print(os, "Base last sets:\n");
     dump_nt_ts(this->base_last_sets);
 
-    os << "Follow sets: " << std::endl;
+    fmt::print(os, "Follow sets:\n");
     dump_nt_ts(this->follow_sets);
 
-    os << "Before sets: " << std::endl;
+    fmt::print(os, "Before sets:\n");
     dump_nt_ts(this->before_sets);
 }
 

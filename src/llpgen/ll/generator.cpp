@@ -11,7 +11,7 @@ namespace ll {
         auto insert = [&](const State& state, const Production* prod) {
             auto it = ll.table.find(state);
             if (it != ll.table.end()) {
-                this->er->error_fmt(prod->loc, "LL parse conflict, grammar is not LL(1)");
+                this->er->error(prod->loc, "LL parse conflict, grammar is not LL(1)");
                 this->er->note(it->second->loc, "Conflicts with this production");
 
                 error = true;

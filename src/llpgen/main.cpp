@@ -7,6 +7,8 @@
 #include "pareas/llpgen/llp/render.hpp"
 #include "pareas/llpgen/llp/test_parser.hpp"
 
+#include <fmt/ostream.h>
+
 #include <iostream>
 
 using literals::operator ""_t;
@@ -56,7 +58,7 @@ int main() {
 
         // test_parser.dump(std::cout);
     } catch (const InvalidGrammarError& e) {
-        std::cerr << e.what() << std::endl;
+        fmt::print(std::cerr, "Failed: {}\n", e.what());
         return EXIT_FAILURE;
     }
 }
