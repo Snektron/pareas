@@ -1,7 +1,5 @@
 import "datatypes"
 
-let TREE_SIZE : u32 = 10
-
 --Node types
 type NodeType =
     #invalid |

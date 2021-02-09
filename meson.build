@@ -36,6 +36,7 @@ endif
 # Final executable
 sources = [
     'src/codegen/astnode.cpp',
+    'src/codegen/depthtree.cpp',
     'src/codegen/lexer.cpp',
     'src/codegen/parser.cpp',
     'src/codegen/token.cpp',
