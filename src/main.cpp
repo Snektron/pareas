@@ -6,6 +6,15 @@
 #include <cstdlib>
 #include <cstdint>
 #include <cstring>
+#include <fstream>
+
+#include "codegen/lexer.hpp"
+#include "codegen/parser.hpp"
+#include "codegen/astnode.hpp"
+#include "codegen/exception.hpp"
+#include "codegen/depthtree.hpp"
+
+const size_t MAX_NODES = 1024;
 
 struct Options {
     const char* input_path;
@@ -156,6 +165,31 @@ struct Free {
 template <typename T>
 using MallocPtr = std::unique_ptr<T, Free<T>>;
 
+int main(int argc, char* argv[]) {
+    if(argc < 2) {
+        std::cerr << "No input file given" << std::endl;
+        return 1;
+    }
+    try {
+        std::ifstream input(argv[1]);
+        Lexer lexer(input);
+        Parser parser(lexer);
+
+        std::unique_ptr<ASTNode> node(parser.parse());
+        std::cout << *node << std::endl;
+
+        node->resolveType();
+        std::cout << *node << std::endl;
+
+        DepthTree depth_tree(MAX_NODES, node.get());
+        std::cout << depth_tree << std::endl;
+    }
+    catch(const ParseException& e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+    }
+    return 0;
+}
+/*
 int main(int argc, const char* argv[]) {
     Options opts;
     if (!parse_options(&opts, argc, argv)) {
@@ -206,3 +240,4 @@ int main(int argc, const char* argv[]) {
 
     return EXIT_SUCCESS;
 }
+*/

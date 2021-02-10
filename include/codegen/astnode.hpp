@@ -73,6 +73,15 @@ class ASTNode {
         inline NodeType getType() const {
             return this->type;
         }
+        inline DataType getResultingType() const {
+            return this->return_type;
+        }
+        inline const std::vector<ASTNode*>& getChildren() const {
+            return this->children;
+        }
+        inline const uint32_t getInteger() const {
+            return this->integer;
+        }
 
         void print(std::ostream&, size_t  = 0) const;
         void resolveType();

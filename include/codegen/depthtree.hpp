@@ -1,7 +1,11 @@
 #ifndef _PAREAS_CODEGEN_DEPTHTREE_HPP
 #define _PAREAS_CODEGEN_DEPTHTREE_HPP
 
-#include "codegen/astnode.hpp"
+#include <cstdint>
+#include <cstddef>
+#include <iosfwd>
+
+class ASTNode;
 
 class DepthTree {
     private:
@@ -10,9 +14,17 @@ class DepthTree {
         uint32_t* parents;
         uint32_t* depth;
         size_t max_nodes;
+        size_t filled_nodes;
+
+        void construct(ASTNode*);
+        void setElement(size_t, ASTNode*, size_t, size_t);
     public:
-        DepthTree(size_t elems);
+        DepthTree(size_t elems, ASTNode*);
         ~DepthTree();
+
+        void print(std::ostream&) const;
 };
+
+std::ostream& operator<<(std::ostream&, const DepthTree&);
 
 #endif
