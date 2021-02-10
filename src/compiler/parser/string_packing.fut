@@ -53,4 +53,3 @@ let pack_strings 't [n] (text: []t) (offsets: [n]i64) (lens: [n]i64): *[]t =
         reduce_by_index dest (+) 0 scatter_indices scatter_diffs
         |> scan (+) 0
     in map (\i -> text[i]) gather_indices
-

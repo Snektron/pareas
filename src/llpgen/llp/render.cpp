@@ -66,26 +66,31 @@ namespace {
     }
 
     template <typename T>
-    void StringTable<T>::render(std::ostream& out, const std::string& base_var, const std::string& table_type) {
+    void StringTable<T>::render(std::ostream& out, const std::string& mod_name, const std::string& table_type) {
         // Add one for sign
         size_t offset_bits = int_bit_width(1 + this->superstring.size());
 
-        fmt::print(out, "let {}_table_size: i{} = {}\n", base_var, offset_bits, this->superstring.size());
-        fmt::print(out, "let {}_change_table: []{} = [", base_var, table_type);
+        fmt::print(out, "module {} = {{\n", mod_name);
+        fmt::print(out, "    type element = {}\n", table_type);
+        fmt::print(out, "    type offset = i{}\n", offset_bits);
+        fmt::print(out, "    let table_size: i64 = {}\n", this->superstring.size());
+        fmt::print(out, "    let table: [table_size]element = [");
+
         bool first = true;
         for (auto val : this->superstring) {
             fmt::print(out, "{}{}", first ? first = false, "" : ", ", val);
         }
+        fmt::print(out, "] :> [table_size]element\n");
 
-        fmt::print(out, "]\n");
-        fmt::print(out, "let initial_{0}: (i{1}, i{1}) = {2}\n", base_var, offset_bits, this->start);
-        fmt::print(out, "let get_{0} 'terminal (a: terminal) (b: terminal): (i{1}, i{1}) = \n", base_var, offset_bits);
+        fmt::print(out, "    let initial: (offset, offset) = {}\n", this->start);
+        fmt::print(out, "    let get 'terminal (a: terminal) (b: terminal): (offset, offset) =\n");
 
-        fmt::print(out, "    match (a, b)\n");
+        fmt::print(out, "        match (a, b)\n");
         for (const auto& [ap, string] : this->strings) {
-            fmt::print(out, "    case (#{}, #{}) -> {}\n", ap.x, ap.y, string);
+            fmt::print(out, "        case (#{}, #{}) -> {}\n", ap.x, ap.y, string);
         }
-        fmt::print(out, "    case _ -> (-1, -1)\n");
+        fmt::print(out, "        case _ -> (-1, -1)\n");
+        fmt::print(out, "}}\n\n");
     }
 
     struct Renderer {
@@ -140,7 +145,7 @@ namespace {
                 fmt::print(this->out, " | ");
             fmt::print(this->out, "#{}", prod.tag);
         }
-        fmt::print(this->out, "\n");
+        fmt::print(this->out, "\n\n");
     }
 
     void Renderer::render_stack_change() {
@@ -186,7 +191,6 @@ namespace {
         };
 
         auto strtab = StringTable<Enum>(this->pt, get_tags, get_tags);
-
         strtab.render(this->out, "partial_parse", "production");
     }
 }
