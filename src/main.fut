@@ -1,9 +1,6 @@
 import "tree"
 import "datatypes"
--- let main (n : i64) : u32 =
---     let t = tree.alloc_tree n
---     let result = tree.walk_tree t
---     in result
+import "instr"
 
 let MAX_NODES : i64 = 1024
 
@@ -73,5 +70,9 @@ entry make_tree (max_depth: u32) (node_types: [MAX_NODES]u8) (data_types: [MAX_N
         max_depth = max_depth
     }
 
-entry main (tree: Tree[MAX_NODES]) =
-    i64.u32(tree.max_depth)
+let split_instr (instr: Instr) =
+    (instr.instr, instr.rd, instr.rs1, instr.rs2)
+
+entry main (tree: Tree[MAX_NODES]) (instr_idx: i64) =
+    let instr = compile_node tree instr_idx in
+    map split_instr instr |> unzip4

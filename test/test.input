@@ -1,1 +1,1 @@
-10 + (20@float - (30 - 35)@float)@int + 37;
+((10 + 20)@float - (30 - 35)@float)@float - 37@float;

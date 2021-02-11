@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <cstring>
 #include <fstream>
+#include <bitset>
 
 #include "codegen/lexer.hpp"
 #include "codegen/parser.hpp"
@@ -250,9 +251,12 @@ int main(int argc, const char* argv[]) {
         UniqueFPtr<futhark_opaque_Tree, futhark_free_opaque_Tree> gpu_tree(context.get());
         int err = futhark_entry_make_tree(context.get(), &gpu_tree, depth_tree.maxDepth(), node_types.get(), resulting_types.get(), parents.get(), depth.get());
 
-        int64_t result;
+        UniqueFPtr<futhark_u32_1d, futhark_free_u32_1d> instr_fut(context.get());
+        UniqueFPtr<futhark_u32_1d, futhark_free_u32_1d> rd_fut(context.get());
+        UniqueFPtr<futhark_u32_1d, futhark_free_u32_1d> rs1_fut(context.get());
+        UniqueFPtr<futhark_u32_1d, futhark_free_u32_1d> rs2_fut(context.get());
         if(!err)
-            err = futhark_entry_main(context.get(), &result, gpu_tree.get());
+            err = futhark_entry_main(context.get(), &instr_fut, &rd_fut, &rs1_fut, &rs2_fut, gpu_tree.get(), 2);
         if (!err)
             err = futhark_context_sync(context.get());
 
@@ -262,7 +266,28 @@ int main(int argc, const char* argv[]) {
             return EXIT_FAILURE;
         }
 
-        std::cout << "Result: " << result << std::endl;
+        size_t num_values = *futhark_shape_u32_1d(context.get(), instr_fut.get());
+
+        std::unique_ptr<uint32_t[]> instr(new uint32_t[num_values]);
+        std::unique_ptr<uint32_t[]> rd(new uint32_t[num_values]);
+        std::unique_ptr<uint32_t[]> rs1(new uint32_t[num_values]);
+        std::unique_ptr<uint32_t[]> rs2(new uint32_t[num_values]);
+        err = futhark_values_u32_1d(context.get(), instr_fut.get(), instr.get());
+        if(!err)
+            err = futhark_values_u32_1d(context.get(), rd_fut.get(), rd.get());
+        if(!err)
+            err = futhark_values_u32_1d(context.get(), rs1_fut.get(), rs1.get());
+        if(!err)
+            err = futhark_values_u32_1d(context.get(), rs2_fut.get(), rs2.get());
+
+        if(err) {
+            auto err = MallocPtr<char>(futhark_context_get_error(context.get()));
+            std::cerr << "Futhark error: " << (err ? err.get() : "(no diagnostic)") << std::endl;
+            return EXIT_FAILURE;
+        }
+        for(size_t i = 0; i < num_values; ++i) {
+            std::cout << i << " = " << std::bitset<32>(instr[i]) << " " << rd[i] << " " << rs1[i] << " " << rs2[i] << std::endl;
+        }
 
         if (opts.profile) {
             auto report = MallocPtr<char>(futhark_context_report(context.get()));
