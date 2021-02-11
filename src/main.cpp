@@ -165,31 +165,37 @@ struct Free {
 template <typename T>
 using MallocPtr = std::unique_ptr<T, Free<T>>;
 
-int main(int argc, char* argv[]) {
-    if(argc < 2) {
-        std::cerr << "No input file given" << std::endl;
-        return 1;
-    }
-    try {
-        std::ifstream input(argv[1]);
-        Lexer lexer(input);
-        Parser parser(lexer);
+template <typename T, int(*deleter)(futhark_context*, T*)>
+class UniqueFPtr {
+    private:
+        futhark_context* ctx;
+        T* data;
+    public:
+        UniqueFPtr(futhark_context* ctx, T* data) {
+            this->ctx = ctx;
+            this->data = data;
+        }
+        UniqueFPtr(const UniqueFPtr&) = delete;
+        UniqueFPtr(UniqueFPtr&& o) {
+            std::swap(this->ctx, o.ctx);
+            std::swap(this->data, o.data);
+        }
 
-        std::unique_ptr<ASTNode> node(parser.parse());
-        std::cout << *node << std::endl;
+        UniqueFPtr& operator=(const UniqueFPtr&) = delete;
+        UniqueFPtr& operator=(UniqueFPtr&& o) {
+            std::swap(this->ctx, o.ctx);
+            std::swap(this->data, o.data);
+        }
 
-        node->resolveType();
-        std::cout << *node << std::endl;
+        ~UniqueFPtr() {
+            deleter(this->ctx, this->data);
+        }
 
-        DepthTree depth_tree(MAX_NODES, node.get());
-        std::cout << depth_tree << std::endl;
-    }
-    catch(const ParseException& e) {
-        std::cerr << "Error: " << e.what() << std::endl;
-    }
-    return 0;
-}
-/*
+        T* get() {
+            return this->data;
+        }
+};
+
 int main(int argc, const char* argv[]) {
     Options opts;
     if (!parse_options(&opts, argc, argv)) {
@@ -214,30 +220,57 @@ int main(int argc, const char* argv[]) {
         futhark_context_config_set_profiling(config.get(), opts.profile);
     #endif
 
-    auto context = UniqueCPtr<futhark_context, futhark_context_free>(futhark_context_new(config.get()));
+    try {
+        std::ifstream input(argv[1]);
+        Lexer lexer(input);
+        Parser parser(lexer);
 
-    futhark_opaque_Tree* gpu_tree;
-    int err = futhark_entry_make_tree(context.get(), &gpu_tree);
+        std::unique_ptr<ASTNode> node(parser.parse());
+        std::cout << *node << std::endl;
 
-    int64_t result;
-    if(!err)
-        err = futhark_entry_main(context.get(), &result, gpu_tree);
-    if (!err)
-        err = futhark_context_sync(context.get());
+        node->resolveType();
+        std::cout << *node << std::endl;
 
-    if (err) {
-        auto err = MallocPtr<char>(futhark_context_get_error(context.get()));
-        std::cerr << "Futhark error: " << (err ? err.get() : "(no diagnostic)") << std::endl;
-        return EXIT_FAILURE;
+        DepthTree depth_tree(MAX_NODES, node.get());
+        std::cout << depth_tree << std::endl;
+
+        auto context = UniqueCPtr<futhark_context, futhark_context_free>(futhark_context_new(config.get()));
+
+        auto node_types = UniqueFPtr<futhark_u8_1d, futhark_free_u8_1d>(context.get(),
+                            futhark_new_u8_1d(context.get(), depth_tree.getNodeTypes(), depth_tree.maxNodes()));
+        auto resulting_types = UniqueFPtr<futhark_u8_1d, futhark_free_u8_1d>(context.get(),
+                            futhark_new_u8_1d(context.get(), depth_tree.getResultingTypes(), depth_tree.maxNodes()));
+        auto parents = UniqueFPtr<futhark_u32_1d, futhark_free_u32_1d>(context.get(),
+                            futhark_new_u32_1d(context.get(), depth_tree.getParents(), depth_tree.maxNodes()));
+        auto depth = UniqueFPtr<futhark_u32_1d, futhark_free_u32_1d>(context.get(),
+                            futhark_new_u32_1d(context.get(), depth_tree.getDepth(), depth_tree.maxNodes()));
+
+        futhark_opaque_Tree* gpu_tree;
+        int err = futhark_entry_make_tree(context.get(), &gpu_tree, depth_tree.maxDepth(), node_types.get(), resulting_types.get(), parents.get(), depth.get());
+
+        int64_t result;
+        if(!err)
+            err = futhark_entry_main(context.get(), &result, gpu_tree);
+        if (!err)
+            err = futhark_context_sync(context.get());
+
+        if (err) {
+            auto err = MallocPtr<char>(futhark_context_get_error(context.get()));
+            std::cerr << "Futhark error: " << (err ? err.get() : "(no diagnostic)") << std::endl;
+            return EXIT_FAILURE;
+        }
+
+        std::cout << "Result: " << result << std::endl;
+
+        if (opts.profile) {
+            auto report = MallocPtr<char>(futhark_context_report(context.get()));
+            std::cout << "Profile report:\n" << report << std::endl;
+        }
     }
-
-    std::cout << "Result: " << result << std::endl;
-
-    if (opts.profile) {
-        auto report = MallocPtr<char>(futhark_context_report(context.get()));
-        std::cout << "Profile report:\n" << report << std::endl;
+    catch(const ParseException& e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+        return EXIT_FAILURE;
     }
 
     return EXIT_SUCCESS;
 }
-*/

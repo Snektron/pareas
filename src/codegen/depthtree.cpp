@@ -7,7 +7,7 @@
 #include <cstring>
 #include <iostream>
 
-DepthTree::DepthTree(size_t max_nodes, ASTNode* node) : max_nodes(max_nodes) {
+DepthTree::DepthTree(size_t max_nodes, ASTNode* node) : max_nodes(max_nodes), max_depth(0) {
     this->node_types = new uint8_t[max_nodes];
     this->resulting_types = new uint8_t[max_nodes];
     this->parents = new uint32_t[max_nodes];
@@ -33,6 +33,9 @@ void DepthTree::setElement(size_t idx, ASTNode* node, size_t parent, size_t dept
     this->resulting_types[idx] = static_cast<uint8_t>(node->getResultingType());
     this->parents[idx] = parent;
     this->depth[idx] = depth;
+
+    if(this->max_depth < depth)
+        this->max_depth = depth;
 }
 
 void DepthTree::construct(ASTNode* node) {

@@ -15,6 +15,7 @@ class DepthTree {
         uint32_t* depth;
         size_t max_nodes;
         size_t filled_nodes;
+        size_t max_depth;
 
         void construct(ASTNode*);
         void setElement(size_t, ASTNode*, size_t, size_t);
@@ -23,6 +24,25 @@ class DepthTree {
         ~DepthTree();
 
         void print(std::ostream&) const;
+
+        inline const uint8_t* getNodeTypes() const {
+            return this->node_types;
+        }
+        inline const uint8_t* getResultingTypes() const {
+            return this->resulting_types;
+        }
+        inline const uint32_t* getParents() const {
+            return this->parents;
+        }
+        inline const uint32_t* getDepth() const {
+            return this->depth;
+        }
+        inline size_t maxNodes() const {
+            return this->max_nodes;
+        }
+        inline size_t maxDepth() const {
+            return this->max_depth;
+        }
 };
 
 std::ostream& operator<<(std::ostream&, const DepthTree&);
