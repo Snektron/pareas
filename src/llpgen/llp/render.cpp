@@ -5,6 +5,7 @@
 
 #include <bit>
 #include <unordered_map>
+#include <unordered_set>
 #include <algorithm>
 #include <iterator>
 #include <cassert>
@@ -67,8 +68,8 @@ namespace {
 
     template <typename T>
     void StringTable<T>::render(std::ostream& out, const std::string& mod_name, const std::string& table_type) {
-        // Add one for sign
-        size_t offset_bits = int_bit_width(1 + this->superstring.size());
+        // Multiply by 2 to account for the sign bit
+        size_t offset_bits = int_bit_width(2 * this->superstring.size());
 
         fmt::print(out, "module {} = {{\n", mod_name);
         fmt::print(out, "    type element = {}\n", table_type);
@@ -83,7 +84,7 @@ namespace {
         fmt::print(out, "] :> [table_size]element\n");
 
         fmt::print(out, "    let initial: (offset, offset) = {}\n", this->start);
-        fmt::print(out, "    let get 'terminal (a: terminal) (b: terminal): (offset, offset) =\n");
+        fmt::print(out, "    let get (a: token_kind) (b: token_kind): (offset, offset) =\n");
 
         fmt::print(out, "        match (a, b)\n");
         for (const auto& [ap, string] : this->strings) {
@@ -102,6 +103,7 @@ namespace {
         Renderer(std::ostream& out, const Grammar& g, const ParsingTable& pt);
         size_t bracket_id(const Symbol& sym, bool left) const;
         void render_production_type();
+        void render_token_kind_type();
         void render_stack_change();
         void render_partial_parse();
     };
@@ -144,6 +146,28 @@ namespace {
             else
                 fmt::print(this->out, " | ");
             fmt::print(this->out, "#{}", prod.tag);
+        }
+        fmt::print(this->out, "\n\n");
+    }
+
+    void Renderer::render_token_kind_type() {
+        auto all_terminals = std::unordered_set<const std::string*>();
+
+        for (const auto& prod : this->g.productions) {
+            for (const auto& sym : prod.rhs) {
+                if (sym.is_terminal)
+                    all_terminals.insert(&sym.name);
+            }
+        }
+
+        fmt::print(this->out, "type token_kind = ");
+        bool first = true;
+        for (const auto* term : all_terminals) {
+            if (first)
+                first = false;
+            else
+                fmt::print(this->out, " | ");
+            fmt::print(this->out, "#{}", *term);
         }
         fmt::print(this->out, "\n\n");
     }
@@ -199,6 +223,7 @@ namespace llp {
     void render_parser(std::ostream& out, const Grammar& g, const ParsingTable& pt) {
         auto renderer = Renderer(out, g, pt);
         renderer.render_production_type();
+        renderer.render_token_kind_type();
         renderer.render_stack_change();
         renderer.render_partial_parse();
     }
