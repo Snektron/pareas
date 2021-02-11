@@ -171,10 +171,8 @@ class UniqueFPtr {
         futhark_context* ctx;
         T* data;
     public:
-        UniqueFPtr(futhark_context* ctx, T* data) {
-            this->ctx = ctx;
-            this->data = data;
-        }
+        UniqueFPtr(futhark_context* ctx) : ctx(ctx), data(nullptr) {}
+        UniqueFPtr(futhark_context* ctx, T* data) : ctx(ctx), data(data) {}
         UniqueFPtr(const UniqueFPtr&) = delete;
         UniqueFPtr(UniqueFPtr&& o) {
             std::swap(this->ctx, o.ctx);
@@ -193,6 +191,10 @@ class UniqueFPtr {
 
         T* get() {
             return this->data;
+        }
+
+        T** operator&() {
+            return &this->data;
         }
 };
 
@@ -245,12 +247,12 @@ int main(int argc, const char* argv[]) {
         auto depth = UniqueFPtr<futhark_u32_1d, futhark_free_u32_1d>(context.get(),
                             futhark_new_u32_1d(context.get(), depth_tree.getDepth(), depth_tree.maxNodes()));
 
-        futhark_opaque_Tree* gpu_tree;
+        UniqueFPtr<futhark_opaque_Tree, futhark_free_opaque_Tree> gpu_tree(context.get());
         int err = futhark_entry_make_tree(context.get(), &gpu_tree, depth_tree.maxDepth(), node_types.get(), resulting_types.get(), parents.get(), depth.get());
 
         int64_t result;
         if(!err)
-            err = futhark_entry_main(context.get(), &result, gpu_tree);
+            err = futhark_entry_main(context.get(), &result, gpu_tree.get());
         if (!err)
             err = futhark_context_sync(context.get());
 
