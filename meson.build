@@ -15,6 +15,8 @@ add_project_arguments(
 
 inc = include_directories('include')
 
+fmt_dep = subproject('fmt').get_variable('fmt_dep')
+
 # LLPGEN
 llpgen_sources = [
     'src/llpgen/error_reporter.cpp',
@@ -36,11 +38,11 @@ llpgen_sources = [
 executable(
     'pareas-llpgen',
     llpgen_sources,
-    dependencies: [subproject('fmt').get_variable('fmt_dep')],
+    dependencies: fmt_dep,
     include_directories: inc,
 )
 
-dependencies = []
+dependencies = [fmt_dep]
 
 # Build futhark library
 futhark = find_program('futhark')
