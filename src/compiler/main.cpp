@@ -7,6 +7,9 @@
 #include <cstdint>
 #include <cstring>
 
+#include <fmt/format.h>
+#include <fmt/ostream.h>
+
 struct Options {
     const char* input_path;
     const char* output_path;
@@ -23,8 +26,8 @@ struct Options {
 };
 
 void print_usage(const char* progname) {
-    std::cout <<
-        "Usage: " << progname << " [options...] <input path>\n"
+    fmt::print(
+        "Usage: {} [options...] <input path>\n"
         "Available options:\n"
         "-o --output <output path>   Write the output to <output path>. (default: b.out)\n"
         "-h --help                   Show this message and exit.\n"
@@ -43,7 +46,9 @@ void print_usage(const char* progname) {
     #endif
         "\n"
         "When <input path> and/or <output path> are '-', standard input and standard\n"
-        "output are used respectively.\n";
+        "output are used respectively.\n",
+        progname
+    );
 }
 
 bool parse_options(Options* opts, int argc, const char* argv[]) {
@@ -66,7 +71,7 @@ bool parse_options(Options* opts, int argc, const char* argv[]) {
         #if defined(FUTHARK_BACKEND_multicore)
             if (arg == "-t" || arg == "--threads") {
                 if (++i >= argc) {
-                    std::cerr << "Error: Expected argument <amount> to option " << arg << std::endl;
+                    fmt::print(std::cerr, "Error: Expected argument <amount> to option {}\n", arg);
                     return false;
                 }
 
@@ -76,7 +81,7 @@ bool parse_options(Options* opts, int argc, const char* argv[]) {
         #elif defined(FUTHARK_BACKEND_opencl) || defined(FUTHARK_BACKEND_cuda)
             if (arg == "--device") {
                 if (++i >= argc) {
-                    std::cerr << "Error: Expected argument <name> to option " << arg << std::endl;
+                    fmt::print(std::cerr, "Error: Expected argument <name> to option {}\n", arg);
                     return false;
                 }
 
@@ -90,7 +95,7 @@ bool parse_options(Options* opts, int argc, const char* argv[]) {
 
         if (arg == "-o" || arg == "--output") {
             if (++i >= argc) {
-                std::cerr << "Error: Expected argument <output path> to option " << arg << std::endl;
+                fmt::print(std::cerr, "Error: Expected argument <output> to option {}\n", arg);
                 return false;
             }
             opts->output_path = argv[i];
@@ -103,7 +108,7 @@ bool parse_options(Options* opts, int argc, const char* argv[]) {
         } else if (!opts->input_path) {
             opts->input_path = argv[i];
         } else {
-            std::cerr << "Error: Unknown option '" << arg << "'" << std::endl;
+            fmt::print(std::cerr, "Error: Unknown option {}\n", arg);
             return false;
         }
     }
@@ -112,15 +117,15 @@ bool parse_options(Options* opts, int argc, const char* argv[]) {
         return true;
 
     if (!opts->input_path) {
-        std::cerr << "Error: Missing required argument <input path>" << std::endl;
+        fmt::print(std::cerr, "Error: Missing required argument <input path>\n");
         return false;
     } else if (!opts->input_path[0]) {
-        std::cerr << "Error: <input path> may not be empty" << std::endl;
+        fmt::print(std::cerr, "Error: <input path> may not be empty\n");
         return false;
     }
 
     if (!opts->output_path[0]) {
-        std::cerr << "Error: <output path> may not be empty" << std::endl;
+        fmt::print(std::cerr, "Error: <output path> may not be empty\n");
         return false;
     }
 
@@ -128,7 +133,7 @@ bool parse_options(Options* opts, int argc, const char* argv[]) {
         const auto* end = threads_arg + std::strlen(threads_arg);
         auto [p, ec] = std::from_chars(threads_arg, end, opts->threads);
         if (ec != std::errc() || p != end || opts->threads < 1) {
-            std::cerr << "Error: Invalid value '" << threads_arg << "' for option --threads" << std::endl;
+            fmt::print(std::cerr, "Error: Invalid value '{}' for option --threads\n", threads_arg);
             return false;
         }
     }
@@ -159,7 +164,7 @@ using MallocPtr = std::unique_ptr<T, Free<T>>;
 int main(int argc, const char* argv[]) {
     Options opts;
     if (!parse_options(&opts, argc, argv)) {
-        std::cerr << "See '" << argv[0] << " --help' for usage" << std::endl;
+        fmt::print(std::cerr, "See '{} --help' for usage\n", argv[0]);
         return EXIT_FAILURE;
     } else if (opts.help) {
         print_usage(argv[0]);
@@ -189,15 +194,15 @@ int main(int argc, const char* argv[]) {
 
     if (err) {
         auto err = MallocPtr<char>(futhark_context_get_error(context.get()));
-        std::cerr << "Futhark error: " << (err ? err.get() : "(no diagnostic)") << std::endl;
+        fmt::print(std::cerr, "Futhark error: {}", err ? err.get() : "(no diagnostic)");
         return EXIT_FAILURE;
     }
 
-    std::cout << "Result: " << result << std::endl;
+    fmt::print("Result: {}", result);
 
     if (opts.profile) {
         auto report = MallocPtr<char>(futhark_context_report(context.get()));
-        std::cout << "Profile report:\n" << report << std::endl;
+        fmt::print("Profile report:\n{}", report);
     }
 
     return EXIT_SUCCESS;

@@ -13,7 +13,36 @@ add_project_arguments(
     language: ['c', 'cpp'],
 )
 
-dependencies = []
+inc = include_directories('include')
+
+fmt_dep = subproject('fmt').get_variable('fmt_dep')
+
+# LLPGEN
+llpgen_sources = [
+    'src/llpgen/error_reporter.cpp',
+    'src/llpgen/grammar.cpp',
+    'src/llpgen/grammar_parser.cpp',
+    'src/llpgen/ll/generator.cpp',
+    'src/llpgen/ll/parsing_table.cpp',
+    'src/llpgen/llp/admissible_pair.cpp',
+    'src/llpgen/llp/generator.cpp',
+    'src/llpgen/llp/item.cpp',
+    'src/llpgen/llp/parsing_table.cpp',
+    'src/llpgen/llp/psls_table.cpp',
+    'src/llpgen/llp/render.cpp',
+    'src/llpgen/llp/test_parser.cpp',
+    'src/llpgen/main.cpp',
+    'src/llpgen/terminal_set_functions.cpp',
+]
+
+executable(
+    'pareas-llpgen',
+    llpgen_sources,
+    dependencies: fmt_dep,
+    include_directories: inc,
+)
+
+dependencies = [fmt_dep]
 
 # Build futhark library
 futhark = find_program('futhark')
@@ -44,5 +73,5 @@ executable(
     install: true,
     build_by_default: true,
     dependencies: dependencies,
-    include_directories: include_directories('src'),
+    include_directories: inc,
 )
