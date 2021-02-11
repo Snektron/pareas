@@ -7,58 +7,157 @@
 #include "pareas/llpgen/llp/render.hpp"
 #include "pareas/llpgen/llp/test_parser.hpp"
 
+#include <fmt/format.h>
 #include <fmt/ostream.h>
 
 #include <iostream>
+#include <fstream>
+#include <string_view>
+#include <string>
+#include <iterator>
+#include <cstdlib>
 
-using literals::operator ""_t;
-using literals::operator ""_nt;
+struct Options {
+    const char* input_path;
+    const char* output_path;
+    bool help;
+    bool verbose_sets;
+    bool verbose_psls;
+    bool verbose_ll;
+    bool verbose_llp;
+};
 
-auto test_grammar = R"(
-%start = start;
-%left_delim = 'soi';
-%right_delim = 'eoi';
+void print_usage(const char* progname) {
+    fmt::print(
+        "Usage: {} [options...] <input path>\n"
+        "Available options:\n"
+        "-o --output <path>  Write the output to <output path>. (default: stdout)\n"
+        "--verbose-sets      Dump first/last/follow/before sets to stderr\n"
+        "--verbose-psls      Dump PSLS table to stderr\n"
+        "--verbose-ll        Dump LL table to stderr\n"
+        "--verbose-llp       Dump LLP table to stderr\n"
+        "-h --help           Show this message and exit\n"
+        "\n"
+        "When <input path> and/or <output path> are '-', standard input and standard\n"
+        "output are used respectively.\n",
+        progname
+    );
+}
 
-start -> 'soi' expr 'eoi';
+bool parse_options(Options* opts, int argc, const char* argv[]) {
+    *opts = {
+        .input_path = nullptr,
+        .output_path = "-",
+        .help = false,
+        .verbose_sets = false,
+        .verbose_psls = false,
+        .verbose_ll = false,
+        .verbose_llp = false,
+    };
 
-expr -> atom sum;
+    for (int i = 1; i < argc; ++i) {
+        auto arg = std::string_view(argv[i]);
 
-sum [sum] -> 'plus' atom sum;
-sum [sum_end] -> ;
+        if (arg == "-o" || arg == "--output") {
+            if (++i >= argc) {
+                fmt::print(std::cerr, "Error: Expected argument <output> to option {}\n", arg);
+                return false;
+            }
+            opts->output_path = argv[i];
+        } else if (arg == "--help" || arg == "-h") {
+            opts->help = true;
+        } else if (arg == "--verbose-sets") {
+            opts->verbose_sets = true;
+        } else if (arg == "--verbose-psls") {
+            opts->verbose_psls = true;
+        } else if (arg == "--verbose-ll") {
+            opts->verbose_ll = true;
+        } else if (arg == "--verbose-llp") {
+            opts->verbose_llp = true;
+        } else if (!opts->input_path) {
+            opts->input_path = argv[i];
+        } else {
+            fmt::print("Error: Unknown option {}\n", arg);
+            return false;
+        }
+    }
 
-atom [literal] -> 'a';
-atom [brackets] -> 'lbracket' expr 'rbracket';
-)";
+    if (opts->help)
+        return true;
 
-int main() {
-    auto er = ErrorReporter(test_grammar, std::clog);
-    auto parser = GrammarParser(&er, test_grammar);
+    if (!opts->input_path) {
+        fmt::print(std::cerr, "Error: Missing required argument <input path>\n");
+        return false;
+    }
+
+    return true;
+}
+
+int main(int argc, const char* argv[]) {
+    Options opts;
+    if (!parse_options(&opts, argc, argv)) {
+        fmt::print(std::cerr, "See '{} --help' for usage\n", argv[0]);
+        return EXIT_FAILURE;
+    } else if (opts.help) {
+        print_usage(argv[0]);
+    }
+
+    std::string input;
+    if (std::string_view(opts.input_path) == "-") {
+        input.assign(
+            std::istreambuf_iterator<char>(std::cin),
+            std::istreambuf_iterator<char>()
+        );
+    } else {
+        auto in = std::ifstream(opts.input_path, std::ios::binary);
+        if (!opts.input_path) {
+            fmt::print(std::cerr, "Error: Failed to open input path '{}'\n", opts.input_path);
+            return EXIT_FAILURE;
+        }
+        input.assign(
+            std::istreambuf_iterator<char>(in),
+            std::istreambuf_iterator<char>()
+        );
+    }
+
+    auto er = ErrorReporter(input, std::clog);
 
     try {
+        auto parser = GrammarParser(&er, input);
         auto g = parser.parse();
+
         auto tsf = TerminalSetFunctions(g);
-        // tsf.dump(std::cout);
+        if (opts.verbose_sets)
+            tsf.dump(std::clog);
 
         auto gen = llp::Generator(&er, &g, &tsf);
+
         auto psls_table = gen.build_psls_table();
-        // psls_table.dump_csv(std::cout);
+        if (opts.verbose_psls)
+            psls_table.dump_csv(std::clog);
 
         auto ll_table = ll::Generator(&er, &g, &tsf).build_parsing_table();
-        // ll_table.dump_csv(std::cout);
+        if (opts.verbose_ll)
+            ll_table.dump_csv(std::clog);
 
-        auto parsing_table = gen.build_parsing_table(ll_table, psls_table);
-        // llp_table.dump_csv(std::cout);
+        auto llp_table = gen.build_parsing_table(ll_table, psls_table);
+        if (opts.verbose_llp)
+            llp_table.dump_csv(std::clog);
 
-        llp::render_parser(std::cout, g, parsing_table);
-
-        // auto input = {"soi"_t, "a"_t, "plus"_t, "lbracket"_t, "a"_t, "plus"_t, "a"_t, "rbracket"_t, "eoi"_t};
-        // auto test_parser = llp::TestParser(&parsing_table, input);
-        // auto success = test_parser.parse();
-        // std::cout << "Parsing " << (success ? "success" : "failed") << std::endl;
-
-        // test_parser.dump(std::cout);
+        if (std::string_view(opts.output_path) == "-") {
+            llp::render_parser(std::cout, g, llp_table);
+        } else {
+            auto out = std::ofstream(opts.output_path, std::ios::binary);
+            if (!opts.output_path) {
+                fmt::print(std::cerr, "Error: Failed to open output path '{}'\n", opts.output_path);
+                return EXIT_FAILURE;
+            }
+            llp::render_parser(out, g, llp_table);
+        }
     } catch (const InvalidGrammarError& e) {
         fmt::print(std::cerr, "Failed: {}\n", e.what());
         return EXIT_FAILURE;
     }
+
+    return EXIT_SUCCESS;
 }

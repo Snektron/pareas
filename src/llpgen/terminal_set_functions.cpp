@@ -60,7 +60,7 @@ TerminalSet TerminalSetFunctions::compute_last(std::span<const Symbol> symbols) 
 void TerminalSetFunctions::dump(std::ostream& os) {
     auto dump_nt_ts = [&](const std::unordered_map<NonTerminal, TerminalSet>& sets){
         for (auto [nt, set] : sets) {
-            fmt::print(os, "{}:\t", nt);
+            fmt::print(os, "    {}:\t", nt);
             for (const auto& t : set) {
                 fmt::print(os, " {}", t);
             }

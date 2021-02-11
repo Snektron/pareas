@@ -86,6 +86,11 @@ const Production* GrammarParser::find_start_rule() const {
         }
     }
 
+    if (!start) {
+        this->er->error(this->loc(), "Missing start rule");
+        return nullptr;
+    }
+
     auto left_delim = Terminal{std::string(this->left_delim.value)};
     auto right_delim = Terminal{std::string(this->right_delim.value)};
 

@@ -16,7 +16,7 @@ namespace llp {
                     first = false;
                 else
                     fmt::print(os, " ");
-                fmt::print("{}", it->name);
+                fmt::print(os, "{}", it->name);
             }
             fmt::print(os, "}}");
         };
@@ -29,7 +29,7 @@ namespace llp {
                     first = false;
                 else
                     fmt::print(os, ", ");
-                fmt::print("{}", *prod);
+                fmt::print(os, "{}", *prod);
             }
             fmt::print(os, "}}");
         };

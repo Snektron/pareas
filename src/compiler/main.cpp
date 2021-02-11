@@ -164,7 +164,7 @@ using MallocPtr = std::unique_ptr<T, Free<T>>;
 int main(int argc, const char* argv[]) {
     Options opts;
     if (!parse_options(&opts, argc, argv)) {
-        fmt::print(std::cerr, "See '{} --help' for usage", argv[0]);
+        fmt::print(std::cerr, "See '{} --help' for usage\n", argv[0]);
         return EXIT_FAILURE;
     } else if (opts.help) {
         print_usage(argv[0]);
