@@ -29,9 +29,6 @@ llpgen_sources = [
     'src/llpgen/llp/psls_table.cpp',
     'src/llpgen/llp/render.cpp',
     'src/llpgen/llp/test_parser.cpp',
-    'src/llpgen/lr/generator.cpp',
-    'src/llpgen/lr/item.cpp',
-    'src/llpgen/lr/parsing_table.cpp',
     'src/llpgen/main.cpp',
     'src/llpgen/terminal_set_functions.cpp',
 ]

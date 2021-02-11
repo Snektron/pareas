@@ -84,14 +84,14 @@ namespace {
         fmt::print(out, "] :> [table_size]element\n");
 
         fmt::print(out, "    let initial: (offset, offset) = {}\n", this->start);
-        fmt::print(out, "    let get (a: token_kind) (b: token_kind): (offset, offset) =\n");
+        fmt::print(out, "    let get (a: token) (b: token): (offset, offset) =\n");
 
         fmt::print(out, "        match (a, b)\n");
         for (const auto& [ap, string] : this->strings) {
             fmt::print(out, "        case (#{}, #{}) -> {}\n", ap.x, ap.y, string);
         }
         fmt::print(out, "        case _ -> (-1, -1)\n");
-        fmt::print(out, "}}\n\n");
+        fmt::print(out, "}}\n");
     }
 
     struct Renderer {
@@ -103,7 +103,7 @@ namespace {
         Renderer(std::ostream& out, const Grammar& g, const ParsingTable& pt);
         size_t bracket_id(const Symbol& sym, bool left) const;
         void render_production_type();
-        void render_token_kind_type();
+        void render_token_type();
         void render_stack_change();
         void render_partial_parse();
     };
@@ -147,10 +147,10 @@ namespace {
                 fmt::print(this->out, " | ");
             fmt::print(this->out, "#{}", prod.tag);
         }
-        fmt::print(this->out, "\n\n");
+        fmt::print(this->out, "\n");
     }
 
-    void Renderer::render_token_kind_type() {
+    void Renderer::render_token_type() {
         auto all_terminals = std::unordered_set<const std::string*>();
 
         for (const auto& prod : this->g.productions) {
@@ -160,7 +160,7 @@ namespace {
             }
         }
 
-        fmt::print(this->out, "type token_kind = ");
+        fmt::print(this->out, "type token = ");
         bool first = true;
         for (const auto* term : all_terminals) {
             if (first)
@@ -169,7 +169,7 @@ namespace {
                 fmt::print(this->out, " | ");
             fmt::print(this->out, "#{}", *term);
         }
-        fmt::print(this->out, "\n\n");
+        fmt::print(this->out, "\n");
     }
 
     void Renderer::render_stack_change() {
@@ -223,7 +223,7 @@ namespace llp {
     void render_parser(std::ostream& out, const Grammar& g, const ParsingTable& pt) {
         auto renderer = Renderer(out, g, pt);
         renderer.render_production_type();
-        renderer.render_token_kind_type();
+        renderer.render_token_type();
         renderer.render_stack_change();
         renderer.render_partial_parse();
     }
