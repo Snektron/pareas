@@ -110,7 +110,7 @@ int main(int argc, const char* argv[]) {
         );
     } else {
         auto in = std::ifstream(opts.input_path, std::ios::binary);
-        if (!opts.input_path) {
+        if (!in) {
             fmt::print(std::cerr, "Error: Failed to open input path '{}'\n", opts.input_path);
             return EXIT_FAILURE;
         }
@@ -148,7 +148,7 @@ int main(int argc, const char* argv[]) {
             llp::render_parser(std::cout, g, llp_table);
         } else {
             auto out = std::ofstream(opts.output_path, std::ios::binary);
-            if (!opts.output_path) {
+            if (!out) {
                 fmt::print(std::cerr, "Error: Failed to open output path '{}'\n", opts.output_path);
                 return EXIT_FAILURE;
             }

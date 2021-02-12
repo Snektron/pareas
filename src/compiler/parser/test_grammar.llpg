@@ -1,0 +1,13 @@
+%start = start;
+%left_delim = 'soi';
+%right_delim = 'eoi';
+
+start -> 'soi' expr 'eoi';
+
+expr -> atom sum;
+
+sum [sum] -> 'plus' atom sum;
+sum [sum_end] -> ;
+
+atom [literal] -> 'a';
+atom [brackets] -> 'lbracket' expr 'rbracket';
