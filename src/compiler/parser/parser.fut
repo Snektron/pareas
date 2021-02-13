@@ -1,4 +1,5 @@
 import "string_packing"
+import "bracket_matching"
 
 module type grammar = {
     type token
@@ -19,7 +20,11 @@ module type grammar = {
 }
 
 module parser (g: grammar) = {
-    let is_open_bracket (b: g.bracket.t) = (g.bracket.to_i64 b) % 2 == 1
+    let is_open_bracket (b: g.bracket.t) =
+        (g.bracket.to_i64 b) % 2 == 1
+
+    let is_bracket_pair (a: g.bracket.t) (b: g.bracket.t) =
+        (g.bracket.to_i64 a) - (g.bracket.to_i64 b) == 1
 
     -- For now expected to include soi and eoi
     let check [n] (input: [n]g.token) =
@@ -45,7 +50,16 @@ module parser (g: grammar) = {
                 g.stack_change_table
                 (map (g.stack_change_offset.to_i64) offsets)
                 (map (g.stack_change_offset.to_i64) lens)
-        in (length brackets) != 0
+        -- Early return if the amount of brackets isn't even
+        in if (length brackets) % 2 != 0 then false else
+        -- Build the bracket match array
+        -- TODO: If we only aim to check whether brackets match below function
+        -- could probably be optimized
+        let bmatch = argpair_brackets (map is_open_bracket brackets)
+        -- Finally, check if brackets match up
+        in all
+            (\(i, j) -> is_bracket_pair brackets[i64.u32 i] brackets[i64.u32 j])
+            bmatch
 
     -- For now expected to include soi and eoi
     -- Input is expected to be `check`ed at this point. If its not valid according to `check`,
