@@ -15,7 +15,7 @@
 #include "codegen/exception.hpp"
 #include "codegen/depthtree.hpp"
 
-const size_t MAX_NODES = 1024;
+const size_t MAX_NODES = 32;
 
 struct Options {
     const char* input_path;
@@ -251,12 +251,15 @@ int main(int argc, const char* argv[]) {
         UniqueFPtr<futhark_opaque_Tree, futhark_free_opaque_Tree> gpu_tree(context.get());
         int err = futhark_entry_make_tree(context.get(), &gpu_tree, depth_tree.maxDepth(), node_types.get(), resulting_types.get(), parents.get(), depth.get());
 
+        auto instr_offsets = UniqueFPtr<futhark_i64_1d, futhark_free_i64_1d>(context.get(),
+                            futhark_new_i64_1d(context.get(), depth_tree.getInstrOffsets(), depth_tree.maxNodes()));
+
         UniqueFPtr<futhark_u32_1d, futhark_free_u32_1d> instr_fut(context.get());
         UniqueFPtr<futhark_u32_1d, futhark_free_u32_1d> rd_fut(context.get());
         UniqueFPtr<futhark_u32_1d, futhark_free_u32_1d> rs1_fut(context.get());
         UniqueFPtr<futhark_u32_1d, futhark_free_u32_1d> rs2_fut(context.get());
         if(!err)
-            err = futhark_entry_main(context.get(), &instr_fut, &rd_fut, &rs1_fut, &rs2_fut, gpu_tree.get(), 2);
+            err = futhark_entry_main(context.get(), &instr_fut, &rd_fut, &rs1_fut, &rs2_fut, gpu_tree.get(), instr_offsets.get());
         if (!err)
             err = futhark_context_sync(context.get());
 
@@ -286,7 +289,7 @@ int main(int argc, const char* argv[]) {
             return EXIT_FAILURE;
         }
         for(size_t i = 0; i < num_values; ++i) {
-            std::cout << i << " = " << std::bitset<32>(instr[i]) << " " << rd[i] << " " << rs1[i] << " " << rs2[i] << std::endl;
+            std::cout << i << "\t= " << std::bitset<32>(instr[i]) << " " << rd[i] << " " << rs1[i] << " " << rs2[i] << std::endl;
         }
 
         if (opts.profile) {

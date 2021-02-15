@@ -105,7 +105,35 @@ let get_node_instr(node: Node, instr_no: u32) : Instr =
             rs2 = 0
         }
 
-let compile_node [tree_size] (tree: Tree[tree_size]) (node_index: i64) : [2]Instr =
-    let node : Node = tree.nodes[node_index]
+let compile_node [tree_size] (tree: Tree[tree_size]) (instr_offset: [tree_size]i64) (node_index: i64) =
+    let node = tree.nodes[node_index] in
+    let node_instr = instr_offset[node_index] in
+        [
+            (node_instr, get_node_instr(node, 0)),
+            (-1, get_node_instr(node, 1)) --TODO, get second instr offset
+        ]
+
+let EMPTY_INSTR : Instr = {
+    instr = 0,
+    rd = 0,
+    rs1 = 0,
+    rs2 = 0
+}
+
+let check_idx_node_depth [tree_size] (tree: Tree[tree_size]) (depth: u32) (i: i64) =
+    is_level tree.nodes[i] depth
+
+let compile_tree [tree_size] (tree: Tree[tree_size]) (instr_offset: [tree_size]i64) =
+    let idx_array = 0..<tree_size
+    let initial_instr = replicate tree_size EMPTY_INSTR in
+    let loop_result =
+        loop data = initial_instr for i < i64.u32 tree.max_depth do
+            let (idx, instrs) =
+                filter (check_idx_node_depth tree (tree.max_depth-(u32.i64 i-1))) idx_array |>
+                map (compile_node tree instr_offset) |>
+                flatten |>
+                unzip2
+            in
+            scatter data idx instrs
     in
-        [get_node_instr(node, 0), get_node_instr(node, 1)]
+        loop_result

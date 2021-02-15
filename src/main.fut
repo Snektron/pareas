@@ -2,7 +2,7 @@ import "tree"
 import "datatypes"
 import "instr"
 
-let MAX_NODES : i64 = 1024
+let MAX_NODES : i64 = 32
 
 let make_node_type (node_type: u8) : NodeType =
     match node_type
@@ -73,6 +73,5 @@ entry make_tree (max_depth: u32) (node_types: [MAX_NODES]u8) (data_types: [MAX_N
 let split_instr (instr: Instr) =
     (instr.instr, instr.rd, instr.rs1, instr.rs2)
 
-entry main (tree: Tree[MAX_NODES]) (instr_idx: i64) =
-    let instr = compile_node tree instr_idx in
-    map split_instr instr |> unzip4
+entry main (tree: Tree[MAX_NODES]) (instr_offset: [MAX_NODES]i64) =
+    compile_tree tree instr_offset |> map split_instr |> unzip4

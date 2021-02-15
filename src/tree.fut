@@ -55,13 +55,5 @@ type Tree [tree_size] = {
     max_depth: u32 --Tree depth
 }
 
---Type definition for the values of the nodes
-type NodeValue = u32 --Temporary type
-
---Allocates a tree of a given size
-let alloc_tree (tree_size: i64) =
-    let default_node : Node = {node_type = #invalid, resulting_type = #invalid, parent = 0, depth = 0}
-    in {
-        nodes = replicate (tree_size) default_node,
-        max_depth = 0u32
-    }
+let is_level (n : Node) (depth: u32) =
+    n.depth == depth
