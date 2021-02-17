@@ -45,21 +45,13 @@ module parser (g: grammar) = {
         -- Early return if there is an error
         in if !bracket_refs_valid then false else
         -- Extract the stack changes from the grammar
-        let brackets =
-            pack_nonempty_strings
-                g.stack_change_table
-                (map (g.stack_change_offset.to_i64) offsets)
-                (map (g.stack_change_offset.to_i64) lens)
-        -- Early return if the amount of brackets isn't even
-        in if (length brackets) % 2 != 0 then false else
-        -- Build the bracket match array
-        -- TODO: If we only aim to check whether brackets match below function
-        -- could probably be optimized
-        let bmatch = argpair_brackets (map is_open_bracket brackets)
-        -- Finally, check if brackets match up
-        in all
-            (\(i, j) -> is_bracket_pair brackets[i64.u32 i] brackets[i64.u32 j])
-            bmatch
+        pack_nonempty_strings
+            g.stack_change_table
+            (map (g.stack_change_offset.to_i64) offsets)
+            (map (g.stack_change_offset.to_i64) lens)
+        |> check_brackets
+            is_open_bracket
+            is_bracket_pair
 
     -- For now expected to include soi and eoi
     -- Input is expected to be `check`ed at this point. If its not valid according to `check`,

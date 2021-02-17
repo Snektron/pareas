@@ -10,7 +10,7 @@ data = bytearray()
 def gen(depth):
     action = random.randint(0, 5)
 
-    if depth >= 40 or (depth >= 10 and action == 0): # a
+    if depth >= 20 or (depth >= 10 and action == 0): # a
         data.append(ord('a'))
     elif action <= 3: # plus
         gen(depth + 1)
