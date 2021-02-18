@@ -148,23 +148,23 @@ namespace {
     }
 
     void Renderer::render_token_type() {
-        auto all_terminals = std::unordered_set<const std::string*>();
+        auto all_terminals = std::unordered_set<std::string>();
 
         for (const auto& prod : this->g.productions) {
             for (const auto& sym : prod.rhs) {
                 if (sym.is_terminal)
-                    all_terminals.insert(&sym.name);
+                    all_terminals.insert(sym.name);
             }
         }
 
         fmt::print(this->out, "type token = ");
         bool first = true;
-        for (const auto* term : all_terminals) {
+        for (const auto& term : all_terminals) {
             if (first)
                 first = false;
             else
                 fmt::print(this->out, " | ");
-            fmt::print(this->out, "#{}", *term);
+            fmt::print(this->out, "#{}", term);
         }
         fmt::print(this->out, "\n");
     }

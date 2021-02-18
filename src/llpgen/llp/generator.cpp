@@ -223,22 +223,28 @@ namespace llp {
         assert(!x.is_null());
         assert(!v.is_null());
 
+        auto x_delta = std::vector<Symbol>();
+        x_delta.push_back(x);
+        x_delta.insert(x_delta.end(), delta.begin(), delta.end());
+
         auto gamma = std::vector<Symbol>();
-        if (x.is_terminal) {
-            gamma.push_back(x.as_terminal());
-            return gamma;
-        }
+        for (const auto& sym : x_delta) {
+            gamma.push_back(sym);
+            if (sym.is_terminal) {
+                assert(sym.as_terminal() == v);
+                return gamma;
+            }
 
-        gamma.push_back(x);
-        auto nt = x.as_non_terminal();
+            auto nt = sym.as_non_terminal();
 
-        const auto& first = this->tsf->first(nt);
-        if (!first.contains(v)) {
+            const auto first = this->tsf->first(nt);
+            if (first.contains(v)) {
+                return gamma;
+            }
+
             assert(first.contains(Terminal::null()));
-            assert(this->tsf->compute_first(delta).contains(v));
-            gamma.push_back(v);
         }
 
-        return gamma;
+        assert(false);
     }
 }
