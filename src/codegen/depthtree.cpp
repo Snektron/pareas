@@ -12,12 +12,14 @@ DepthTree::DepthTree(size_t max_nodes, ASTNode* node) : max_nodes(max_nodes), ma
     this->resulting_types = new uint8_t[max_nodes];
     this->parents = new uint32_t[max_nodes];
     this->depth = new uint32_t[max_nodes];
+    this->child_idx = new uint32_t[max_nodes];
     this->instr_offsets = new int64_t[max_nodes];
 
     std::memset(this->node_types, 0, sizeof(uint8_t) * max_nodes);
     std::memset(this->resulting_types, 0, sizeof(uint8_t) * max_nodes);
     std::memset(this->parents, -1, sizeof(uint32_t) * max_nodes);
     std::memset(this->depth, -1, sizeof(uint32_t) * max_nodes);
+    std::memset(this->child_idx, -1, sizeof(uint32_t) * max_nodes);
     std::memset(this->instr_offsets, -1, sizeof(int64_t) * max_nodes);
 
     this->construct(node);
@@ -30,33 +32,36 @@ DepthTree::~DepthTree() {
     delete[] this->depth;
 }
 
-void DepthTree::setElement(size_t idx, ASTNode* node, size_t parent, size_t depth) {
+void DepthTree::setElement(size_t idx, ASTNode* node, size_t parent, size_t depth, size_t child_idx) {
     this->node_types[idx] = static_cast<uint8_t>(node->getType());
     this->resulting_types[idx] = static_cast<uint8_t>(node->getResultingType());
     this->parents[idx] = parent;
     this->depth[idx] = depth;
+    this->child_idx[idx] = child_idx;
 
     if(this->max_depth < depth)
         this->max_depth = depth;
 }
 
 void DepthTree::construct(ASTNode* node) {
-    std::queue<std::tuple<ASTNode*, size_t, size_t>> search_queue;
-    search_queue.push(std::tuple<ASTNode*, size_t, size_t>(node, std::numeric_limits<size_t>::max(), 0));
+    std::queue<std::tuple<ASTNode*, size_t, size_t, size_t>> search_queue;
+    search_queue.push(std::tuple<ASTNode*, size_t, size_t, size_t>(node, std::numeric_limits<size_t>::max(), 0, std::numeric_limits<size_t>::max()));
 
     std::unordered_map<ASTNode*, size_t> idx_map;
 
     size_t i = 0;
     while(!search_queue.empty()) {
-        auto [n, parent, depth] = search_queue.front();
+        auto [n, parent, depth, child_idx] = search_queue.front();
         search_queue.pop();
 
         idx_map[n] = i;
 
-        this->setElement(i, n, parent, depth);
+        this->setElement(i, n, parent, depth, child_idx);
 
-        for(ASTNode* c : n->getChildren()) {
-            search_queue.push(std::tuple<ASTNode*, size_t, size_t>(c, i, depth + 1));
+        const std::vector<ASTNode*>& children = n->getChildren();
+        for(size_t j = 0; j < children.size(); ++j) {
+            ASTNode* c = children[j];
+            search_queue.push(std::tuple<ASTNode*, size_t, size_t, size_t>(c, i, depth + 1, j));
         }
 
         ++i;

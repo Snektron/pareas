@@ -14,13 +14,14 @@ class DepthTree {
         uint8_t* resulting_types;
         uint32_t* parents;
         uint32_t* depth;
+        uint32_t* child_idx;
         int64_t* instr_offsets;
         size_t max_nodes;
         size_t filled_nodes;
         size_t max_depth;
 
         void construct(ASTNode*);
-        void setElement(size_t, ASTNode*, size_t, size_t);
+        void setElement(size_t, ASTNode*, size_t, size_t, size_t);
         void markOffset(ASTNode*, const std::unordered_map<ASTNode*, size_t>&, size_t&);
     public:
         DepthTree(size_t elems, ASTNode*);
@@ -39,6 +40,9 @@ class DepthTree {
         }
         inline const uint32_t* getDepth() const {
             return this->depth;
+        }
+        inline const uint32_t* getChildren() const {
+            return this->child_idx;
         }
         inline const int64_t* getInstrOffsets() const {
             return this->instr_offsets;

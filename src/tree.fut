@@ -46,7 +46,8 @@ type Node = {
     node_type: NodeType,
     resulting_type: DataType,
     parent: u32,
-    depth: u32
+    depth: u32,
+    child_idx: u32
 }
 
 --Tree definition

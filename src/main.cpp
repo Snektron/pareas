@@ -247,17 +247,20 @@ int main(int argc, const char* argv[]) {
                             futhark_new_u32_1d(context.get(), depth_tree.getParents(), depth_tree.maxNodes()));
         auto depth = UniqueFPtr<futhark_u32_1d, futhark_free_u32_1d>(context.get(),
                             futhark_new_u32_1d(context.get(), depth_tree.getDepth(), depth_tree.maxNodes()));
+        auto child_idx = UniqueFPtr<futhark_u32_1d, futhark_free_u32_1d>(context.get(),
+                            futhark_new_u32_1d(context.get(), depth_tree.getChildren(), depth_tree.maxNodes()));
 
         UniqueFPtr<futhark_opaque_Tree, futhark_free_opaque_Tree> gpu_tree(context.get());
-        int err = futhark_entry_make_tree(context.get(), &gpu_tree, depth_tree.maxDepth(), node_types.get(), resulting_types.get(), parents.get(), depth.get());
+        int err = futhark_entry_make_tree(context.get(), &gpu_tree, depth_tree.maxDepth(), node_types.get(), resulting_types.get(),
+                                            parents.get(), depth.get(), child_idx.get());
 
         auto instr_offsets = UniqueFPtr<futhark_i64_1d, futhark_free_i64_1d>(context.get(),
                             futhark_new_i64_1d(context.get(), depth_tree.getInstrOffsets(), depth_tree.maxNodes()));
 
         UniqueFPtr<futhark_u32_1d, futhark_free_u32_1d> instr_fut(context.get());
-        UniqueFPtr<futhark_u32_1d, futhark_free_u32_1d> rd_fut(context.get());
-        UniqueFPtr<futhark_u32_1d, futhark_free_u32_1d> rs1_fut(context.get());
-        UniqueFPtr<futhark_u32_1d, futhark_free_u32_1d> rs2_fut(context.get());
+        UniqueFPtr<futhark_i64_1d, futhark_free_i64_1d> rd_fut(context.get());
+        UniqueFPtr<futhark_i64_1d, futhark_free_i64_1d> rs1_fut(context.get());
+        UniqueFPtr<futhark_i64_1d, futhark_free_i64_1d> rs2_fut(context.get());
         if(!err)
             err = futhark_entry_main(context.get(), &instr_fut, &rd_fut, &rs1_fut, &rs2_fut, gpu_tree.get(), instr_offsets.get());
         if (!err)
@@ -272,16 +275,16 @@ int main(int argc, const char* argv[]) {
         size_t num_values = *futhark_shape_u32_1d(context.get(), instr_fut.get());
 
         std::unique_ptr<uint32_t[]> instr(new uint32_t[num_values]);
-        std::unique_ptr<uint32_t[]> rd(new uint32_t[num_values]);
-        std::unique_ptr<uint32_t[]> rs1(new uint32_t[num_values]);
-        std::unique_ptr<uint32_t[]> rs2(new uint32_t[num_values]);
+        std::unique_ptr<int64_t[]> rd(new int64_t[num_values]);
+        std::unique_ptr<int64_t[]> rs1(new int64_t[num_values]);
+        std::unique_ptr<int64_t[]> rs2(new int64_t[num_values]);
         err = futhark_values_u32_1d(context.get(), instr_fut.get(), instr.get());
         if(!err)
-            err = futhark_values_u32_1d(context.get(), rd_fut.get(), rd.get());
+            err = futhark_values_i64_1d(context.get(), rd_fut.get(), rd.get());
         if(!err)
-            err = futhark_values_u32_1d(context.get(), rs1_fut.get(), rs1.get());
+            err = futhark_values_i64_1d(context.get(), rs1_fut.get(), rs1.get());
         if(!err)
-            err = futhark_values_u32_1d(context.get(), rs2_fut.get(), rs2.get());
+            err = futhark_values_i64_1d(context.get(), rs2_fut.get(), rs2.get());
 
         if(err) {
             auto err = MallocPtr<char>(futhark_context_get_error(context.get()));

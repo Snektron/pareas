@@ -56,17 +56,19 @@ let make_data_type (data_type: u8) : DataType =
     case 5 -> #float_ref
     case _ -> #invalid
 
-let make_node (node_type: u8) (data_type: u8) (parent: u32) (depth: u32) : Node =
+let make_node (node_type: u8) (data_type: u8) (parent: u32) (depth: u32) (child_idx: u32) : Node =
     {
         node_type = make_node_type node_type,
         resulting_type = make_data_type data_type,
         parent = parent,
-        depth = depth
+        depth = depth,
+        child_idx = child_idx
     }
 
-entry make_tree (max_depth: u32) (node_types: [MAX_NODES]u8) (data_types: [MAX_NODES]u8) (parents: [MAX_NODES]u32) (depth: [MAX_NODES]u32) : Tree[MAX_NODES] =
+entry make_tree (max_depth: u32) (node_types: [MAX_NODES]u8) (data_types: [MAX_NODES]u8) (parents: [MAX_NODES]u32)
+                    (depth: [MAX_NODES]u32) (child_idx: [MAX_NODES]u32): Tree[MAX_NODES] =
     {
-        nodes = map4 make_node node_types data_types parents depth,
+        nodes = map5 make_node node_types data_types parents depth child_idx,
         max_depth = max_depth
     }
 
