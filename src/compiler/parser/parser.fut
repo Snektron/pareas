@@ -49,7 +49,8 @@ module parser (g: grammar) = {
             g.stack_change_table
             (map (g.stack_change_offset.to_i64) offsets)
             (map (g.stack_change_offset.to_i64) lens)
-        |> check_brackets
+        -- Check whether the stack changes match up
+        |> check_brackets_bt -- or use check_brackets_radix
             is_open_bracket
             is_bracket_pair
 
