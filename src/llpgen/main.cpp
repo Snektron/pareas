@@ -5,7 +5,6 @@
 #include "pareas/llpgen/ll/generator.hpp"
 #include "pareas/llpgen/llp/generator.hpp"
 #include "pareas/llpgen/llp/render.hpp"
-#include "pareas/llpgen/llp/test_parser.hpp"
 
 #include <fmt/format.h>
 #include <fmt/ostream.h>
