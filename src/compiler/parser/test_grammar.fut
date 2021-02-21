@@ -1,39 +1,38 @@
-type production = #start | #expr | #sum | #sum_end | #literal | #brackets
-type token = #rbracket | #lbracket | #a | #plus | #eoi | #soi
+module production = u8
+let production_brackets: production.t = 5
+let production_literal: production.t = 4
+let production_sum_end: production.t = 3
+let production_sum: production.t = 2
+let production_expr: production.t = 1
+let production_start: production.t = 0
+module token = u8
+let num_tokens: i64 = 6
+let token_rbracket: token.t = 5
+let token_lbracket: token.t = 4
+let token_a: token.t = 3
+let token_plus: token.t = 2
+let token_eoi: token.t = 1
+let token_soi: token.t = 0
 module bracket = u8
 module stack_change_offset = i8
 let stack_change_table_size: i64 = 30
-let stack_change_table = [2, 0, 5, 3, 2, 0, 2, 3, 7, 2, 3, 7, 8, 3, 1, 9, 6, 8, 3, 2, 4, 6, 1, 9, 2, 4, 5, 3, 1, 9] :> [stack_change_table_size]u8
-let get_stack_change (a: token) (b: token): (i8, i8) =
-    match (a, b)
-    case (#soi, #lbracket) -> (26, 4)
-    case (#rbracket, #eoi) -> (24, 2)
-    case (#plus, #lbracket) -> (21, 3)
-    case (#a, #eoi) -> (19, 2)
-    case (#lbracket, #a) -> (17, 2)
-    case (#plus, #a) -> (16, 1)
-    case (#lbracket, #lbracket) -> (12, 4)
-    case (#rbracket, #plus) -> (9, 3)
-    case (#a, #plus) -> (6, 3)
-    case (#a, #rbracket) -> (4, 2)
-    case (#soi, #a) -> (2, 2)
-    case (#rbracket, #rbracket) -> (0, 2)
-    case _ -> (-1, -1)
+let stack_change_table = [0, 3, 2, 4, 0, 3, 7, 1, 8, 2, 3, 9, 8, 7, 1, 2, 3, 9, 2, 6, 2, 4, 5, 3, 2, 6, 5, 3, 7, 1] :> [stack_change_table_size]u8
+let stack_change_refs = [
+    [(-1, -1), (-1, -1), (-1, -1), (22, 2), (26, 4), (-1, -1)],
+    [(-1, -1), (-1, -1), (-1, -1), (-1, -1), (-1, -1), (-1, -1)],
+    [(-1, -1), (-1, -1), (-1, -1), (8, 1), (12, 3), (-1, -1)],
+    [(-1, -1), (2, 2), (15, 3), (-1, -1), (-1, -1), (18, 2)],
+    [(-1, -1), (-1, -1), (-1, -1), (0, 2), (4, 4), (-1, -1)],
+    [(-1, -1), (20, 2), (9, 3), (-1, -1), (-1, -1), (24, 2)]
+] :> [num_tokens][num_tokens](i8, i8)
 module parse_offset = i8
 let parse_table_size: i64 = 18
-let parse_table = [#sum_end, #start, #expr, #literal, #sum_end, #sum, #sum, #expr, #brackets, #literal, #expr, #literal, #sum_end, #brackets, #sum_end, #start, #expr, #brackets] :> [parse_table_size]production
-let get_parse (a: token) (b: token): (i8, i8) =
-    match (a, b)
-    case (#soi, #lbracket) -> (15, 3)
-    case (#rbracket, #eoi) -> (14, 1)
-    case (#plus, #lbracket) -> (13, 1)
-    case (#a, #eoi) -> (12, 1)
-    case (#lbracket, #a) -> (10, 2)
-    case (#plus, #a) -> (9, 1)
-    case (#lbracket, #lbracket) -> (7, 2)
-    case (#rbracket, #plus) -> (6, 1)
-    case (#a, #plus) -> (5, 1)
-    case (#a, #rbracket) -> (4, 1)
-    case (#soi, #a) -> (1, 3)
-    case (#rbracket, #rbracket) -> (0, 1)
-    case _ -> (-1, -1)
+let parse_table = [production_expr, production_literal, production_sum_end, production_expr, production_brackets, production_literal, production_sum, production_brackets, production_sum, production_sum_end, production_sum_end, production_start, production_expr, production_literal, production_sum_end, production_start, production_expr, production_brackets] :> [parse_table_size]production.t
+let parse_refs = [
+    [(-1, -1), (-1, -1), (-1, -1), (11, 3), (15, 3), (-1, -1)],
+    [(-1, -1), (-1, -1), (-1, -1), (-1, -1), (-1, -1), (-1, -1)],
+    [(-1, -1), (-1, -1), (-1, -1), (5, 1), (7, 1), (-1, -1)],
+    [(-1, -1), (2, 1), (8, 1), (-1, -1), (-1, -1), (9, 1)],
+    [(-1, -1), (-1, -1), (-1, -1), (0, 2), (3, 2), (-1, -1)],
+    [(-1, -1), (10, 1), (6, 1), (-1, -1), (-1, -1), (14, 1)]
+] :> [num_tokens][num_tokens](i8, i8)

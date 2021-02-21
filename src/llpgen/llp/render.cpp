@@ -8,6 +8,7 @@
 #include <unordered_set>
 #include <algorithm>
 #include <iterator>
+#include <cstdint>
 #include <cassert>
 
 namespace {
@@ -22,21 +23,9 @@ namespace {
     }
 
     struct String {
-        size_t offset;
-        size_t size;
+        int32_t offset;
+        int32_t size;
     };
-
-    std::ostream& operator<<(std::ostream& os, const String& str) {
-        return os << "(" << str.offset << ", " << str.size << ")";
-    }
-
-    struct Enum {
-        std::string name;
-    };
-
-    std::ostream& operator<<(std::ostream& os, const Enum& st) {
-        return os << "#" << st.name;
-    }
 
     template <typename T>
     struct StringTable {
@@ -46,24 +35,34 @@ namespace {
         template <typename F>
         StringTable(const ParsingTable& pt, F get_string);
 
-        void render(std::ostream& out, const std::string& base_name, const std::string& table_type);
+        void render(
+            std::ostream& out,
+            const std::string& base_name,
+            const std::string& table_type,
+            const std::unordered_map<Terminal, size_t>& token_mapping
+        );
     };
 
     template <typename T>
     template <typename F>
     StringTable<T>::StringTable(const ParsingTable& pt, F get_string) {
         // Simple implementation for now
-        size_t offset = 0;
+        int32_t offset = 0;
         for (const auto& [ap, entry] : pt.table) {
             auto string = get_string(entry);
             this->superstring.insert(superstring.end(), string.begin(), string.end());
-            this->strings[ap] = {offset, string.size()};
+            this->strings[ap] = {offset, static_cast<int32_t>(string.size())};
             offset += string.size();
         }
     }
 
     template <typename T>
-    void StringTable<T>::render(std::ostream& out, const std::string& base_name, const std::string& table_type) {
+    void StringTable<T>::render(
+        std::ostream& out,
+        const std::string& base_name,
+        const std::string& table_type,
+        const std::unordered_map<Terminal, size_t>& token_mapping
+    ) {
         // Multiply by 2 to account for the sign bit
         size_t offset_bits = int_bit_width(2 * this->superstring.size());
 
@@ -77,19 +76,47 @@ namespace {
         }
         fmt::print(out, "] :> [{}_table_size]{}\n", base_name, table_type);
 
-        fmt::print(out, "let get_{0} (a: token) (b: token): (i{1}, i{1}) =\n", base_name, offset_bits);
+        size_t n_tokens = token_mapping.size();
+        auto stringrefs = std::vector<std::vector<String>>(
+            n_tokens,
+            std::vector<String>(n_tokens, {-1, -1})
+        );
 
-        fmt::print(out, "    match (a, b)\n");
         for (const auto& [ap, string] : this->strings) {
-            fmt::print(out, "    case (#{}, #{}) -> {}\n", ap.x, ap.y, string);
+            auto i = token_mapping.find(ap.x)->second;
+            auto j = token_mapping.find(ap.y)->second;
+            stringrefs[i][j] = string;
         }
-        fmt::print(out, "    case _ -> (-1, -1)\n");
+
+        fmt::print(out, "let {0}_refs = [\n    ", base_name);
+        bool outer_first = true;
+        for (const auto& v : stringrefs) {
+            if (outer_first)
+                outer_first = false;
+            else
+                fmt::print(out, ",\n    ");
+
+            fmt::print(out, "[");
+            bool inner_first = true;
+            for (const auto& [offset, size] : v) {
+                if (inner_first)
+                    inner_first = false;
+                else
+                    fmt::print(out, ", ");
+                fmt::print(out, "({}, {})", offset, size);
+            }
+            fmt::print(out, "]");
+        }
+
+        fmt::print(out, "\n] :> [num_tokens][num_tokens](i{0}, i{0})\n", offset_bits);
     }
 
     struct Renderer {
         std::ostream& out;
         const Grammar& g;
         const ParsingTable& pt;
+        std::unordered_map<Terminal, size_t> token_mapping;
+        std::unordered_map<std::string, size_t> prod_mapping;
         std::unordered_map<Symbol, size_t> symbol_mapping;
 
         Renderer(std::ostream& out, const Grammar& g, const ParsingTable& pt);
@@ -103,19 +130,19 @@ namespace {
     Renderer::Renderer(std::ostream& out, const Grammar& g, const ParsingTable& pt):
         out(out), g(g), pt(pt) {
 
-        auto add_sym = [&](const Symbol& sym) {
-            symbol_mapping.insert({sym, symbol_mapping.size()});
-        };
-
-        auto add_entry = [&](const llp::ParsingTable::Entry& entry) {
-            for (const auto& sym : entry.initial_stack)
-                add_sym(sym);
-            for (const auto& sym : entry.final_stack)
-                add_sym(sym);
-        };
-
         for (const auto& [ap, entry] : pt.table) {
-            add_entry(entry);
+            for (const auto& sym : entry.initial_stack)
+                this->symbol_mapping.insert({sym, this->symbol_mapping.size()});
+            for (const auto& sym : entry.final_stack)
+                this->symbol_mapping.insert({sym, this->symbol_mapping.size()});
+        }
+
+        for (const auto& prod : g.productions) {
+            this->prod_mapping.insert({prod.tag, this->prod_mapping.size()});
+            for (const auto& sym : prod.rhs) {
+                if (sym.is_terminal)
+                    this->token_mapping.insert({sym.as_terminal(), this->token_mapping.size()});
+            }
         }
     }
 
@@ -129,38 +156,22 @@ namespace {
     }
 
     void Renderer::render_production_type() {
-        fmt::print(this->out, "type production = ");
-        bool first = true;
-        for (const auto& prod : this->g.productions) {
-            if (first)
-                first = false;
-            else
-                fmt::print(this->out, " | ");
-            fmt::print(this->out, "#{}", prod.tag);
+        auto bits = int_bit_width(prod_mapping.size());
+        fmt::print(this->out, "module production = u{}\n", bits);
+
+        for (const auto& [tag, id] : prod_mapping) {
+            fmt::print(this->out, "let production_{}: production.t = {}\n", tag, id);
         }
-        fmt::print(this->out, "\n");
     }
 
     void Renderer::render_token_type() {
-        auto all_terminals = std::unordered_set<std::string>();
+        auto bits = int_bit_width(this->token_mapping.size());
+        fmt::print(this->out, "module token = u{}\n", bits);
+        fmt::print(this->out, "let num_tokens: i64 = {}\n", this->token_mapping.size());
 
-        for (const auto& prod : this->g.productions) {
-            for (const auto& sym : prod.rhs) {
-                if (sym.is_terminal)
-                    all_terminals.insert(sym.name);
-            }
+        for (const auto& [token, id] : this->token_mapping) {
+            fmt::print(this->out, "let token_{}: token.t = {}\n", token, id);
         }
-
-        fmt::print(this->out, "type token = ");
-        bool first = true;
-        for (const auto& term : all_terminals) {
-            if (first)
-                first = false;
-            else
-                fmt::print(this->out, " | ");
-            fmt::print(this->out, "#{}", term);
-        }
-        fmt::print(this->out, "\n");
     }
 
     void Renderer::render_stack_change_table() {
@@ -190,20 +201,20 @@ namespace {
 
         size_t bracket_bits = int_bit_width(2 * this->symbol_mapping.size());
         fmt::print(this->out, "module bracket = u{}\n", bracket_bits);
-        strtab.render(this->out, "stack_change", fmt::format("u{}", bracket_bits));
+        strtab.render(this->out, "stack_change", fmt::format("u{}", bracket_bits), this->token_mapping);
     }
 
     void Renderer::render_parse_table() {
-           auto strtab = StringTable<Enum>(
+           auto strtab = StringTable<std::string>(
             this->pt,
             [&](const ParsingTable::Entry& entry) {
-                auto result = std::vector<Enum>();
+                auto result = std::vector<std::string>();
                 for (const auto* prod : entry.productions)
-                    result.push_back(Enum{prod->tag});
+                    result.push_back(fmt::format("production_{}", prod->tag));
                 return result;
             }
         );
-        strtab.render(this->out, "parse", "production");
+        strtab.render(this->out, "parse", "production.t", this->token_mapping);
     }
 }
 
