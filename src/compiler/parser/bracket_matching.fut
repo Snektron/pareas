@@ -28,19 +28,12 @@ let check_brackets_bt [n] 'b (is_open: b -> bool) (is_pair: b -> b -> bool) (bra
     -- Compute a bit mask of which brackets are open brackets
     let opens = map is_open brackets
     -- Compute depths
-    -- In order to transform the bracket matching problem to a previous-smaller-value problem,
-    -- each left parenthesis is mapped to an even value one less than the right parenthesis,
-    -- which are all mapped to odd values. This way, the previous value smaller than right brackets
-    -- will always be the left bracket, _iff_ the brackets are balanced.
-    let depths =
-        compute_depths opens
-        -- Perform the mapping
-        |> map2 (\b d -> 2 * d + if b then 0 else 1) opens
+    let depths = compute_depths opens
     -- Calculate the minimum depth to verify that the depth doesn't go negative.
     let min_depth = reduce (i32.min) 0 depths
     -- Early return if the depth does negative or the brackets aren't balanced regarding only
     -- opens and closes.
-    in if min_depth < 0 || last depths != 1 then false else
+    in if min_depth < 0 || last depths != 0 then false else
     -- Construct the binary tree
     -- TODO: This constructs a full binary tree, and copies the leaves (the depths) also in it.
     -- That could probably be improved memory-wise.
@@ -48,7 +41,7 @@ let check_brackets_bt [n] 'b (is_open: b -> bool) (is_pair: b -> b -> bool) (bra
     in map3
         -- For each right bracket, find the left bracket and check whether they form a pair
         -- Skip looking up the mate for left brackets as well
-        (\i o b -> o || let m = bt.find_psv tree i in m >= 0 && is_pair brackets[m] b)
+        (\i o b -> o || let m = bt.find_psev tree i in m >= 0 && is_pair brackets[m] b)
         (iota n |> map i32.i64)
         opens
         brackets

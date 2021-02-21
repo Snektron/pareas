@@ -78,10 +78,10 @@ let construct [n] (op: i32 -> i32 -> i32) (ne: i32) (xs: [n]i32): []i32 =
             in (level - 1, tree)
     in tree
 
--- Given a binary tree and a leaf-index, find the leaf-index of the previous
--- value smaller than the value of the leaf. If no such value is present, this
--- function returns -1.
-let find_psv [n] (tree: [n]i32) (leaf: i32): i32 =
+-- Generic function to find the a previous value according to some relational operator.
+-- If no such value exists, returns -1.
+-- This function is intended for (<) and (<=) in other functions.
+local let find_pv [n] (op: i32 -> i32 -> bool) (tree: [n]i32) (leaf: i32): i32 =
     let h = height_from_tree (i32.i64 n)
     -- Compute the offset of the leaves within the tree
     let base = level_offset h
@@ -98,7 +98,7 @@ let find_psv [n] (tree: [n]i32) (leaf: i32): i32 =
     -- 3[0]5 6[1]4 7 2 -- start at 1, the target is 0.
     let index =
         iterate_while
-            (\i -> i != 0 && (is_left i || tree[sibling i] >= value))
+            (\i -> i != 0 && (is_left i || !(tree[sibling i] `op` value)))
             parent
             start
     -- If we reach the root of the tree, there is no match. Early return in that case.
@@ -110,9 +110,21 @@ let find_psv [n] (tree: [n]i32) (leaf: i32): i32 =
         iterate_while
             -- Iterate while the index is not a leaf
             (< base)
-            (\i -> if tree[right i] < value then right i else left i)
+            (\i -> if tree[right i] `op` value then right i else left i)
             -- Start at the right child of the common ancestor - the sibling of the
             -- left child.
             (sibling index)
     -- The index is absolute, so compute the leaf-index.
     in index - base
+
+-- Given a binary tree and a leaf-index, find the leaf-index of the previous
+-- value smaller than the value of the leaf. If no such value is present, this
+-- function returns -1.
+let find_psv [n] (tree: [n]i32) (leaf: i32): i32 =
+    find_pv (<) tree leaf
+
+-- Given a binary tree and a leaf-index, find the leaf-index of the previous
+-- value smaller than or equal to the value of the leaf. If no such value is present,
+-- this function returns -1.
+let find_psev [n] (tree: [n]i32) (leaf: i32): i32 =
+    find_pv (<=) tree leaf
