@@ -1,5 +1,6 @@
 import "string_packing"
 import "bracket_matching"
+import "../util"
 
 module type grammar = {
     type token
@@ -9,13 +10,13 @@ module type grammar = {
     module stack_change_offset: integral
     val stack_change_table_size: i64
     val stack_change_table: [stack_change_table_size]bracket.t
-    val initial_stack_change: (stack_change_offset.t, stack_change_offset.t)
+    -- val initial_stack_change: (stack_change_offset.t, stack_change_offset.t)
     val get_stack_change: (a: token) -> (b: token) -> (stack_change_offset.t, stack_change_offset.t)
 
     module parse_offset: integral
     val parse_table_size: i64
     val parse_table: [parse_table_size]production
-    val initial_parse: (parse_offset.t, parse_offset.t)
+    -- val initial_parse: (parse_offset.t, parse_offset.t)
     val get_parse: (a: token) -> (b: token) -> (parse_offset.t, parse_offset.t)
 }
 
@@ -29,16 +30,10 @@ module parser (g: grammar) = {
     -- For now expected to include soi and eoi
     let check [n] (input: [n]g.token) =
         -- Evaluate the RBR/LBR functions for each pair of input tokens
-        -- RBR(a) and LBR(w^R) are pre-concatenated by the parser generator, and
-        -- the initial stack change is generated separately
+        -- RBR(a) and LBR(w^R) are pre-concatenated by the parser generator
         let (offsets, lens) =
-            map3
-                (\a b i -> if i == 0
-                    then g.initial_stack_change
-                    else g.get_stack_change a b)
-                (rotate (-1) input)
-                input
-                (iota n)
+            in_windows_of_pairs input
+            |> map (\(a, b) -> g.get_stack_change a b)
             |> unzip
         -- Check whether all the values are valid (not -1)
         let bracket_refs_valid = offsets |> map g.stack_change_offset.to_i64 |> all (>= 0)
@@ -59,13 +54,8 @@ module parser (g: grammar) = {
     -- this function might crash!
     let parse [n] (input: [n]g.token) =
         let (offsets, lens) =
-            map3
-                (\a b i -> if i == 0
-                    then g.initial_parse
-                    else g.get_parse a b)
-                (rotate (-1) input)
-                input
-                (iota n)
+            in_windows_of_pairs input
+            |> map (\(a, b) -> g.get_parse a b)
             |> unzip
         in pack_strings
             g.parse_table

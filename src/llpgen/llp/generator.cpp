@@ -74,18 +74,34 @@ namespace llp {
     ParsingTable Generator::build_parsing_table(const ll::ParsingTable& ll, const PSLSTable& psls) {
         auto llp = ParsingTable();
 
-        {
-            auto initial_stack = std::vector<Symbol>({this->g->start->lhs});
-            auto stack = initial_stack;
-            auto productions = ll.partial_parse(this->g->left_delim, stack);
-            llp.start = {initial_stack, stack, productions};
-        }
-
         for (const auto& [ap, entry] : psls.table) {
-            auto initial_stack = std::vector<Symbol>(entry.gamma.rbegin(), entry.gamma.rend());
-            auto stack = initial_stack;
-            auto productions = ll.partial_parse(ap.y, stack);
-            llp.table[ap] = {initial_stack, stack, productions};
+            if (entry.prod == this->g->start) {
+                assert(ap.x == this->g->left_delim);
+                // assert(entry.gamma.size() == 1 && entry.gamma[0] == this->g->left_delim);
+                // In order to make the LLP table a bit more concise, we do a hack here:
+                // Instead of generating the parse from the left delimiter, we generate
+                // it from the start rule. This way, what would otherwise need to be
+                // included in a separate `start` entry in the LLP table, is now merged
+                // with each of the entries which contains the left delimiter.
+                // In order to do this, we need to generate the stack after 2 symbols are
+                // parsed, ap.x (the left delimiter) and ap.y, starting at the start rule.
+                //
+                // We also need do a second hack here: When following the paper directly,
+                // during generation of the brackets the initial pop (of the S rule) is
+                // omitted. It would be harder to fix that up in the renderer when the above
+                // change is applied, so instead, we simply set the initial stack of any
+                // admissible pair with x = left delimiter to empty.
+                auto stack = std::vector<Symbol>({this->g->start->lhs});
+                auto prod1 = ll.partial_parse(ap.x, stack);
+                auto prod2 = ll.partial_parse(ap.y, stack);
+                prod1.insert(prod1.end(), prod2.begin(), prod2.end());
+                llp.table[ap] = {{}, stack, prod1};
+            } else {
+                auto initial_stack = std::vector<Symbol>(entry.gamma.rbegin(), entry.gamma.rend());
+                auto stack = initial_stack;
+                auto productions = ll.partial_parse(ap.y, stack);
+                llp.table[ap] = {initial_stack, stack, productions};
+            }
         }
 
         return llp;

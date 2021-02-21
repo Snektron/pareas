@@ -41,23 +41,19 @@ namespace {
     template <typename T>
     struct StringTable {
         std::vector<T> superstring;
-        String start;
         std::unordered_map<AdmissiblePair, String> strings;
 
-        template <typename F, typename G>
-        StringTable(const ParsingTable& pt, F get_start_string, G get_string);
+        template <typename F>
+        StringTable(const ParsingTable& pt, F get_string);
 
         void render(std::ostream& out, const std::string& base_name, const std::string& table_type);
     };
 
     template <typename T>
-    template <typename F, typename G>
-    StringTable<T>::StringTable(const ParsingTable& pt, F get_start_string, G get_string) {
+    template <typename F>
+    StringTable<T>::StringTable(const ParsingTable& pt, F get_string) {
         // Simple implementation for now
-        this->superstring = get_start_string(pt.start);
-        auto offset = this->superstring.size();
-        this->start = {0, offset};
-
+        size_t offset = 0;
         for (const auto& [ap, entry] : pt.table) {
             auto string = get_string(entry);
             this->superstring.insert(superstring.end(), string.begin(), string.end());
@@ -81,7 +77,6 @@ namespace {
         }
         fmt::print(out, "] :> [{}_table_size]{}\n", base_name, table_type);
 
-        fmt::print(out, "let initial_{0}: (i{1}, i{1}) = {2}\n", base_name, offset_bits, this->start);
         fmt::print(out, "let get_{0} (a: token) (b: token): (i{1}, i{1}) =\n", base_name, offset_bits);
 
         fmt::print(out, "    match (a, b)\n");
@@ -119,7 +114,6 @@ namespace {
                 add_sym(sym);
         };
 
-        add_entry(pt.start);
         for (const auto& [ap, entry] : pt.table) {
             add_entry(entry);
         }
@@ -188,11 +182,6 @@ namespace {
             this->pt,
             [&](const ParsingTable::Entry& entry) {
                 auto string = std::vector<size_t>();
-                insert_lbr(string, entry);
-                return string;
-            },
-            [&](const ParsingTable::Entry& entry) {
-                auto string = std::vector<size_t>();
                 insert_rbr(string, entry);
                 insert_lbr(string, entry);
                 return string;
@@ -205,14 +194,15 @@ namespace {
     }
 
     void Renderer::render_parse_table() {
-        auto get_tags = [&](const ParsingTable::Entry& entry) {
-            auto result = std::vector<Enum>();
-            for (const auto* prod : entry.productions)
-                result.push_back(Enum{prod->tag});
-            return result;
-        };
-
-        auto strtab = StringTable<Enum>(this->pt, get_tags, get_tags);
+           auto strtab = StringTable<Enum>(
+            this->pt,
+            [&](const ParsingTable::Entry& entry) {
+                auto result = std::vector<Enum>();
+                for (const auto* prod : entry.productions)
+                    result.push_back(Enum{prod->tag});
+                return result;
+            }
+        );
         strtab.render(this->out, "parse", "production");
     }
 }
