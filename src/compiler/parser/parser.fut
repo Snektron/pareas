@@ -10,13 +10,11 @@ module type grammar = {
     module stack_change_offset: integral
     val stack_change_table_size: i64
     val stack_change_table: [stack_change_table_size]bracket.t
-    -- val initial_stack_change: (stack_change_offset.t, stack_change_offset.t)
     val get_stack_change: (a: token) -> (b: token) -> (stack_change_offset.t, stack_change_offset.t)
 
     module parse_offset: integral
     val parse_table_size: i64
     val parse_table: [parse_table_size]production
-    -- val initial_parse: (parse_offset.t, parse_offset.t)
     val get_parse: (a: token) -> (b: token) -> (parse_offset.t, parse_offset.t)
 }
 
@@ -33,7 +31,7 @@ module parser (g: grammar) = {
         -- RBR(a) and LBR(w^R) are pre-concatenated by the parser generator
         let (offsets, lens) =
             in_windows_of_pairs input
-            |> map (\(a, b) -> g.get_stack_change a b)
+            |> map (uncurry g.get_stack_change)
             |> unzip
         -- Check whether all the values are valid (not -1)
         let bracket_refs_valid = offsets |> map g.stack_change_offset.to_i64 |> all (>= 0)
@@ -42,8 +40,8 @@ module parser (g: grammar) = {
         -- Extract the stack changes from the grammar
         pack_nonempty_strings
             g.stack_change_table
-            (map (g.stack_change_offset.to_i64) offsets)
-            (map (g.stack_change_offset.to_i64) lens)
+            (map g.stack_change_offset.to_i64 offsets)
+            (map g.stack_change_offset.to_i64 lens)
         -- Check whether the stack changes match up
         |> check_brackets_bt -- or use check_brackets_radix
             is_open_bracket
@@ -55,10 +53,10 @@ module parser (g: grammar) = {
     let parse [n] (input: [n]g.token) =
         let (offsets, lens) =
             in_windows_of_pairs input
-            |> map (\(a, b) -> g.get_parse a b)
+            |> map (uncurry g.get_parse)
             |> unzip
         in pack_strings
             g.parse_table
-            (map (g.parse_offset.to_i64) offsets)
-            (map (g.parse_offset.to_i64) lens)
+            (map g.parse_offset.to_i64 offsets)
+            (map g.parse_offset.to_i64 lens)
 }

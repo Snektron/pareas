@@ -29,11 +29,9 @@ let check_brackets_bt [n] 'b (is_open: b -> bool) (is_pair: b -> b -> bool) (bra
     let opens = map is_open brackets
     -- Compute depths
     let depths = compute_depths opens
-    -- Calculate the minimum depth to verify that the depth doesn't go negative.
-    let min_depth = reduce (i32.min) 0 depths
     -- Early return if the depth does negative or the brackets aren't balanced regarding only
     -- opens and closes.
-    in if min_depth < 0 || last depths != 0 then false else
+    in if any (< 0) depths || last depths != 0 then false else
     -- Construct the binary tree
     -- TODO: This constructs a full binary tree, and copies the leaves (the depths) also in it.
     -- That could probably be improved memory-wise.
@@ -57,12 +55,10 @@ let check_brackets_radix [n] 'b (is_open: b -> bool) (is_pair: b -> b -> bool) (
     if n % 2 != 0 then false else
     -- Compute nesting depth array of the brackets.
     let depths = compute_depths (map is_open brackets)
-    -- Compute depth bounds. The min depth is simply used as a check, and the max depth
-    -- will be used to bound the radix sort.
-    let min_depth = reduce (i32.min) 0 depths
+    -- Compute depth bounds, the max depth will be used to bound the radix sort.
     let max_depth = reduce (i32.max) 0 depths
     -- Early return if the stack size reaches a negative size.
-    in if min_depth < 0 then false else
+    in if any (< 0) depths then false else
     -- Calculate the amount of bits required to store the depth
     let bits = bit_width max_depth
     in zip depths brackets
