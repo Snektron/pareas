@@ -83,8 +83,8 @@ namespace {
         );
 
         for (const auto& [ap, string] : this->strings) {
-            auto i = token_mapping.find(ap.x)->second;
-            auto j = token_mapping.find(ap.y)->second;
+            auto i = token_mapping.at(ap.x);
+            auto j = token_mapping.at(ap.y);
             stringrefs[i][j] = string;
         }
 
@@ -125,6 +125,7 @@ namespace {
         void render_token_type();
         void render_stack_change_table();
         void render_parse_table();
+        void render_production_arities();
     };
 
     Renderer::Renderer(std::ostream& out, const Grammar& g, const ParsingTable& pt):
@@ -156,10 +157,11 @@ namespace {
     }
 
     void Renderer::render_production_type() {
-        auto bits = int_bit_width(prod_mapping.size());
+        auto bits = int_bit_width(this->prod_mapping.size());
         fmt::print(this->out, "module production = u{}\n", bits);
+        fmt::print(this->out, "let num_productions: i64 = {}\n", this->prod_mapping.size());
 
-        for (const auto& [tag, id] : prod_mapping) {
+        for (const auto& [tag, id] : this->prod_mapping) {
             fmt::print(this->out, "let production_{}: production.t = {}\n", tag, id);
         }
     }
@@ -216,12 +218,29 @@ namespace {
         );
         strtab.render(this->out, "parse", "production.t", this->token_mapping);
     }
+
+    void Renderer::render_production_arities() {
+        auto arities = std::vector<size_t>(this->prod_mapping.size());
+
+        for (const auto& prod : this->g.productions) {
+            size_t arity = 0;
+            for (const auto& sym : prod.rhs) {
+                if (!sym.is_terminal)
+                    ++arity;
+            }
+
+            arities[this->prod_mapping.at(prod.tag)] = arity;
+        }
+
+        fmt::print(out, "let production_arity = [{}] :> [num_productions]i32\n", fmt::join(arities, ", "));
+    }
 }
 
 namespace llp {
     void render_parser(std::ostream& out, const Grammar& g, const ParsingTable& pt) {
         auto renderer = Renderer(out, g, pt);
         renderer.render_production_type();
+        renderer.render_production_arities();
         renderer.render_token_type();
         renderer.render_stack_change_table();
         renderer.render_parse_table();

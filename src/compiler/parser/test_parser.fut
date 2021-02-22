@@ -14,4 +14,7 @@ let main [n] (raw_input: [n]u8) =
                 case ']' -> test_grammar.token_rbracket
                 case _ -> test_grammar.token_a)
         raw_input
-    in test_parser.check input
+    in if !(test_parser.check input) then -1 else
+    let parse = test_parser.parse input
+    let parents = test_parser.build_parent_vector parse
+    in last parents
