@@ -8,7 +8,7 @@
 #include <unordered_map>
 #include <iosfwd>
 
-namespace llp {
+namespace pareas::llp {
     struct ParsingTable {
         struct Entry {
             std::vector<Symbol> initial_stack;
@@ -16,7 +16,6 @@ namespace llp {
             std::vector<const Production*> productions;
         };
 
-        Entry start;
         std::unordered_map<AdmissiblePair, Entry> table;
 
         void dump_csv(std::ostream& os);

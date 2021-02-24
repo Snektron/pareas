@@ -8,6 +8,8 @@
 #include <cassert>
 
 namespace {
+    using pareas::TerminalSet;
+
     bool merge_terminal_sets_omit_null(TerminalSet& dst, const TerminalSet& src) {
         bool changed = false;
         for (const auto& t : src) {
@@ -20,7 +22,7 @@ namespace {
     }
 }
 
-namespace llp {
+namespace pareas::llp {
     Generator::Generator(ErrorReporter* er, const Grammar* g, const TerminalSetFunctions* tsf):
         er(er), g(g), tsf(tsf) {}
 
@@ -74,18 +76,34 @@ namespace llp {
     ParsingTable Generator::build_parsing_table(const ll::ParsingTable& ll, const PSLSTable& psls) {
         auto llp = ParsingTable();
 
-        {
-            auto initial_stack = std::vector<Symbol>({this->g->start->lhs});
-            auto stack = initial_stack;
-            auto productions = ll.partial_parse(this->g->left_delim, stack);
-            llp.start = {initial_stack, stack, productions};
-        }
-
         for (const auto& [ap, entry] : psls.table) {
-            auto initial_stack = std::vector<Symbol>(entry.gamma.rbegin(), entry.gamma.rend());
-            auto stack = initial_stack;
-            auto productions = ll.partial_parse(ap.y, stack);
-            llp.table[ap] = {initial_stack, stack, productions};
+            if (entry.prod == this->g->start) {
+                assert(ap.x == this->g->left_delim);
+                // assert(entry.gamma.size() == 1 && entry.gamma[0] == this->g->left_delim);
+                // In order to make the LLP table a bit more concise, we do a hack here:
+                // Instead of generating the parse from the left delimiter, we generate
+                // it from the start rule. This way, what would otherwise need to be
+                // included in a separate `start` entry in the LLP table, is now merged
+                // with each of the entries which contains the left delimiter.
+                // In order to do this, we need to generate the stack after 2 symbols are
+                // parsed, ap.x (the left delimiter) and ap.y, starting at the start rule.
+                //
+                // We also need do a second hack here: When following the paper directly,
+                // during generation of the brackets the initial pop (of the S rule) is
+                // omitted. It would be harder to fix that up in the renderer when the above
+                // change is applied, so instead, we simply set the initial stack of any
+                // admissible pair with x = left delimiter to empty.
+                auto stack = std::vector<Symbol>({this->g->start->lhs});
+                auto prod1 = ll.partial_parse(ap.x, stack);
+                auto prod2 = ll.partial_parse(ap.y, stack);
+                prod1.insert(prod1.end(), prod2.begin(), prod2.end());
+                llp.table[ap] = {{}, stack, prod1};
+            } else {
+                auto initial_stack = std::vector<Symbol>(entry.gamma.rbegin(), entry.gamma.rend());
+                auto stack = initial_stack;
+                auto productions = ll.partial_parse(ap.y, stack);
+                llp.table[ap] = {initial_stack, stack, productions};
+            }
         }
 
         return llp;
@@ -223,22 +241,28 @@ namespace llp {
         assert(!x.is_null());
         assert(!v.is_null());
 
+        auto x_delta = std::vector<Symbol>();
+        x_delta.push_back(x);
+        x_delta.insert(x_delta.end(), delta.begin(), delta.end());
+
         auto gamma = std::vector<Symbol>();
-        if (x.is_terminal) {
-            gamma.push_back(x.as_terminal());
-            return gamma;
-        }
+        for (const auto& sym : x_delta) {
+            gamma.push_back(sym);
+            if (sym.is_terminal) {
+                assert(sym.as_terminal() == v);
+                return gamma;
+            }
 
-        gamma.push_back(x);
-        auto nt = x.as_non_terminal();
+            auto nt = sym.as_non_terminal();
 
-        const auto& first = this->tsf->first(nt);
-        if (!first.contains(v)) {
+            const auto first = this->tsf->first(nt);
+            if (first.contains(v)) {
+                return gamma;
+            }
+
             assert(first.contains(Terminal::null()));
-            assert(this->tsf->compute_first(delta).contains(v));
-            gamma.push_back(v);
         }
 
-        return gamma;
+        assert(false);
     }
 }

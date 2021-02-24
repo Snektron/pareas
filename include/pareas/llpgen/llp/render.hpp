@@ -5,7 +5,7 @@
 #include "pareas/llpgen/llp/parsing_table.hpp"
 #include <iosfwd>
 
-namespace llp {
+namespace pareas::llp {
     void render_parser(std::ostream& out, const Grammar& g, const ParsingTable& pt);
 }
 

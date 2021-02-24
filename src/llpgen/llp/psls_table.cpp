@@ -4,7 +4,7 @@
 
 #include <unordered_set>
 
-namespace llp {
+namespace pareas::llp {
     void PSLSTable::dump_csv(std::ostream& os) const {
         auto dump_syms = [&](const auto& syms) {
             // Custom print of symbols since we need to handle csv escapes

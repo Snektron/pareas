@@ -1,0 +1,37 @@
+%start = start;
+%left_delim = 'soi';
+%right_delim = 'eoi';
+
+start -> 'soi' program 'eoi';
+
+program -> fn_decl program;
+program [program_end] -> ;
+
+fn_decl -> 'fn' compound_stat;
+
+stat [stat_while] -> 'while' expr compound_stat;
+stat [stat_if] -> 'if' expr compound_stat;
+stat [stat_expr] -> expr 'semi';
+stat [stat_compound] -> compound_stat;
+
+compound_stat -> 'lbrace' stat_list 'rbrace';
+
+stat_list -> stat stat_list;
+stat_list [stat_list_end] -> ;
+
+expr -> sum;
+
+sum -> prod sum_list;
+
+sum_list [sum_add] -> 'plus' prod sum_list;
+sum_list [sum_sub] -> 'minus' prod sum_list;
+sum_list [sum_end] -> ;
+
+prod -> atom prod_list;
+
+prod_list [prod_mul] -> 'star' atom prod_list;
+prod_list [prod_div] -> 'slash' atom prod_list;
+prod_list [prod_end] -> ;
+
+atom [atom_variable] -> 'id';
+atom [atom_paren] -> 'lparen' expr 'rparen';

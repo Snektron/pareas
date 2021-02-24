@@ -4,7 +4,7 @@
 
 #include <stdexcept>
 
-namespace llp {
+namespace pareas::llp {
     TestParser::TestParser(const ParsingTable* llp_table, std::span<const Terminal> input):
         llp_table(llp_table), input(input) {}
 
@@ -41,9 +41,6 @@ namespace llp {
         auto add_derivation = [&](const ParsingTable::Entry& entry) {
             this->derivation.insert(this->derivation.end(), entry.productions.begin(), entry.productions.end());
         };
-
-        add_lbr(this->llp_table->start);
-        add_derivation(this->llp_table->start);
 
         for (size_t i = 1; i < this->input.size(); ++i) {
             auto ap = AdmissiblePair{

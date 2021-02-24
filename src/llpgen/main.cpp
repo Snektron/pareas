@@ -5,7 +5,6 @@
 #include "pareas/llpgen/ll/generator.hpp"
 #include "pareas/llpgen/llp/generator.hpp"
 #include "pareas/llpgen/llp/render.hpp"
-#include "pareas/llpgen/llp/test_parser.hpp"
 
 #include <fmt/format.h>
 #include <fmt/ostream.h>
@@ -110,7 +109,7 @@ int main(int argc, const char* argv[]) {
         );
     } else {
         auto in = std::ifstream(opts.input_path, std::ios::binary);
-        if (!opts.input_path) {
+        if (!in) {
             fmt::print(std::cerr, "Error: Failed to open input path '{}'\n", opts.input_path);
             return EXIT_FAILURE;
         }
@@ -120,23 +119,23 @@ int main(int argc, const char* argv[]) {
         );
     }
 
-    auto er = ErrorReporter(input, std::clog);
+    auto er = pareas::ErrorReporter(input, std::clog);
 
     try {
-        auto parser = GrammarParser(&er, input);
+        auto parser = pareas::GrammarParser(&er, input);
         auto g = parser.parse();
 
-        auto tsf = TerminalSetFunctions(g);
+        auto tsf = pareas::TerminalSetFunctions(g);
         if (opts.verbose_sets)
             tsf.dump(std::clog);
 
-        auto gen = llp::Generator(&er, &g, &tsf);
+        auto gen = pareas::llp::Generator(&er, &g, &tsf);
 
         auto psls_table = gen.build_psls_table();
         if (opts.verbose_psls)
             psls_table.dump_csv(std::clog);
 
-        auto ll_table = ll::Generator(&er, &g, &tsf).build_parsing_table();
+        auto ll_table = pareas::ll::Generator(&er, &g, &tsf).build_parsing_table();
         if (opts.verbose_ll)
             ll_table.dump_csv(std::clog);
 
@@ -145,16 +144,16 @@ int main(int argc, const char* argv[]) {
             llp_table.dump_csv(std::clog);
 
         if (std::string_view(opts.output_path) == "-") {
-            llp::render_parser(std::cout, g, llp_table);
+            pareas::llp::render_parser(std::cout, g, llp_table);
         } else {
             auto out = std::ofstream(opts.output_path, std::ios::binary);
-            if (!opts.output_path) {
+            if (!out) {
                 fmt::print(std::cerr, "Error: Failed to open output path '{}'\n", opts.output_path);
                 return EXIT_FAILURE;
             }
-            llp::render_parser(out, g, llp_table);
+            pareas::llp::render_parser(out, g, llp_table);
         }
-    } catch (const InvalidGrammarError& e) {
+    } catch (const pareas::InvalidGrammarError& e) {
         fmt::print(std::cerr, "Failed: {}\n", e.what());
         return EXIT_FAILURE;
     }

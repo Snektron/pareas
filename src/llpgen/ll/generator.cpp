@@ -1,6 +1,6 @@
 #include "pareas/llpgen/ll/generator.hpp"
 
-namespace ll {
+namespace pareas::ll {
     Generator::Generator(ErrorReporter* er, const Grammar* g, const TerminalSetFunctions* tsf):
         er(er), g(g), tsf(tsf) {}
 
