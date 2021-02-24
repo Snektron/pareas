@@ -2,7 +2,6 @@
 #define _PAREAS_LLPGEN_TERMINAL_SET_FUNCTIONS_HPP
 
 #include "pareas/llpgen/grammar.hpp"
-#include "pareas/llpgen/error_reporter.hpp"
 
 #include <unordered_map>
 #include <unordered_set>

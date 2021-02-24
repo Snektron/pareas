@@ -1,5 +1,5 @@
 #include "pareas/llpgen/llp/admissible_pair.hpp"
-#include "pareas/llpgen/hash_util.hpp"
+#include "pareas/common/hash_util.hpp"
 
 namespace pareas::llp {
     bool operator==(const AdmissiblePair& lhs, const AdmissiblePair& rhs) {

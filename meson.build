@@ -17,9 +17,19 @@ inc = include_directories('include')
 
 fmt_dep = subproject('fmt').get_variable('fmt_dep')
 
+# common
+pareas_common_sources = [
+    'src/common/error_reporter.cpp',
+]
+
+pareas_common_dep = declare_dependency(
+    dependencies: fmt_dep,
+    sources: pareas_common_sources,
+    include_directories: inc,
+)
+
 # llpgen
 llpgen_sources = [
-    'src/llpgen/error_reporter.cpp',
     'src/llpgen/grammar.cpp',
     'src/llpgen/grammar_parser.cpp',
     'src/llpgen/ll/generator.cpp',
@@ -38,7 +48,7 @@ llpgen_sources = [
 executable(
     'pareas-llpgen',
     llpgen_sources,
-    dependencies: fmt_dep,
+    dependencies: [pareas_common_dep, fmt_dep],
     include_directories: inc,
 )
 
@@ -50,7 +60,7 @@ lexgen_sources = [
 executable(
     'pareas-lexgen',
     lexgen_sources,
-    dependencies: fmt_dep,
+    dependencies: [pareas_common_dep, fmt_dep],
     include_directories: inc
 )
 

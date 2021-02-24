@@ -1,5 +1,5 @@
-#ifndef _PAREAS_LLPGEN_HASH_UTIL_HPP
-#define _PAREAS_LLPGEN_HASH_UTIL_HPP
+#ifndef _PAREAS_COMMON_HASH_UTIL_HPP
+#define _PAREAS_COMMON_HASH_UTIL_HPP
 
 #include <functional>
 #include <cstddef>

@@ -1,10 +1,10 @@
-#include "pareas/llpgen/error_reporter.hpp"
 #include "pareas/llpgen/grammar.hpp"
 #include "pareas/llpgen/grammar_parser.hpp"
 #include "pareas/llpgen/terminal_set_functions.hpp"
 #include "pareas/llpgen/ll/generator.hpp"
 #include "pareas/llpgen/llp/generator.hpp"
 #include "pareas/llpgen/llp/render.hpp"
+#include "pareas/common/error_reporter.hpp"
 
 #include <fmt/format.h>
 #include <fmt/ostream.h>

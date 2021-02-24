@@ -1,7 +1,7 @@
 #ifndef _PAREAS_LLPGEN_GRAMMAR_HPP
 #define _PAREAS_LLPGEN_GRAMMAR_HPP
 
-#include "pareas/llpgen/error_reporter.hpp"
+#include "pareas/common/error_reporter.hpp"
 
 #include <string>
 #include <vector>

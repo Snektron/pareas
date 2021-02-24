@@ -1,7 +1,7 @@
 #ifndef _PAREAS_LLPGEN_ITEM_SET_HPP
 #define _PAREAS_LLPGEN_ITEM_SET_HPP
 
-#include "pareas/llpgen/hash_util.hpp"
+#include "pareas/common/hash_util.hpp"
 
 #include <fmt/ostream.h>
 

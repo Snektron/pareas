@@ -1,7 +1,7 @@
 #include <fmt/format.h>
 #include <fmt/ostream.h>
 
-#include "pareas/llpgen/hash_util.hpp"
+#include "pareas/common/hash_util.hpp"
 
 #include <iostream>
 #include <vector>

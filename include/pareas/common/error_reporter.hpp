@@ -1,5 +1,5 @@
-#ifndef _PAREAS_LLPGEN_ERROR_REPORTER_HPP
-#define _PAREAS_LLPGEN_ERROR_REPORTER_HPP
+#ifndef _PAREAS_COMMON_ERROR_REPORTER_HPP
+#define _PAREAS_COMMON_ERROR_REPORTER_HPP
 
 #include <string_view>
 #include <vector>

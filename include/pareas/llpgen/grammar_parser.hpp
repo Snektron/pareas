@@ -2,7 +2,7 @@
 #define _PAREAS_LLPGEN_GRAMMAR_PARSER_HPP
 
 #include "pareas/llpgen/grammar.hpp"
-#include "pareas/llpgen/error_reporter.hpp"
+#include "pareas/common/error_reporter.hpp"
 
 #include <string_view>
 #include <optional>

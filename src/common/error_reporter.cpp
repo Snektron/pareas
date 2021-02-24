@@ -1,9 +1,10 @@
-#include "pareas/llpgen/error_reporter.hpp"
+#include "pareas/common/error_reporter.hpp"
+
+#include <fmt/format.h>
+#include <fmt/ostream.h>
 
 #include <algorithm>
 #include <functional>
-#include <fmt/format.h>
-#include <fmt/ostream.h>
 
 namespace pareas {
     ErrorReporter::ErrorReporter(std::string_view source, std::ostream& out):

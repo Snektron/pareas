@@ -1,5 +1,5 @@
 #include "pareas/llpgen/grammar.hpp"
-#include "pareas/llpgen/hash_util.hpp"
+#include "pareas/common/hash_util.hpp"
 
 #include <fmt/format.h>
 

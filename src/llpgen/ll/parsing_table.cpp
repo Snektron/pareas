@@ -1,5 +1,5 @@
 #include "pareas/llpgen/ll/parsing_table.hpp"
-#include "pareas/llpgen/hash_util.hpp"
+#include "pareas/common/hash_util.hpp"
 
 #include <fmt/ostream.h>
 
