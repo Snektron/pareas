@@ -2,10 +2,10 @@
 #define _PAREAS_LLPGEN_GRAMMAR_PARSER_HPP
 
 #include "pareas/llpgen/grammar.hpp"
+#include "pareas/common/parser.hpp"
 #include "pareas/common/error_reporter.hpp"
 
 #include <string_view>
-#include <optional>
 #include <unordered_map>
 #include <cstddef>
 
@@ -20,9 +20,8 @@ namespace pareas {
             SourceLocation loc;
         };
 
-        ErrorReporter* er;
-        std::string_view source;
-        size_t offset;
+        Parser parser;
+
         std::vector<Production> productions;
         std::unordered_map<std::string_view, SourceLocation> tags;
         Directive start, left_delim, right_delim;
@@ -32,13 +31,8 @@ namespace pareas {
         Grammar parse();
 
     private:
-        SourceLocation loc() const;
         const Production* find_start_rule() const;
 
-        int peek();
-        int consume();
-        bool eat(int c);
-        bool expect(int c);
         bool eat_delim();
         void skip_statement();
 

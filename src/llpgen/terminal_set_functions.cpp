@@ -141,7 +141,6 @@ namespace pareas {
                 auto ts = this->compute_first_or_last_set(b, follow);
                 // Should be pre-inserted.  If not, there is no production which has this
                 // symbol as LHS.
-                // TODO: Report error for this situation.
                 auto set = sets.at(nt);
 
                 changed = merge_terminal_sets_omit_null(set, ts);

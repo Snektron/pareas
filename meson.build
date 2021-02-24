@@ -20,6 +20,7 @@ fmt_dep = subproject('fmt').get_variable('fmt_dep')
 # common
 pareas_common_sources = [
     'src/common/error_reporter.cpp',
+    'src/common/parser.cpp',
 ]
 
 pareas_common_dep = declare_dependency(
@@ -54,7 +55,7 @@ executable(
 
 # lexgen
 lexgen_sources = [
-    'src/lexgen/main.cpp'
+    'src/lexgen/main.cpp',
 ]
 
 executable(
