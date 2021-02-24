@@ -17,7 +17,7 @@ inc = include_directories('include')
 
 fmt_dep = subproject('fmt').get_variable('fmt_dep')
 
-# LLPGEN
+# llpgen
 llpgen_sources = [
     'src/llpgen/error_reporter.cpp',
     'src/llpgen/grammar.cpp',
@@ -42,8 +42,21 @@ executable(
     include_directories: inc,
 )
 
+# lexgen
+lexgen_sources = [
+    'src/lexgen/main.cpp'
+]
+
+executable(
+    'pareas-lexgen',
+    lexgen_sources,
+    dependencies: fmt_dep,
+    include_directories: inc
+)
+
 dependencies = [fmt_dep]
 
+# Compiler
 # Build futhark library
 futhark = find_program('futhark')
 futhark_backend = get_option('futhark-backend')
