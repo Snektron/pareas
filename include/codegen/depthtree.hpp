@@ -16,6 +16,7 @@ class DepthTree {
         uint32_t* depth;
         uint32_t* child_idx;
         int64_t* instr_offsets;
+        uint32_t* node_data;
         size_t max_nodes;
         size_t filled_nodes;
         size_t max_depth;
@@ -46,6 +47,9 @@ class DepthTree {
         }
         inline const int64_t* getInstrOffsets() const {
             return this->instr_offsets;
+        }
+        inline const uint32_t* getNodeData() const {
+            return this->node_data;
         }
         inline size_t maxNodes() const {
             return this->max_nodes;

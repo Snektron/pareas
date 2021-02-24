@@ -6,6 +6,8 @@
 #include <cstddef>
 #include <cstdint>
 
+#include "codegen/datatype.hpp"
+
 enum class NodeType {
     INVALID,
     STATEMENT_LIST,
@@ -42,18 +44,10 @@ enum class NodeType {
     NEG_EXPR,
     LIT_EXPR,
     CAST_EXPR,
+    DEREF_EXPR,
     ASSIGN_EXPR,
     DECL_EXPR,
     ID_EXPR
-};
-
-enum class DataType {
-    INVALID,
-    VOID,
-    INT,
-    FLOAT,
-    INT_REF,
-    FLOAT_REF
 };
 
 class ASTNode {
@@ -62,7 +56,7 @@ class ASTNode {
         DataType return_type = DataType::INVALID;
         std::vector<ASTNode*> children;
 
-        uint32_t integer;
+        uint32_t integer = 0;
     public:
         ASTNode(NodeType);
         ASTNode(NodeType, const std::vector<ASTNode*>&);

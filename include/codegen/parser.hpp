@@ -5,21 +5,24 @@
 
 class Lexer;
 class ASTNode;
+class SymbolTable;
 
 class Parser {
     private:
         Lexer& lexer;
+        SymbolTable& symtab;
 
         void expect(TokenType);
 
         ASTNode* parseAdd();
+        ASTNode* parseMul();
         ASTNode* parseCast();
         ASTNode* parseAtom();
         ASTNode* parseExpression();
         ASTNode* parseExpressionStatement();
         ASTNode* parseStatementList();
     public:
-        Parser(Lexer&);
+        Parser(Lexer&, SymbolTable&);
 
         ASTNode* parse();
 };

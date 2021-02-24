@@ -15,6 +15,15 @@ add_project_arguments(
 
 dependencies = []
 
+# Futhark sources
+futhark_sources = [
+    'src/datatypes.fut',
+    'src/instr.fut',
+    'src/lisp.fut',
+    'src/symtab.fut',
+    'src/tree.fut'
+]
+
 # Build futhark library
 futhark = find_program('futhark')
 futhark_backend = get_option('futhark-backend')
@@ -22,7 +31,8 @@ futhark_generated = custom_target(
     'futhark',
     input: 'src/main.fut',
     output: ['futhark-generated.c', 'futhark-generated.h'],
-    command: [futhark, futhark_backend, '@INPUT@', '--library', '-o', 'futhark-generated']
+    command: [futhark, futhark_backend, '@INPUT@', '--library', '-o', 'futhark-generated'],
+    depend_files: futhark_sources
 )
 
 if futhark_backend == 'multicore'
@@ -36,9 +46,11 @@ endif
 # Final executable
 sources = [
     'src/codegen/astnode.cpp',
+    'src/codegen/datatype.cpp',
     'src/codegen/depthtree.cpp',
     'src/codegen/lexer.cpp',
     'src/codegen/parser.cpp',
+    'src/codegen/symtab.cpp',
     'src/codegen/token.cpp',
     'src/main.cpp'
 ]

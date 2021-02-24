@@ -1,8 +1,10 @@
 import "tree"
 import "datatypes"
 import "instr"
+import "symtab"
 
 let MAX_NODES : i64 = 32
+let MAX_VARS : i64 = 32
 
 let make_node_type (node_type: u8) : NodeType =
     match node_type
@@ -41,9 +43,10 @@ let make_node_type (node_type: u8) : NodeType =
     case 32 -> #neg_expr
     case 33 -> #lit_expr
     case 34 -> #cast_expr
-    case 35 -> #assign_expr
-    case 36 -> #decl_expr
-    case 37 -> #id_expr
+    case 35 -> #deref_expr
+    case 36 -> #assign_expr
+    case 37 -> #decl_expr
+    case 38 -> #id_expr
     case _ -> #invalid
 
 let make_data_type (data_type: u8) : DataType =
@@ -56,19 +59,33 @@ let make_data_type (data_type: u8) : DataType =
     case 5 -> #float_ref
     case _ -> #invalid
 
-let make_node (node_type: u8) (data_type: u8) (parent: u32) (depth: u32) (child_idx: u32) : Node =
+
+let make_variable (data_type: u8) (global: bool) (offset: u32) : Variable =
+    {
+        decl_type = make_data_type data_type,
+        global = global,
+        offset = offset
+    }
+
+let make_node (node_type: u8) (data_type: u8, parent: u32, depth: u32, child_idx: u32, node_data: u32) : Node =
     {
         node_type = make_node_type node_type,
         resulting_type = make_data_type data_type,
         parent = parent,
         depth = depth,
-        child_idx = child_idx
+        child_idx = child_idx,
+        node_data = node_data
+    }
+
+entry make_symtab (data_types: [MAX_VARS]u8) (global: [MAX_VARS]bool) (offsets: [MAX_VARS]u32) : Symtab[MAX_VARS] =
+    {
+        variables = map3 make_variable data_types global offsets
     }
 
 entry make_tree (max_depth: u32) (node_types: [MAX_NODES]u8) (data_types: [MAX_NODES]u8) (parents: [MAX_NODES]u32)
-                    (depth: [MAX_NODES]u32) (child_idx: [MAX_NODES]u32): Tree[MAX_NODES] =
+                    (depth: [MAX_NODES]u32) (child_idx: [MAX_NODES]u32) (node_data: [MAX_NODES]u32): Tree[MAX_NODES] =
     {
-        nodes = map5 make_node node_types data_types parents depth child_idx,
+        nodes = zip5 data_types parents depth child_idx node_data |> map2 make_node node_types,
         max_depth = max_depth
     }
 

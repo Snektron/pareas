@@ -14,6 +14,7 @@ DepthTree::DepthTree(size_t max_nodes, ASTNode* node) : max_nodes(max_nodes), ma
     this->depth = new uint32_t[max_nodes];
     this->child_idx = new uint32_t[max_nodes];
     this->instr_offsets = new int64_t[max_nodes];
+    this->node_data = new uint32_t[max_nodes];
 
     std::memset(this->node_types, 0, sizeof(uint8_t) * max_nodes);
     std::memset(this->resulting_types, 0, sizeof(uint8_t) * max_nodes);
@@ -21,6 +22,7 @@ DepthTree::DepthTree(size_t max_nodes, ASTNode* node) : max_nodes(max_nodes), ma
     std::memset(this->depth, -1, sizeof(uint32_t) * max_nodes);
     std::memset(this->child_idx, -1, sizeof(uint32_t) * max_nodes);
     std::memset(this->instr_offsets, -1, sizeof(int64_t) * max_nodes);
+    std::memset(this->node_data, 0, sizeof(uint32_t) * max_nodes);
 
     this->construct(node);
 }
@@ -30,6 +32,9 @@ DepthTree::~DepthTree() {
     delete[] this->resulting_types;
     delete[] this->parents;
     delete[] this->depth;
+    delete[] this->child_idx;
+    delete[] this->instr_offsets;
+    delete[] this->node_data;
 }
 
 void DepthTree::setElement(size_t idx, ASTNode* node, size_t parent, size_t depth, size_t child_idx) {
@@ -38,6 +43,7 @@ void DepthTree::setElement(size_t idx, ASTNode* node, size_t parent, size_t dept
     this->parents[idx] = parent;
     this->depth[idx] = depth;
     this->child_idx[idx] = child_idx;
+    this->node_data[idx] = node->getInteger();
 
     if(this->max_depth < depth)
         this->max_depth = depth;
@@ -116,6 +122,7 @@ void DepthTree::markOffset(ASTNode* node, const std::unordered_map<ASTNode*, siz
         case NodeType::LNOT_EXPR:
         case NodeType::NEG_EXPR:
         case NodeType::ASSIGN_EXPR:
+        case NodeType::DEREF_EXPR:
             this->instr_offsets[node_idx] = offset++;
             break;
         case NodeType::LIT_EXPR:

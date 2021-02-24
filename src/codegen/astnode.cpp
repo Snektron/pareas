@@ -39,6 +39,7 @@ const char* NODE_NAMES[] = {
     "negate expression",
     "literal expression",
     "cast expression",
+    "dereference expression",
     "assignment expression",
     "declaration expression",
     "identifier expression"
@@ -94,6 +95,14 @@ void ASTNode::resolveType() {
             if(this->children[child]->return_type == data_types[i])
                 return;
         }
+        for(size_t i = 0; i < data_types.size(); ++i) {
+            if(this->children[child]->return_type == reference_of(data_types[i])) {
+                //Create implicit dereference
+                ASTNode* old_node = this->children[child];
+                this->children[child] = new ASTNode(NodeType::DEREF_EXPR, data_types[i], {old_node});
+                return;
+            }
+        }
         this->print(std::cout);
         throw ParseException("Mismatched type on child ", child, " of node ",
                                 NODE_NAMES[static_cast<size_t>(this->type)], ", got ",
@@ -115,8 +124,9 @@ void ASTNode::resolveType() {
         case NodeType::SUB_EXPR:
         case NodeType::MUL_EXPR:
         case NodeType::DIV_EXPR:
-            assert_same(0, 1);
             assert_type(0, {DataType::INT, DataType::FLOAT});
+            assert_type(1, {DataType::INT, DataType::FLOAT});
+            assert_same(0, 1);
             this->return_type = this->children[0]->return_type;
             break;
         case NodeType::MOD_EXPR:
@@ -138,8 +148,9 @@ void ASTNode::resolveType() {
         case NodeType::GREAT_EXPR:
         case NodeType::LESSEQ_EXPR:
         case NodeType::GREATEQ_EXPR:
-            assert_same(0, 1);
             assert_type(0, {DataType::INT, DataType::FLOAT});
+            assert_type(1, {DataType::INT, DataType::FLOAT});
+            assert_same(0, 1);
             this->return_type = DataType::INT;
             break;
         case NodeType::BITNOT_EXPR:
@@ -155,6 +166,8 @@ void ASTNode::resolveType() {
             assert_type(0, {DataType::INT, DataType::FLOAT});
             break;
         case NodeType::LIT_EXPR:
+        case NodeType::ID_EXPR:
+        case NodeType::DECL_EXPR:
             break;
         default:
             this->return_type = DataType::INVALID;

@@ -37,6 +37,7 @@ type NodeType =
     #neg_expr |
     #lit_expr |
     #cast_expr |
+    #deref_expr |
     #assign_expr |
     #decl_expr |
     #id_expr
@@ -47,7 +48,8 @@ type Node = {
     resulting_type: DataType,
     parent: u32,
     depth: u32,
-    child_idx: u32
+    child_idx: u32,
+    node_data: u32
 }
 
 --Tree definition

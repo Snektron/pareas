@@ -146,6 +146,8 @@ Token Lexer::next_token() {
             c = this->read();
             if(c == '=')
                 return TokenType(TokenType::LESSEQ);
+            else if(c == '-')
+                return TokenType(TokenType::DECL);
             this->unread(c);
             return Token(TokenType::LESS);
         }

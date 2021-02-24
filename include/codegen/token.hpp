@@ -35,6 +35,7 @@ enum class TokenType {
     COMMA,
     SEMICOLON,
     CAST,
+    DECL,
 
     IF,
     ELSE,

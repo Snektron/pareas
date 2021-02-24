@@ -14,6 +14,7 @@
 #include "codegen/astnode.hpp"
 #include "codegen/exception.hpp"
 #include "codegen/depthtree.hpp"
+#include "codegen/symtab.hpp"
 
 const size_t MAX_NODES = 32;
 
@@ -226,7 +227,8 @@ int main(int argc, const char* argv[]) {
     try {
         std::ifstream input(argv[1]);
         Lexer lexer(input);
-        Parser parser(lexer);
+        SymbolTable symtab;
+        Parser parser(lexer, symtab);
 
         std::unique_ptr<ASTNode> node(parser.parse());
         std::cout << *node << std::endl;
@@ -249,10 +251,12 @@ int main(int argc, const char* argv[]) {
                             futhark_new_u32_1d(context.get(), depth_tree.getDepth(), depth_tree.maxNodes()));
         auto child_idx = UniqueFPtr<futhark_u32_1d, futhark_free_u32_1d>(context.get(),
                             futhark_new_u32_1d(context.get(), depth_tree.getChildren(), depth_tree.maxNodes()));
+        auto node_data = UniqueFPtr<futhark_u32_1d, futhark_free_u32_1d>(context.get(),
+                            futhark_new_u32_1d(context.get(), depth_tree.getNodeData(), depth_tree.maxNodes()));
 
         UniqueFPtr<futhark_opaque_Tree, futhark_free_opaque_Tree> gpu_tree(context.get());
         int err = futhark_entry_make_tree(context.get(), &gpu_tree, depth_tree.maxDepth(), node_types.get(), resulting_types.get(),
-                                            parents.get(), depth.get(), child_idx.get());
+                                            parents.get(), depth.get(), child_idx.get(), node_data.get());
 
         auto instr_offsets = UniqueFPtr<futhark_i64_1d, futhark_free_i64_1d>(context.get(),
                             futhark_new_i64_1d(context.get(), depth_tree.getInstrOffsets(), depth_tree.maxNodes()));

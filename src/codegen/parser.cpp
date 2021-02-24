@@ -2,6 +2,7 @@
 #include "codegen/lexer.hpp"
 #include "codegen/astnode.hpp"
 #include "codegen/exception.hpp"
+#include "codegen/symtab.hpp"
 
 #include <memory>
 #include <vector>
@@ -12,12 +13,18 @@ NodeType bin_node_type_for(TokenType type) {
             return NodeType::ADD_EXPR;
         case TokenType::MIN:
             return NodeType::SUB_EXPR;
+        case TokenType::MUL:
+            return NodeType::MUL_EXPR;
+        case TokenType::DIV:
+            return NodeType::DIV_EXPR;
+        case TokenType::MOD:
+            return NodeType::MOD_EXPR;
         default:
             return NodeType::INVALID;
     }
 }
 
-Parser::Parser(Lexer& lexer) : lexer(lexer) {}
+Parser::Parser(Lexer& lexer, SymbolTable& symtab) : lexer(lexer), symtab(symtab) {}
 
 void Parser::expect(TokenType token_type) {
     Token token = this->lexer.lex();
@@ -28,10 +35,26 @@ void Parser::expect(TokenType token_type) {
 }
 
 ASTNode* Parser::parseAdd() {
-    std::unique_ptr<ASTNode> lop(this->parseCast());
+    std::unique_ptr<ASTNode> lop(this->parseMul());
 
     Token lookahead = this->lexer.lookahead();
     while(lookahead.type == TokenType::PLUS || lookahead.type == TokenType::MIN) {
+        this->lexer.lex();
+
+        std::unique_ptr<ASTNode> rop(this->parseMul());
+        lop.reset(new ASTNode(bin_node_type_for(lookahead.type), {lop.release(), rop.release()}));
+
+        lookahead = this->lexer.lookahead();
+    }
+
+    return lop.release();
+}
+
+ASTNode* Parser::parseMul() {
+    std::unique_ptr<ASTNode> lop(this->parseCast());
+
+    Token lookahead = this->lexer.lookahead();
+    while(lookahead.type == TokenType::MUL || lookahead.type == TokenType::DIV || lookahead.type == TokenType::MOD) {
         this->lexer.lex();
 
         std::unique_ptr<ASTNode> rop(this->parseCast());
@@ -79,6 +102,31 @@ ASTNode* Parser::parseAtom() {
             this->expect(TokenType::CLOSE_PAR);
             return expr.release();
         }
+        case TokenType::ID: {
+            std::string id = lookahead.str;
+            lookahead = this->lexer.lookahead();
+            if(lookahead.type == TokenType::DECL) {
+                this->lexer.lex();
+                lookahead = this->lexer.lex();
+                DataType symbol_type;
+                switch(lookahead.type) {
+                    case TokenType::INT:
+                        symbol_type = DataType::INT_REF;
+                        break;
+                    case TokenType::FLOAT:
+                        symbol_type = DataType::FLOAT_REF;
+                        break;
+                    default:
+                        throw ParseException("Parsing failed, unexpected token ", lookahead, ", expecting typename");
+                }
+                uint32_t symbol_id = this->symtab.declareSymbol(id, symbol_type);
+                return new ASTNode(NodeType::DECL_EXPR, symbol_type, symbol_id);
+            }
+            else {
+                Symbol* symbol = this->symtab.resolveSymbol(id);
+                return new ASTNode(NodeType::ID_EXPR, symbol->type, symbol->id);
+            }
+        }
         case TokenType::INTEGER:
             return new ASTNode(NodeType::LIT_EXPR, DataType::INT, lookahead.integer);
         default:
@@ -111,8 +159,6 @@ ASTNode* Parser::parseStatementList() {
             case TokenType::PLUS:
             case TokenType::MIN:
             case TokenType::OPEN_PAR:
-            case TokenType::INT:
-            case TokenType::FLOAT:
             case TokenType::INTEGER:
             case TokenType::ID:
                 nodes.emplace_back(this->parseExpressionStatement());
