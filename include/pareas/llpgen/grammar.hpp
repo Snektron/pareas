@@ -12,15 +12,19 @@
 
 namespace pareas {
     struct InvalidGrammarError: std::runtime_error {
-        InvalidGrammarError(const std::string& msg);
+        InvalidGrammarError(const std::string& msg): std::runtime_error(msg) {}
     };
 
     struct MultipleStartRulesError: InvalidGrammarError {
-        MultipleStartRulesError();
+        MultipleStartRulesError(): InvalidGrammarError("Start rule appears in multiple productions") {}
     };
 
     struct InvalidStartRuleError: InvalidGrammarError {
-        InvalidStartRuleError();
+        InvalidStartRuleError(): InvalidGrammarError("Start rule is not in right form") {}
+    };
+
+    struct MissingRuleDefinitionError: InvalidGrammarError {
+        MissingRuleDefinitionError(): InvalidGrammarError("Missing definition for rule") {}
     };
 
     struct Terminal {
@@ -66,6 +70,7 @@ namespace pareas {
         std::vector<Production> productions;
 
         void dump(std::ostream& os) const;
+        void validate(ErrorReporter& er) const;
     };
 
     std::ostream& operator<<(std::ostream& os, const Terminal& t);

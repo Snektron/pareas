@@ -55,12 +55,14 @@ namespace pareas {
         if (error || !start)
             throw GrammarParseError();
 
-        return Grammar{
+        auto g = Grammar{
             .left_delim = Terminal{std::string(this->left_delim.value)},
             .right_delim = Terminal{std::string(this->right_delim.value)},
             .start = start,
             .productions = std::move(this->productions),
         };
+        g.validate(*this->er);
+        return g;
     }
 
     SourceLocation GrammarParser::loc() const {

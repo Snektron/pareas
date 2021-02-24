@@ -2,6 +2,7 @@
 #define _PAREAS_LLPGEN_TERMINAL_SET_FUNCTIONS_HPP
 
 #include "pareas/llpgen/grammar.hpp"
+#include "pareas/llpgen/error_reporter.hpp"
 
 #include <unordered_map>
 #include <unordered_set>
@@ -12,7 +13,11 @@ namespace pareas {
     using TerminalSet = std::unordered_set<Terminal>;
     using TerminalSetMap = std::unordered_map<NonTerminal, TerminalSet>;
 
+    bool merge_terminal_sets_omit_null(TerminalSet& dst, const TerminalSet& src);
+
     struct TerminalSetFunctions {
+        ErrorReporter* er;
+
         TerminalSetMap base_first_sets;
         TerminalSetMap base_last_sets;
 

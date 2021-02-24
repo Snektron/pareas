@@ -4,9 +4,7 @@
 
 #include <cassert>
 
-namespace {
-    using pareas::TerminalSet;
-
+namespace pareas {
     bool merge_terminal_sets_omit_null(TerminalSet& dst, const TerminalSet& src) {
         bool changed = false;
         for (const auto& t : src) {
@@ -17,9 +15,7 @@ namespace {
 
         return changed;
     }
-}
 
-namespace pareas {
     TerminalSetFunctions::TerminalSetFunctions(const Grammar& g) {
         this->base_first_sets = this->compute_base_first_or_last_set(g, true);
         this->base_last_sets = this->compute_base_first_or_last_set(g, false);
@@ -29,27 +25,19 @@ namespace pareas {
     }
 
     const TerminalSet& TerminalSetFunctions::first(const NonTerminal& nt) const {
-        auto it = this->base_first_sets.find(nt);
-        assert(it != this->base_first_sets.end());
-        return it->second;
+        return this->base_first_sets.at(nt);
     }
 
     const TerminalSet& TerminalSetFunctions::last(const NonTerminal& nt) const {
-        auto it = this->base_last_sets.find(nt);
-        assert(it != this->base_last_sets.end());
-        return it->second;
+        return this->base_last_sets.at(nt);
     }
 
     const TerminalSet& TerminalSetFunctions::follow(const NonTerminal& nt) const {
-        auto it = this->follow_sets.find(nt);
-        assert(it != this->follow_sets.end());
-        return it->second;
+        return this->follow_sets.at(nt);
     }
 
     const TerminalSet& TerminalSetFunctions::before(const NonTerminal& nt) const {
-        auto it = this->before_sets.find(nt);
-        assert(it != this->before_sets.end());
-        return it->second;
+        return this->before_sets.at(nt);
     }
 
     TerminalSet TerminalSetFunctions::compute_first(std::span<const Symbol> symbols) const {
@@ -151,17 +139,17 @@ namespace pareas {
                     std::span(prod.rhs).subspan(0, i);
 
                 auto ts = this->compute_first_or_last_set(b, follow);
-                auto it = sets.find(nt);
-
                 // Should be pre-inserted.  If not, there is no production which has this
                 // symbol as LHS.
                 // TODO: Report error for this situation.
-                assert(it != sets.end());
+                auto set = sets.at(nt);
 
-                changed = merge_terminal_sets_omit_null(it->second, ts);
+                changed = merge_terminal_sets_omit_null(set, ts);
                 if (ts.contains(Terminal::null())) {
-                    changed |= merge_terminal_sets_omit_null(it->second, sets[prod.lhs]);
+                    changed |= merge_terminal_sets_omit_null(set, sets[prod.lhs]);
                 }
+
+                sets[nt] = set;
             }
 
             return changed;
@@ -193,11 +181,10 @@ namespace pareas {
             }
 
             auto nt = sym.as_non_terminal();
-            const auto& ts = base_sets.find(nt);
-            assert(ts != base_sets.end());
-            merge_terminal_sets_omit_null(set, ts->second);
+            const auto& ts = base_sets.at(nt);
+            merge_terminal_sets_omit_null(set, ts);
 
-            if (!ts->second.contains(Terminal::null())) {
+            if (!ts.contains(Terminal::null())) {
                 return set;
             }
         }

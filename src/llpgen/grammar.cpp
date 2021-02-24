@@ -1,20 +1,13 @@
 #include "pareas/llpgen/grammar.hpp"
 #include "pareas/llpgen/hash_util.hpp"
 
+#include <fmt/format.h>
+
 #include <ostream>
 #include <algorithm>
 #include <cassert>
 
 namespace pareas {
-    InvalidGrammarError::InvalidGrammarError(const std::string& msg):
-        std::runtime_error(msg) {}
-
-    MultipleStartRulesError::MultipleStartRulesError():
-        InvalidGrammarError("Start rule appears in multiple productions") {};
-
-    InvalidStartRuleError::InvalidStartRuleError():
-        InvalidGrammarError("Start rule is not in right form") {}
-
     bool Terminal::operator==(const Terminal& other) const {
         return this->name == other.name;
     }
@@ -58,6 +51,34 @@ namespace pareas {
         for (const auto& prod : this->productions) {
             os << prod << std::endl;
         }
+    }
+
+    void Grammar::validate(ErrorReporter& er) const {
+        // Tags are already guaranteed to be unique by the parser, so we just need to check
+        // whether rules exist here.
+        bool error = false;
+
+        auto exists = [&](const auto& lhs) {
+            for (const auto& prod : this->productions) {
+                if (prod.lhs == lhs)
+                    return true;
+            }
+
+            return false;
+        };
+
+        for (const auto& prod : this->productions) {
+            for (const auto& sym : prod.rhs) {
+                if (sym.is_terminal || exists(sym.as_non_terminal()))
+                    continue;
+
+                er.error(prod.loc, fmt::format("Missing rule definition for '{}'", sym.name));
+                error = true;
+            }
+        }
+
+        if (error)
+            throw MissingRuleDefinitionError();
     }
 
     std::ostream& operator<<(std::ostream& os, const Terminal& t) {

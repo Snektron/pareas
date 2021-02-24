@@ -7,21 +7,6 @@
 #include <algorithm>
 #include <cassert>
 
-namespace {
-    using pareas::TerminalSet;
-
-    bool merge_terminal_sets_omit_null(TerminalSet& dst, const TerminalSet& src) {
-        bool changed = false;
-        for (const auto& t : src) {
-            if (t.is_null())
-                continue;
-            changed |= dst.insert(t).second;
-        }
-
-        return changed;
-    }
-}
-
 namespace pareas::llp {
     Generator::Generator(ErrorReporter* er, const Grammar* g, const TerminalSetFunctions* tsf):
         er(er), g(g), tsf(tsf) {}
