@@ -9,44 +9,46 @@
 #include <unordered_map>
 #include <cstddef>
 
-struct GrammarParseError: InvalidGrammarError {
-    GrammarParseError(): InvalidGrammarError("Parse error") {}
-};
-
-class GrammarParser {
-    struct Directive {
-        std::string_view value;
-        SourceLocation loc;
+namespace pareas {
+    struct GrammarParseError: InvalidGrammarError {
+        GrammarParseError(): InvalidGrammarError("Parse error") {}
     };
 
-    ErrorReporter* er;
-    std::string_view source;
-    size_t offset;
-    std::vector<Production> productions;
-    std::unordered_map<std::string_view, SourceLocation> tags;
-    Directive start, left_delim, right_delim;
+    class GrammarParser {
+        struct Directive {
+            std::string_view value;
+            SourceLocation loc;
+        };
 
-public:
-    GrammarParser(ErrorReporter* er, std::string_view source);
-    Grammar parse();
+        ErrorReporter* er;
+        std::string_view source;
+        size_t offset;
+        std::vector<Production> productions;
+        std::unordered_map<std::string_view, SourceLocation> tags;
+        Directive start, left_delim, right_delim;
 
-private:
-    SourceLocation loc() const;
-    const Production* find_start_rule() const;
+    public:
+        GrammarParser(ErrorReporter* er, std::string_view source);
+        Grammar parse();
 
-    int peek();
-    int consume();
-    bool eat(int c);
-    bool expect(int c);
-    bool eat_delim();
-    void skip_statement();
+    private:
+        SourceLocation loc() const;
+        const Production* find_start_rule() const;
 
-    bool directive();
-    bool production();
+        int peek();
+        int consume();
+        bool eat(int c);
+        bool expect(int c);
+        bool eat_delim();
+        void skip_statement();
 
-    std::string_view word(); // [a-zA-Z_][a-zA-Z0-9]*
-    std::string_view terminal(); // quoted word
-    std::string_view tag(); // [word]
-};
+        bool directive();
+        bool production();
+
+        std::string_view word(); // [a-zA-Z_][a-zA-Z0-9]*
+        std::string_view terminal(); // quoted word
+        std::string_view tag(); // [word]
+    };
+}
 
 #endif

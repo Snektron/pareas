@@ -6,7 +6,7 @@
 #include <functional>
 #include <cstddef>
 
-namespace llp {
+namespace pareas::llp {
     struct AdmissiblePair {
         Terminal x;
         Terminal y;
@@ -16,8 +16,8 @@ namespace llp {
 }
 
 template <>
-struct std::hash<llp::AdmissiblePair> {
-    size_t operator()(const llp::AdmissiblePair& ap) const;
+struct std::hash<pareas::llp::AdmissiblePair> {
+    size_t operator()(const pareas::llp::AdmissiblePair& ap) const;
 };
 
 

@@ -10,86 +10,88 @@
 #include <string_view>
 #include <cstddef>
 
-struct InvalidGrammarError: std::runtime_error {
-    InvalidGrammarError(const std::string& msg);
-};
+namespace pareas {
+    struct InvalidGrammarError: std::runtime_error {
+        InvalidGrammarError(const std::string& msg);
+    };
 
-struct MultipleStartRulesError: InvalidGrammarError {
-    MultipleStartRulesError();
-};
+    struct MultipleStartRulesError: InvalidGrammarError {
+        MultipleStartRulesError();
+    };
 
-struct InvalidStartRuleError: InvalidGrammarError {
-    InvalidStartRuleError();
-};
+    struct InvalidStartRuleError: InvalidGrammarError {
+        InvalidStartRuleError();
+    };
 
-struct Terminal {
-    std::string name;
+    struct Terminal {
+        std::string name;
 
-    static Terminal null();
-    bool is_null() const;
-    bool operator==(const Terminal& other) const;
-};
+        static Terminal null();
+        bool is_null() const;
+        bool operator==(const Terminal& other) const;
+    };
 
-struct NonTerminal {
-    std::string name;
+    struct NonTerminal {
+        std::string name;
 
-    bool operator==(const NonTerminal& other) const;
-};
+        bool operator==(const NonTerminal& other) const;
+    };
 
-struct Symbol {
-    bool is_terminal;
-    std::string name;
+    struct Symbol {
+        bool is_terminal;
+        std::string name;
 
-    Symbol(Terminal t);
-    Symbol(NonTerminal nt);
+        Symbol(Terminal t);
+        Symbol(NonTerminal nt);
 
-    bool is_null() const;
-    bool operator==(const Symbol& other) const;
+        bool is_null() const;
+        bool operator==(const Symbol& other) const;
 
-    Terminal as_terminal() const;
-    NonTerminal as_non_terminal() const;
-};
+        Terminal as_terminal() const;
+        NonTerminal as_non_terminal() const;
+    };
 
-struct Production {
-    SourceLocation loc;
-    std::string tag;
-    NonTerminal lhs;
-    std::vector<Symbol> rhs;
-};
+    struct Production {
+        SourceLocation loc;
+        std::string tag;
+        NonTerminal lhs;
+        std::vector<Symbol> rhs;
+    };
 
-struct Grammar {
-    Terminal left_delim;
-    Terminal right_delim;
+    struct Grammar {
+        Terminal left_delim;
+        Terminal right_delim;
 
-    const Production* start;
-    std::vector<Production> productions;
+        const Production* start;
+        std::vector<Production> productions;
 
-    void dump(std::ostream& os) const;
-};
+        void dump(std::ostream& os) const;
+    };
 
-std::ostream& operator<<(std::ostream& os, const Terminal& t);
-std::ostream& operator<<(std::ostream& os, const NonTerminal& nt);
-std::ostream& operator<<(std::ostream& os, const Symbol& sym);
-std::ostream& operator<<(std::ostream& os, const Production& prod);
+    std::ostream& operator<<(std::ostream& os, const Terminal& t);
+    std::ostream& operator<<(std::ostream& os, const NonTerminal& nt);
+    std::ostream& operator<<(std::ostream& os, const Symbol& sym);
+    std::ostream& operator<<(std::ostream& os, const Production& prod);
 
-template <>
-struct std::hash<Terminal> {
-    size_t operator()(const Terminal& t) const;
-};
-
-template <>
-struct std::hash<NonTerminal> {
-    size_t operator()(const NonTerminal& nt) const;
-};
-
-template <>
-struct std::hash<Symbol> {
-    size_t operator()(const Symbol& sym) const;
-};
-
-namespace literals {
-    Terminal operator ""_t(const char* name, size_t len);
-    NonTerminal operator ""_nt(const char* name, size_t len);
+    namespace literals {
+        Terminal operator ""_t(const char* name, size_t len);
+        NonTerminal operator ""_nt(const char* name, size_t len);
+    }
 }
+
+template <>
+struct std::hash<pareas::Terminal> {
+    size_t operator()(const pareas::Terminal& t) const;
+};
+
+template <>
+struct std::hash<pareas::NonTerminal> {
+    size_t operator()(const pareas::NonTerminal& nt) const;
+};
+
+template <>
+struct std::hash<pareas::Symbol> {
+    size_t operator()(const pareas::Symbol& sym) const;
+};
 
 #endif

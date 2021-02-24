@@ -13,7 +13,7 @@
 #include <unordered_set>
 #include <iosfwd>
 
-namespace llp {
+namespace pareas::llp {
     using LLPItemSet = ItemSet<Item>;
 
     class Generator {

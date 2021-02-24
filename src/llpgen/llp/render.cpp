@@ -12,8 +12,12 @@
 #include <cassert>
 
 namespace {
-    using llp::AdmissiblePair;
-    using llp::ParsingTable;
+    using pareas::Grammar;
+    using pareas::Symbol;
+    using pareas::Terminal;
+    using pareas::NonTerminal;
+    using pareas::llp::AdmissiblePair;
+    using pareas::llp::ParsingTable;
 
     size_t int_bit_width(size_t x) {
         auto width = std::max(size_t{8}, std::bit_ceil(std::bit_width(x)));
@@ -236,7 +240,7 @@ namespace {
     }
 }
 
-namespace llp {
+namespace pareas::llp {
     void render_parser(std::ostream& out, const Grammar& g, const ParsingTable& pt) {
         auto renderer = Renderer(out, g, pt);
         renderer.render_production_type();
