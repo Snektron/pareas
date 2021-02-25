@@ -20,6 +20,7 @@ namespace pareas {
     void FiniteStateAutomaton::add_transition(StateIndex src, StateIndex dst, Symbol sym) {
         assert(src < this->states.size());
         assert(dst < this->states.size());
+        assert(sym == EPSILON || this->alphabet.contains(sym));
 
         this->states[src].transitions.push_back({sym, dst});
     }

@@ -75,7 +75,7 @@ struct fmt::formatter<pareas::EscapeFormatter> {
         if (std::isprint(static_cast<unsigned char>(e.c)))
             return format_to(ctx.out(), "{}", static_cast<char>(e.c));
         else
-            return format_to(ctx.out(), "\\x{:08X}", e.c);
+            return format_to(ctx.out(), "\\x{:02X}", e.c);
     }
 };
 

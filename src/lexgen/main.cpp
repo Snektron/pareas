@@ -158,7 +158,7 @@ int main() {
         // regex->print(std::cout);
         // fmt::print("\n");
 
-        auto nfa = pareas::FiniteStateAutomaton();
+        auto nfa = pareas::FiniteStateAutomaton({0, 127});
         auto start = nfa.add_state();
         nfa[start].tag = "start";
 

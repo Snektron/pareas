@@ -2,6 +2,7 @@
 #define _PAREAS_LEXGEN_REGEX_HPP
 
 #include "pareas/lexgen/fsa.hpp"
+#include "pareas/lexgen/char_range.hpp"
 
 #include <memory>
 #include <vector>
@@ -51,18 +52,10 @@ namespace pareas {
     };
 
     struct CharSetNode: public RegexNode {
-        struct Range {
-            char min;
-            char max;
-
-            bool intersects(const Range& other) const;
-            void merge(const Range& other);
-        };
-
-        std::vector<Range> ranges;
+        std::vector<CharRange> ranges;
         bool inverted;
 
-        CharSetNode(std::vector<Range>&& ranges, bool inverted):
+        CharSetNode(std::vector<CharRange>&& ranges, bool inverted):
             ranges(std::move(ranges)), inverted(inverted) {}
 
         void print(std::ostream& os) const override;

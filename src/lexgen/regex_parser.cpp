@@ -1,4 +1,5 @@
 #include "pareas/lexgen/regex_parser.hpp"
+#include "pareas/lexgen/char_range.hpp"
 #include "pareas/common/escape.hpp"
 
 #include <fmt/format.h>
@@ -137,11 +138,11 @@ namespace pareas {
         if (this->parser->eat('^'))
             inverted = true;
 
-        auto ranges = std::vector<CharSetNode::Range>();
+        auto ranges = std::vector<CharRange>();
 
-        auto insert_range = [&](const CharSetNode::Range& range) {
+        auto insert_range = [&](const CharRange& range) {
             for (auto& existing_range : ranges) {
-                if (existing_range.intersects(range)) {
+                if (existing_range.intersecting_or_adjacent(range)) {
                     existing_range.merge(range);
                     return;
                 }
@@ -153,7 +154,7 @@ namespace pareas {
         while (!this->parser->eat(']')) {
             char min = parse_char();
             if (!this->parser->eat('-')) {
-                insert_range({min, min});
+                insert_range({static_cast<unsigned char>(min), static_cast<unsigned char>(min)});
                 continue;
             }
 
@@ -169,7 +170,7 @@ namespace pareas {
                 throw RegexParseError();
             }
 
-            insert_range({min, max});
+            insert_range({static_cast<unsigned char>(min), static_cast<unsigned char>(max)});
         }
 
         return std::make_unique<CharSetNode>(std::move(ranges), inverted);

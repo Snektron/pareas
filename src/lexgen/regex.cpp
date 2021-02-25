@@ -3,6 +3,8 @@
 
 #include <fmt/ostream.h>
 
+#include <bitset>
+#include <limits>
 #include <cassert>
 
 namespace pareas {
@@ -77,19 +79,6 @@ namespace pareas {
         return end;
     }
 
-    bool CharSetNode::Range::intersects(const Range& other) const {
-        return this->min <= other.max && this->max + 1 >= other.min;
-    }
-
-    void CharSetNode::Range::merge(const Range& other) {
-        assert(this->intersects(other));
-        if (other.min < this->min)
-            this->min = other.min;
-
-        if (other.max > this->max)
-            this->max = other.max;
-    }
-
     void CharSetNode::print(std::ostream& os) const {
         fmt::print(os, "[{}", this->inverted ? "^" : "");
 
@@ -106,9 +95,24 @@ namespace pareas {
     auto CharSetNode::compile(FiniteStateAutomaton& fsa, StateIndex start) const -> StateIndex {
         auto end = fsa.add_state();
 
-        for (const auto [min, max] : this->ranges) {
-            for (int c = min; c <= max; ++c) {
-                fsa.add_transition(start, end, c);
+        if (this->inverted) {
+            auto bits = std::bitset<std::numeric_limits<unsigned char>::max()>();
+
+            for (const auto [min, max] : this->ranges) {
+                for (int c = min; c <= max; ++c) {
+                    bits.set(c);
+                }
+            }
+
+            for (int c = fsa.alphabet.min; c <= fsa.alphabet.max; ++c) {
+                if (!bits.test(c))
+                    fsa.add_transition(start, end, c);
+            }
+        } else {
+            for (const auto [min, max] : this->ranges) {
+                for (int c = min; c <= max; ++c) {
+                    fsa.add_transition(start, end, c);
+                }
             }
         }
 

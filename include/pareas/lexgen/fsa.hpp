@@ -1,19 +1,19 @@
 #ifndef _PAREAS_LEXGEN_FSA_HPP
 #define _PAREAS_LEXGEN_FSA_HPP
 
+#include "pareas/lexgen/char_range.hpp"
+
 #include <string>
 #include <vector>
 #include <iosfwd>
 #include <cstddef>
 
 namespace pareas {
-    class FiniteStateAutomaton {
-    public:
+    struct FiniteStateAutomaton {
         using Symbol = int;
         static constexpr const Symbol EPSILON = -1;
 
         using StateIndex = size_t;
-    private:
         struct Transition {
             Symbol sym;
             StateIndex dst_state;
@@ -26,8 +26,10 @@ namespace pareas {
         };
 
         std::vector<State> states;
-    public:
-        FiniteStateAutomaton() = default;
+        CharRange alphabet;
+
+        FiniteStateAutomaton(CharRange alphabet):
+            alphabet(alphabet) {}
 
         StateIndex add_state(bool accepting = false, const std::string& tag = "");
         void add_transition(StateIndex src, StateIndex dst, Symbol sym);
