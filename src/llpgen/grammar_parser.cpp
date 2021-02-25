@@ -3,18 +3,7 @@
 #include <fmt/ostream.h>
 
 #include <algorithm>
-#include <cctype>
 #include <cstdio>
-
-namespace {
-    bool is_word_start_char(int c) {
-        return std::isalpha(c) || c == '_';
-    }
-
-    bool is_word_continue_char(int c) {
-        return std::isalnum(c) || c == '_';
-    }
-}
 
 namespace pareas {
     GrammarParser::GrammarParser(ErrorReporter* er, std::string_view source):
@@ -24,15 +13,15 @@ namespace pareas {
     Grammar GrammarParser::parse() {
         bool error = false;
 
-        this->eat_delim();
+        this->parser.eat_delim();
         int c;
         while ((c = this->parser.peek()) != EOF) {
             bool ok = c == '%' ? this->directive() : this->production();
             if (!ok) {
                 error = true;
-                this->skip_statement();
+                this->parser.skip_until(';');
             }
-            this->eat_delim();
+            this->parser.eat_delim();
         }
 
         if (this->start.value.size() == 0) {
@@ -107,44 +96,11 @@ namespace pareas {
         return start;
     }
 
-    bool GrammarParser::eat_delim() {
-        // Eat any delimiter, such as whitespace and comments
-        bool delimited = false;
-
-        while (true) {
-            int c = this->parser.peek();
-            switch (c) {
-                case ' ':
-                case '\t':
-                case '\r':
-                case '\n':
-                    this->parser.consume();
-                    break;
-                case '#':
-                    while (this->parser.peek() != '\n' && this->parser.peek() != EOF)
-                        this->parser.consume();
-                    break;
-                default:
-                    return delimited;
-            }
-            delimited = true;
-        }
-    }
-
-    void GrammarParser::skip_statement() {
-        while (true) {
-            this->eat_delim(); // make sure to skip comments
-            int c = this->parser.consume();
-            if (c == EOF || c == ';')
-                break;
-        }
-    }
-
     bool GrammarParser::directive() {
         auto directive_loc = this->parser.loc();
         if (!this->parser.expect('%'))
             return false;
-        auto name = this->word();
+        auto name = this->parser.word();
         if (name.size() == 0)
             return false;
 
@@ -171,27 +127,27 @@ namespace pareas {
             dir->loc = directive_loc;
         }
 
-        this->eat_delim();
+        this->parser.eat_delim();
         if (!this->parser.expect('='))
             return false;
-        this->eat_delim();
+        this->parser.eat_delim();
 
-        auto value = word ? this->word() : this->terminal();
+        auto value = word ? this->parser.word() : this->terminal();
         if (value.size() == 0)
             return false;
 
         dir->value = value;
-        this->eat_delim();
+        this->parser.eat_delim();
         return this->parser.expect(';') && !error;
     }
 
     bool GrammarParser::production() {
         auto lhs_loc = this->parser.loc();
-        auto lhs = this->word();
+        auto lhs = this->parser.word();
         if (lhs.size() == 0)
             return false;
 
-        this->eat_delim();
+        this->parser.eat_delim();
 
         auto tag_loc = lhs_loc;
         auto tag = lhs;
@@ -201,13 +157,13 @@ namespace pareas {
             if (tag.size() == 0)
                 return false;
 
-            this->eat_delim();
+            this->parser.eat_delim();
         }
 
         if (!this->parser.expect('-') || !this->parser.expect('>'))
             return false;
 
-        this->eat_delim();
+        this->parser.eat_delim();
 
         auto syms = std::vector<Symbol>();
         bool delimited = true;
@@ -220,8 +176,8 @@ namespace pareas {
                 if (t.size() == 0)
                     return false;
                 syms.push_back(Terminal{std::string(t)});
-            } else if (is_word_start_char(c)) {
-                auto nt = this->word();
+            } else if (this->parser.is_word_start_char(c)) {
+                auto nt = this->parser.word();
                 if (nt.size() == 0)
                     return false;
                 syms.push_back(NonTerminal{std::string(nt)});
@@ -234,7 +190,7 @@ namespace pareas {
                 return false;
             }
 
-            delimited = this->eat_delim();
+            delimited = this->parser.eat_delim();
         }
 
         if (!this->parser.expect(';'))
@@ -253,38 +209,11 @@ namespace pareas {
         return true;
     }
 
-    std::string_view GrammarParser::word() {
-        bool error = false;
-        size_t start = this->parser.offset;
-        int c = this->parser.peek();
-
-        if (!is_word_start_char(c)) {
-            this->parser.er->error(this->parser.loc(), fmt::format(
-                "Invalid character '{}', expected <word>",
-                static_cast<char>(c)
-            ));
-            error = true;
-        }
-
-        this->parser.consume();
-
-        c = this->parser.peek();
-        while (is_word_continue_char(c)) {
-            this->parser.consume();
-            c = this->parser.peek();
-        }
-
-        if (error)
-            return "";
-
-        return this->parser.source.substr(start, this->parser.offset - start);
-    }
-
     std::string_view GrammarParser::terminal() {
         if (!this->parser.expect('\''))
             return "";
 
-        auto word = this->word();
+        auto word = this->parser.word();
         if (word.size() == 0)
             return "";
 
@@ -298,7 +227,7 @@ namespace pareas {
         if (!this->parser.expect('['))
             return "";
 
-        auto word = this->word();
+        auto word = this->parser.word();
         if (word.size() == 0)
             return "";
 

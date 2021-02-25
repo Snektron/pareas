@@ -18,8 +18,17 @@ namespace pareas {
 
         int peek() const;
         int consume();
+
         bool eat(int c);
         bool expect(int c);
+        bool eat_delim();
+
+        std::string_view word(); // [a-zA-Z_][a-zA-Z0-9]*
+
+        void skip_until(int end);
+
+        bool is_word_start_char(int c) const;
+        bool is_word_continue_char(int c) const;
     };
 }
 

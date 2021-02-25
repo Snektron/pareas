@@ -33,13 +33,9 @@ namespace pareas {
     private:
         const Production* find_start_rule() const;
 
-        bool eat_delim();
-        void skip_statement();
-
         bool directive();
         bool production();
 
-        std::string_view word(); // [a-zA-Z_][a-zA-Z0-9]*
         std::string_view terminal(); // quoted word
         std::string_view tag(); // [word]
     };
