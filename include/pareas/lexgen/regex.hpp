@@ -42,17 +42,17 @@ namespace pareas {
         void print(std::ostream& os) const override;
     };
 
-    struct CharGroupNode: public RegexNode {
+    struct CharSetNode: public RegexNode {
         struct CharRange {
             char min;
             char max;
         };
 
         std::vector<CharRange> ranges;
-        bool invert;
+        bool inverted;
 
-        CharGroupNode(std::vector<CharRange>&& ranges, bool invert):
-            ranges(std::move(ranges)), invert(invert) {}
+        CharSetNode(std::vector<CharRange>&& ranges, bool inverted):
+            ranges(std::move(ranges)), inverted(inverted) {}
 
         void print(std::ostream& os) const override;
     };

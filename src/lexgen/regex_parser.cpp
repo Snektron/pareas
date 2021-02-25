@@ -112,7 +112,55 @@ namespace pareas {
     }
 
     UniqueRegexNode RegexParser::group() {
-        return nullptr;
+        auto parse_char = [&] {
+            int c = this->parser->consume();
+            if (c == EOF) {
+                this->parser->er->error(this->parser->loc(), "Unexpected EOF, expected <character>");
+                throw RegexParseError();
+            } else if (c == '\\') {
+                c = this->escaped_char();
+            } else if (!std::isprint(c)) {
+                this->parser->er->error(this->parser->loc(), fmt::format(
+                    "Unexpected character '{}', expected <printable character>",
+                    EscapeFormatter{c}
+                ));
+                throw RegexParseError();
+            }
+
+            return c;
+        };
+
+        if (!this->parser->expect('['))
+            throw RegexParseError();
+
+        bool inverted = false;
+        if (this->parser->eat('^'))
+            inverted = true;
+
+        auto ranges = std::vector<CharSetNode::CharRange>();
+
+        while (!this->parser->eat(']')) {
+            char min = parse_char();
+            if (!this->parser->eat('-')) {
+                ranges.push_back({min, min});
+            }
+
+            char max = parse_char();
+            if (min > max) {
+                this->parser->er->error(this->parser->loc(), fmt::format(
+                    "Invalid character range {} to {}: start code ({}) is greater than end code ({})",
+                    EscapeFormatter{min},
+                    EscapeFormatter{max},
+                    static_cast<int>(min),
+                    static_cast<int>(max)
+                ));
+                throw RegexParseError();
+            }
+
+            ranges.push_back({min, max});
+        }
+
+        return std::make_unique<CharSetNode>(std::move(ranges), inverted);
     }
 
     int RegexParser::escaped_char() {
@@ -145,6 +193,8 @@ namespace pareas {
             case '\\':
             case '\'':
             case '"':
+            case '-':
+            case '^':
                 return c;
             case 'x': {
                 int hi = convert_hex(this->parser->consume());

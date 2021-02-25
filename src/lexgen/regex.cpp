@@ -39,14 +39,14 @@ namespace pareas {
         fmt::print(os, "*");
     }
 
-    void CharGroupNode::print(std::ostream& os) const {
-        fmt::print(os, "[{}", this->invert ? "" : "^");
+    void CharSetNode::print(std::ostream& os) const {
+        fmt::print(os, "[{}", this->inverted ? "" : "^");
 
         for (const auto [min, max] : this->ranges) {
             if (min == max)
-                fmt::print(os, "{}", min);
+                fmt::print(os, "{:r}", EscapeFormatter{min});
             else
-                fmt::print(os, "{}-{}", min, max);
+                fmt::print(os, "{:r}-{:r}", EscapeFormatter{min}, EscapeFormatter{max});
         }
 
         fmt::print(os, "]");

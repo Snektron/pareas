@@ -49,6 +49,8 @@ struct fmt::formatter<pareas::EscapeFormatter> {
             case '*':
             case '/':
             case '|':
+            case '-':
+            case '^':
                 if (this->regex_extended)
                     return format_to(ctx.out(), "\\{}", static_cast<char>(e.c));
             default:

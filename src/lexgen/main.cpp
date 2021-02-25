@@ -143,7 +143,7 @@ void Dfa::test() const {
 }
 
 auto test_input = R"(
-if = /(oef|a*|auwie)*oei/ # auwie
+if = /(oef|[a-zA-Z]*|auwie)*oei/ # auwie
 else = /else/
 )";
 
