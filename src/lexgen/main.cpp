@@ -1,7 +1,10 @@
 #include <fmt/format.h>
 #include <fmt/ostream.h>
 
+#include "pareas/common/error_reporter.hpp"
+#include "pareas/common/parser.hpp"
 #include "pareas/common/hash_util.hpp"
+#include "pareas/lexgen/lexer_parser.hpp"
 
 #include <iostream>
 #include <vector>
@@ -139,50 +142,63 @@ void Dfa::test() const {
     }
 }
 
+auto test_input = R"(
+if = /(oef|a*|auwie)*oei/ # auwie
+else = /else/
+)";
+
 int main() {
+    auto er = pareas::ErrorReporter(test_input, std::clog);
+    auto parser = pareas::Parser(&er, test_input);
+    auto lexer_parser = pareas::LexerParser(&parser);
+    auto tokens = lexer_parser.parse();
+
+    for (const auto& [_, name, regex] : tokens) {
+        fmt::print("{}: ", name);
+        regex->print(std::cout);
+        fmt::print("\n");
+    }
+
     // Transition transitions[] = {
     //     {.src = 0, .dst =  1, .sym = 'b'},
     //     {.src = 1, .dst =  2, .sym = 'a'},
     //     {.src = 2, .dst =  3, .sym = 'b'},
     // };
 
-    Transition transitions[] = {
-        {.src = 0, .dst = 1, .sym = 'a'},
-        {.src = 0, .dst = 2, .sym = 'b'},
+    // Transition transitions[] = {
+    //     {.src = 0, .dst = 1, .sym = 'a'},
+    //     {.src = 0, .dst = 2, .sym = 'b'},
 
-        {.src = 1, .dst = 1, .sym = 'a'},
-        {.src = 1, .dst = 3, .sym = 'b'},
+    //     {.src = 1, .dst = 1, .sym = 'a'},
+    //     {.src = 1, .dst = 3, .sym = 'b'},
 
-        {.src = 2, .dst = 1, .sym = 'a'},
-        {.src = 2, .dst = 2, .sym = 'b'},
+    //     {.src = 2, .dst = 1, .sym = 'a'},
+    //     {.src = 2, .dst = 2, .sym = 'b'},
 
-        {.src = 3, .dst = 1, .sym = 'a'},
-        {.src = 3, .dst = 4, .sym = 'b'},
+    //     {.src = 3, .dst = 1, .sym = 'a'},
+    //     {.src = 3, .dst = 4, .sym = 'b'},
 
-        {.src = 4, .dst = 5, .sym = 'a'},
-        {.src = 4, .dst = 6, .sym = 'b'},
+    //     {.src = 4, .dst = 5, .sym = 'a'},
+    //     {.src = 4, .dst = 6, .sym = 'b'},
 
-        {.src = 5, .dst = 5, .sym = 'a'},
-        {.src = 5, .dst = 7, .sym = 'b'},
+    //     {.src = 5, .dst = 5, .sym = 'a'},
+    //     {.src = 5, .dst = 7, .sym = 'b'},
 
-        {.src = 6, .dst = 5, .sym = 'a'},
-        {.src = 6, .dst = 6, .sym = 'b'},
+    //     {.src = 6, .dst = 5, .sym = 'a'},
+    //     {.src = 6, .dst = 6, .sym = 'b'},
 
-        {.src = 7, .dst = 5, .sym = 'a'},
-        {.src = 7, .dst = 8, .sym = 'b'},
+    //     {.src = 7, .dst = 5, .sym = 'a'},
+    //     {.src = 7, .dst = 8, .sym = 'b'},
 
-        {.src = 8, .dst = 5, .sym = 'a'},
-        {.src = 8, .dst = 6, .sym = 'b'},
-    };
+    //     {.src = 8, .dst = 5, .sym = 'a'},
+    //     {.src = 8, .dst = 6, .sym = 'b'},
+    // };
 
-    auto dfa = Dfa(transitions);
+    // auto dfa = Dfa(transitions);
     // dfa.dump_csv();
-    dfa.test();
+    // dfa.test();
 
-    // auto a = dfa.transition_table.at('a');
-    // auto b = dfa.transition_table.at('b');
-    // a.merge(b);
-    // a.dump_csv();
+
 
     return EXIT_SUCCESS;
 }

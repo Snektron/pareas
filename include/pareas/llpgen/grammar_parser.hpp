@@ -3,7 +3,6 @@
 
 #include "pareas/llpgen/grammar.hpp"
 #include "pareas/common/parser.hpp"
-#include "pareas/common/error_reporter.hpp"
 
 #include <string_view>
 #include <unordered_map>
@@ -20,14 +19,14 @@ namespace pareas {
             SourceLocation loc;
         };
 
-        Parser parser;
+        Parser* parser;
 
         std::vector<Production> productions;
         std::unordered_map<std::string_view, SourceLocation> tags;
         Directive start, left_delim, right_delim;
 
     public:
-        GrammarParser(ErrorReporter* er, std::string_view source);
+        GrammarParser(Parser* parser);
         Grammar parse();
 
     private:

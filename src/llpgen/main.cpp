@@ -5,6 +5,7 @@
 #include "pareas/llpgen/llp/generator.hpp"
 #include "pareas/llpgen/llp/render.hpp"
 #include "pareas/common/error_reporter.hpp"
+#include "pareas/common/parser.hpp"
 
 #include <fmt/format.h>
 #include <fmt/ostream.h>
@@ -122,8 +123,9 @@ int main(int argc, const char* argv[]) {
     auto er = pareas::ErrorReporter(input, std::clog);
 
     try {
-        auto parser = pareas::GrammarParser(&er, input);
-        auto g = parser.parse();
+        auto parser = pareas::Parser(&er, input);
+        auto grammar_parser = pareas::GrammarParser(&parser);
+        auto g = grammar_parser.parse();
 
         auto tsf = pareas::TerminalSetFunctions(g);
         if (opts.verbose_sets)

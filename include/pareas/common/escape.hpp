@@ -34,7 +34,6 @@ struct fmt::formatter<pareas::EscapeFormatter> {
     template <typename FormatContext>
     auto format(pareas::EscapeFormatter e, FormatContext& ctx) {
         switch (e.c) {
-            case '\\':
                 return format_to(ctx.out(), "\\\\");
             case '\n':
                 return format_to(ctx.out(), "\\n");
@@ -42,15 +41,16 @@ struct fmt::formatter<pareas::EscapeFormatter> {
                 return format_to(ctx.out(), "\\t");
             case '\r':
                 return format_to(ctx.out(), "\\r");
+            case '\\':
             case '[':
             case ']':
             case ')':
             case '(':
             case '*':
             case '/':
+            case '|':
                 if (this->regex_extended)
                     return format_to(ctx.out(), "\\{}", static_cast<char>(e.c));
-                // fallthrough
             default:
                 if (std::isprint(static_cast<unsigned char>(e.c)))
                     return format_to(ctx.out(), "{}", static_cast<char>(e.c));
