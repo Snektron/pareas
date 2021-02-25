@@ -137,12 +137,24 @@ namespace pareas {
         if (this->parser->eat('^'))
             inverted = true;
 
-        auto ranges = std::vector<CharSetNode::CharRange>();
+        auto ranges = std::vector<CharSetNode::Range>();
+
+        auto insert_range = [&](const CharSetNode::Range& range) {
+            for (auto& existing_range : ranges) {
+                if (existing_range.intersects(range)) {
+                    existing_range.merge(range);
+                    return;
+                }
+            }
+
+            ranges.push_back(range);
+        };
 
         while (!this->parser->eat(']')) {
             char min = parse_char();
             if (!this->parser->eat('-')) {
-                ranges.push_back({min, min});
+                insert_range({min, min});
+                continue;
             }
 
             char max = parse_char();
@@ -157,7 +169,7 @@ namespace pareas {
                 throw RegexParseError();
             }
 
-            ranges.push_back({min, max});
+            insert_range({min, max});
         }
 
         return std::make_unique<CharSetNode>(std::move(ranges), inverted);

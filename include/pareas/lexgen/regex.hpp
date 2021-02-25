@@ -1,6 +1,8 @@
 #ifndef _PAREAS_LEXGEN_REGEX_HPP
 #define _PAREAS_LEXGEN_REGEX_HPP
 
+#include "pareas/lexgen/fsa.hpp"
+
 #include <memory>
 #include <vector>
 #include <utility>
@@ -8,7 +10,10 @@
 
 namespace pareas {
     struct RegexNode {
+        using StateIndex = FiniteStateAutomaton::StateIndex;
+
         virtual void print(std::ostream& os) const = 0;
+        virtual StateIndex compile(FiniteStateAutomaton& fsa, StateIndex start) const = 0;
 
         virtual ~RegexNode() = default;
     };
@@ -22,6 +27,7 @@ namespace pareas {
             children(std::move(children)) {}
 
         void print(std::ostream& os) const override;
+        StateIndex compile(FiniteStateAutomaton& fsa, StateIndex start) const override;
     };
 
     struct AlternationNode: public RegexNode {
@@ -31,6 +37,7 @@ namespace pareas {
             children(std::move(children)) {}
 
         void print(std::ostream& os) const override;
+        StateIndex compile(FiniteStateAutomaton& fsa, StateIndex start) const override;
     };
 
     struct RepeatNode: public RegexNode {
@@ -40,21 +47,26 @@ namespace pareas {
             child(std::move(child)) {}
 
         void print(std::ostream& os) const override;
+        StateIndex compile(FiniteStateAutomaton& fsa, StateIndex start) const override;
     };
 
     struct CharSetNode: public RegexNode {
-        struct CharRange {
+        struct Range {
             char min;
             char max;
+
+            bool intersects(const Range& other) const;
+            void merge(const Range& other);
         };
 
-        std::vector<CharRange> ranges;
+        std::vector<Range> ranges;
         bool inverted;
 
-        CharSetNode(std::vector<CharRange>&& ranges, bool inverted):
+        CharSetNode(std::vector<Range>&& ranges, bool inverted):
             ranges(std::move(ranges)), inverted(inverted) {}
 
         void print(std::ostream& os) const override;
+        StateIndex compile(FiniteStateAutomaton& fsa, StateIndex start) const override;
     };
 
     struct CharNode: public RegexNode {
@@ -64,12 +76,14 @@ namespace pareas {
             c(c) {}
 
         void print(std::ostream& os) const override;
+        StateIndex compile(FiniteStateAutomaton& fsa, StateIndex start) const override;
     };
 
     struct EmptyNode: public RegexNode {
         EmptyNode() = default;
 
         void print(std::ostream& os) const override;
+        StateIndex compile(FiniteStateAutomaton& fsa, StateIndex start) const override;
     };
 }
 

@@ -55,6 +55,7 @@ executable(
 
 # lexgen
 lexgen_sources = [
+    'src/lexgen/fsa.cpp',
     'src/lexgen/lexer_parser.cpp',
     'src/lexgen/main.cpp',
     'src/lexgen/regex.cpp',

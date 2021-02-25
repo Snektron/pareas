@@ -5,6 +5,7 @@
 #include "pareas/common/parser.hpp"
 #include "pareas/common/hash_util.hpp"
 #include "pareas/lexgen/lexer_parser.hpp"
+#include "pareas/lexgen/fsa.hpp"
 
 #include <iostream>
 #include <vector>
@@ -143,8 +144,7 @@ void Dfa::test() const {
 }
 
 auto test_input = R"(
-if = /(oef|[a-zA-Z]*|auwie)*oei/ # auwie
-else = /else/
+if = /(oef|[a-c]*|auwie)*oei/ # auwie
 )";
 
 int main() {
@@ -154,9 +154,18 @@ int main() {
     auto tokens = lexer_parser.parse();
 
     for (const auto& [_, name, regex] : tokens) {
-        fmt::print("{}: ", name);
-        regex->print(std::cout);
-        fmt::print("\n");
+        // fmt::print("{}: ", name);
+        // regex->print(std::cout);
+        // fmt::print("\n");
+
+        auto nfa = pareas::FiniteStateAutomaton();
+        auto start = nfa.add_state();
+        nfa[start].tag = "start";
+
+        auto end = regex->compile(nfa, start);
+        nfa[end].accepting = true;
+        nfa[end].tag = name;
+        nfa.dump_dot(std::cout);
     }
 
     // Transition transitions[] = {
@@ -198,7 +207,15 @@ int main() {
     // dfa.dump_csv();
     // dfa.test();
 
+    // auto fsa = pareas::FiniteStateAutomaton();
+    // auto p = fsa.add_state(false, "p");
+    // auto q = fsa.add_state(true, "q");
 
+    // fsa.add_transition(p, p, '0');
+    // fsa.add_transition(p, p, '1');
+    // fsa.add_transition(p, q, '1');
+
+    // fsa.dump_dot(std::cout);
 
     return EXIT_SUCCESS;
 }
