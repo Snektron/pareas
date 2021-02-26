@@ -57,7 +57,7 @@ namespace pareas {
         return true;
     }
 
-    bool Parser::eat_delim() {
+    bool Parser::eat_delim(bool eat_newlines) {
         // Eat any delimiter, such as whitespace and comments
         bool delimited = false;
 
@@ -67,13 +67,17 @@ namespace pareas {
                 case ' ':
                 case '\t':
                 case '\r':
-                case '\n':
                     this->consume();
                     break;
                 case '#':
                     while (this->peek() != '\n' && this->peek() != EOF)
                         this->consume();
                     break;
+                case '\n':
+                    if (eat_newlines) {
+                        this->consume();
+                        break;
+                    }
                 default:
                     return delimited;
             }

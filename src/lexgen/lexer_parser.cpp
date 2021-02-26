@@ -24,21 +24,6 @@ namespace pareas {
         return std::move(this->tokens);
     }
 
-    void LexerParser::eat_whitespace() {
-        // Eat whitespace that doesn't include newlines.
-        while (true) {
-            int c = this->parser->peek();
-            switch (c) {
-                case ' ':
-                case '\t':
-                case '\r':
-                    this->parser->consume();
-                default:
-                    return;
-            }
-        }
-    }
-
     bool LexerParser::token_decl() {
         auto loc = this->parser->loc();
         auto token_name = this->parser->word();
@@ -54,11 +39,11 @@ namespace pareas {
             duplicate = true;
         }
 
-        this->eat_whitespace();
+        this->parser->eat_delim(false);
         if (!this->parser->expect('='))
             return false;
 
-        this->eat_whitespace();
+        this->parser->eat_delim(false);
 
         auto regex_parser = RegexParser(this->parser);
         auto root = UniqueRegexNode(nullptr);
@@ -70,20 +55,13 @@ namespace pareas {
             return false;
         }
 
-        this->eat_whitespace();
+        this->parser->eat_delim(false);
 
         // Only return after parsing the regex, so we also catch regex syntax errors
         if (duplicate)
             return false;
 
         this->tokens.push_back({this->tokens.size(), loc, token_name, std::move(root)});
-
-        // A bit of a hack
-        // TODO: Improve this
-        if (this->parser->peek() == '#') {
-            this->parser->eat_delim();
-            return true;
-        }
 
         return this->parser->expect('\n');
     }

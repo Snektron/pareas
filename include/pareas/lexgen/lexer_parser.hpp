@@ -34,7 +34,6 @@ namespace pareas {
         std::vector<Token>&& parse();
 
     private:
-        void eat_whitespace();
         bool token_decl();
     };
 }

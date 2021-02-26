@@ -21,7 +21,7 @@ namespace pareas {
 
         bool eat(int c);
         bool expect(int c);
-        bool eat_delim();
+        bool eat_delim(bool eat_newlines = true);
 
         std::string_view word(); // [a-zA-Z_][a-zA-Z0-9]*
 
