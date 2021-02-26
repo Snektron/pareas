@@ -44,7 +44,7 @@ namespace {
             auto src = queue.front();
             queue.pop_front();
 
-            for (const auto& [transition_sym, dst] : fsa.states[src].transitions) {
+            for (const auto& [transition_sym, dst, _] : fsa[src].transitions) {
                 if (transition_sym == FiniteStateAutomaton::EPSILON) {
                     enqueue(dst);
                 }
@@ -56,7 +56,7 @@ namespace {
         // Epsilon-transitions should already be dealt with at this point
         auto syms = std::unordered_set<Symbol>();
         for (auto src : ss.states) {
-            for (const auto& [sym, dst] : fsa.states[src].transitions) {
+            for (const auto& [sym, dst, _] : fsa[src].transitions) {
                 if (sym != FiniteStateAutomaton::EPSILON)
                     syms.insert(sym);
             }
@@ -64,11 +64,11 @@ namespace {
         return syms;
     }
 
-    StateSet move(const FiniteStateAutomaton& fsa, const StateSet& ss, Symbol sym) {
+    StateSet move(const FiniteStateAutomaton& fsa, const StateSet& ss, Symbol move_sym) {
         auto after_move = StateSet{};
         for (auto src : ss.states) {
-            for (const auto& [transition_sym, dst] : fsa.states[src].transitions) {
-                if (transition_sym == sym)
+            for (const auto& [sym, dst, _] : fsa[src].transitions) {
+                if (sym == move_sym)
                     after_move.states.insert(dst);
             }
         }
@@ -110,12 +110,12 @@ namespace pareas {
         return index;
     }
 
-    void FiniteStateAutomaton::add_transition(StateIndex src, StateIndex dst, Symbol sym) {
+    void FiniteStateAutomaton::add_transition(StateIndex src, StateIndex dst, Symbol sym, bool produces_token) {
         assert(src < this->num_states());
         assert(dst < this->num_states());
         assert(sym == EPSILON || this->alphabet.contains(sym));
 
-        this->states[src].transitions.push_back({sym, dst});
+        this->states[src].transitions.push_back({sym, dst, produces_token});
     }
 
     void FiniteStateAutomaton::add_epsilon_transition(StateIndex src, StateIndex dst) {
@@ -146,11 +146,12 @@ namespace pareas {
                 token ? token->name : ""
             );
 
-            for (const auto& [sym, dst] : transitions) {
+            for (const auto& [sym, dst, produces_token] : transitions) {
+                auto style = produces_token ? ", color=blue" : "";
                 if (sym == EPSILON) {
-                    fmt::print("    state{} -> state{} [label=\"Ɛ\"];\n", src, dst);
+                    fmt::print("    state{} -> state{} [label=\"Ɛ\"{}];\n", src, dst, style);
                 } else {
-                    fmt::print("    state{} -> state{} [label=\"{:q}\"];\n", src, dst, EscapeFormatter{sym});
+                    fmt::print("    state{} -> state{} [label=\"{:q}\"{}];\n", src, dst, EscapeFormatter{sym}, style);
                 }
             }
         }
@@ -250,7 +251,7 @@ namespace pareas {
                 // careful though, was `src` might _be_ the start state
                 // in this case, we should add an edge to itself.
                 if (src == START) {
-                    this->add_transition(src, src, sym);
+                    this->add_transition(src, src, sym, true);
                     continue;
                 }
 
@@ -259,7 +260,7 @@ namespace pareas {
                 // after this symbol. Just ignore it if so.
                 for (const auto t : this->states[START].transitions) {
                     if (t.sym == sym) {
-                        this->add_transition(src, t.dst, sym);
+                        this->add_transition(src, t.dst, sym, true);
                         break;
                     }
                 }
@@ -267,15 +268,12 @@ namespace pareas {
         }
     }
 
-    FiniteStateAutomaton FiniteStateAutomaton::build_lexer_nfa(CharRange alphabet, std::span<const Token> tokens) {
-        auto nfa = FiniteStateAutomaton(alphabet);
+    void FiniteStateAutomaton::build_lexer(std::span<const Token> tokens) {
         for (const auto& token : tokens) {
-            auto regex_start = nfa.add_state();
-            nfa.add_epsilon_transition(START, regex_start);
-            auto regex_end = token.regex->compile(nfa, regex_start);
-            nfa[regex_end].token = &token;
+            auto regex_start = this->add_state();
+            this->add_epsilon_transition(START, regex_start);
+            auto regex_end = token.regex->compile(*this, regex_start);
+            this->states[regex_end].token = &token;
         }
-
-        return nfa;
     }
 }

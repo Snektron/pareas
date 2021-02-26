@@ -23,6 +23,7 @@ namespace pareas {
         struct Transition {
             Symbol sym;
             StateIndex dst;
+            bool produces_token;
         };
 
         struct State {
@@ -39,7 +40,7 @@ namespace pareas {
 
         StateIndex add_state();
 
-        void add_transition(StateIndex src, StateIndex dst, Symbol sym);
+        void add_transition(StateIndex src, StateIndex dst, Symbol sym, bool produces_token = false);
         void add_epsilon_transition(StateIndex src, StateIndex dst);
 
         State& operator[](StateIndex state);
@@ -51,7 +52,7 @@ namespace pareas {
 
         void add_lexer_loop();
 
-        static FiniteStateAutomaton build_lexer_nfa(CharRange alphabet, std::span<const Token> tokens);
+        void build_lexer(std::span<const Token> tokens);
     };
 }
 

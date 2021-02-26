@@ -184,29 +184,37 @@ whitespace = /[ \r\n][ \t\r\n]*/
 comment = /\/\/[^\n]*\n/
 )";
 
+auto test2 = R"(
+aaa = /aaa/
+id = /[a-c]+/
+open = /\(/
+close = /\)/
+)";
+
 int main() {
-    auto er = pareas::ErrorReporter(test_input, std::clog);
-    auto parser = pareas::Parser(&er, test_input);
+    auto er = pareas::ErrorReporter(test2, std::clog);
+    auto parser = pareas::Parser(&er, test2);
     auto lexer_parser = pareas::LexerParser(&parser);
     auto tokens = lexer_parser.parse();
 
-    auto nfa = pareas::FiniteStateAutomaton::build_lexer_nfa({0, 127}, tokens);
+    auto nfa = pareas::FiniteStateAutomaton({0, 127});
+    nfa.build_lexer(tokens);
     auto dfa = nfa.to_dfa();
     dfa.add_lexer_loop();
 
-    fmt::print("Final DFA has {} states\n", dfa.num_states());
-    // dfa.dump_dot(std::cout);
+    // fmt::print("Final DFA has {} states\n", dfa.num_states());
+    dfa.dump_dot(std::cout);
 
-    auto transitions = std::vector<Transition>();
-    for (size_t src = 0; src < dfa.num_states(); ++src) {
-        for (const auto [sym, dst] : dfa[src].transitions) {
-            assert(sym != pareas::FiniteStateAutomaton::EPSILON);
-            transitions.push_back({.src = static_cast<int>(src), .dst = static_cast<int>(dst), .sym = static_cast<char>(sym)});
-        }
-    }
+    // auto transitions = std::vector<Transition>();
+    // for (size_t src = 0; src < dfa.num_states(); ++src) {
+    //     for (const auto [sym, dst, _] : dfa[src].transitions) {
+    //         assert(sym != pareas::FiniteStateAutomaton::EPSILON);
+    //         transitions.push_back({.src = static_cast<int>(src), .dst = static_cast<int>(dst), .sym = static_cast<char>(sym)});
+    //     }
+    // }
 
-    auto pdfa = Dfa(transitions);
-    pdfa.test();
+    // auto pdfa = Dfa(transitions);
+    // pdfa.test();
 
     return EXIT_SUCCESS;
 }
