@@ -63,7 +63,7 @@ namespace pareas {
 
     void RepeatNode::print(std::ostream& os) const {
         this->child->print(os);
-        fmt::print(os, "*");
+        fmt::print(os, this->repeat_type == RepeatType::ZERO_OR_MORE ? "*" : "+");
     }
 
     auto RepeatNode::compile(FiniteStateAutomaton& fsa, StateIndex start) const -> StateIndex {
@@ -71,7 +71,9 @@ namespace pareas {
         auto loop_end = this->child->compile(fsa, loop_start);
         auto end = fsa.add_state();
 
-        fsa.add_epsilon_transition(start, end);
+        if (this->repeat_type == RepeatType::ZERO_OR_MORE)
+            fsa.add_epsilon_transition(start, end);
+
         fsa.add_epsilon_transition(start, loop_start);
         fsa.add_epsilon_transition(loop_end, end);
         fsa.add_epsilon_transition(loop_end, loop_start);

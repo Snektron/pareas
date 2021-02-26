@@ -13,6 +13,7 @@ namespace {
             case '[':
             case ']':
             case '*':
+            case '+':
             case '(':
             case ')':
             case '/':
@@ -74,15 +75,22 @@ namespace pareas {
     UniqueRegexNode RegexParser::maybe_repeat() {
         auto child = this->maybe_atom();
         auto loc = this->parser->loc();
-        if (!this->parser->eat('*'))
+
+        bool star = this->parser->eat('*');
+        bool plus = this->parser->eat('+');
+
+        if (!star && !plus)
             return child;
 
         if (!child) {
-            this->parser->er->error(loc, "Stray star is not allowed to be applied to nothing");
+            this->parser->er->error(loc, "Stray repeat is not allowed to be applied to nothing");
             throw RegexParseError();
         }
 
-        return std::make_unique<RepeatNode>(std::move(child));
+        return std::make_unique<RepeatNode>(
+            star ? RepeatType::ZERO_OR_MORE : RepeatType::ONE_OR_MORE,
+            std::move(child)
+        );
     }
 
     UniqueRegexNode RegexParser::maybe_atom() {

@@ -41,11 +41,17 @@ namespace pareas {
         StateIndex compile(FiniteStateAutomaton& fsa, StateIndex start) const override;
     };
 
+    enum class RepeatType {
+        ZERO_OR_MORE,
+        ONE_OR_MORE
+    };
+
     struct RepeatNode: public RegexNode {
+        RepeatType repeat_type;
         UniqueRegexNode child;
 
-        RepeatNode(UniqueRegexNode&& child):
-            child(std::move(child)) {}
+        RepeatNode(RepeatType repeat_type, UniqueRegexNode&& child):
+            repeat_type(repeat_type), child(std::move(child)) {}
 
         void print(std::ostream& os) const override;
         StateIndex compile(FiniteStateAutomaton& fsa, StateIndex start) const override;

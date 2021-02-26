@@ -133,14 +133,16 @@ void Dfa::test() const {
         }
     }
 
-    for (size_t i = 0; i < this->num_states; ++i) {
-        fmt::print(",{}", i);
-    }
-    fmt::print("\n");
-    for (const auto& [ta, syms] : seen) {
-        fmt::print("{},", syms);
-        ta.dump_csv();
-    }
+    fmt::print("Parallel DFA has {} states\n", seen.size());
+
+    // for (size_t i = 0; i < this->num_states; ++i) {
+    //     fmt::print(",{}", i);
+    // }
+    // fmt::print("\n");
+    // for (const auto& [ta, syms] : seen) {
+    //     fmt::print("{},", syms);
+    //     ta.dump_csv();
+    // }
 }
 
 auto test_input = R"(
@@ -187,7 +189,7 @@ slash = /\//
 star = /\*/
 semi = /;/
 id = /[a-zA-Z_][a-zA-Z0-9_]*/
-number = /[0-9][0-9]*/
+number = /[0-9]+/
 whitespace = /[ \r\n][ \t\r\n]*/
 comment = /\/\/[^\n]*\n/
 )";
@@ -200,6 +202,18 @@ int main() {
 
     auto dfa = pareas::FiniteStateAutomaton::build_lexer_dfa({0, 127}, tokens);
     fmt::print("Final DFA has {} states\n", dfa.num_states());
+    // dfa.dump_dot(std::cout);
+
+    auto transitions = std::vector<Transition>();
+    for (size_t src = 0; src < dfa.num_states(); ++src) {
+        for (const auto [sym, dst] : dfa[src].transitions) {
+            assert(sym != pareas::FiniteStateAutomaton::EPSILON);
+            transitions.push_back({.src = static_cast<int>(src), .dst = static_cast<int>(dst), .sym = static_cast<char>(sym)});
+        }
+    }
+
+    auto pdfa = Dfa(transitions);
+    pdfa.test();
 
     // dfa.dump_dot(std::cout);
 
