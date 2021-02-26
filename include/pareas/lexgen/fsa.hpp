@@ -48,7 +48,10 @@ namespace pareas {
         void dump_dot(std::ostream& os) const;
 
         FiniteStateAutomaton to_dfa() const;
-        static FiniteStateAutomaton build_lexer_dfa(CharRange alphabet, std::span<const Token> tokens);
+
+        void add_lexer_loop();
+
+        static FiniteStateAutomaton build_lexer_nfa(CharRange alphabet, std::span<const Token> tokens);
     };
 }
 

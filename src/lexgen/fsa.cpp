@@ -227,19 +227,9 @@ namespace pareas {
         return dfa;
     }
 
-    FiniteStateAutomaton FiniteStateAutomaton::build_lexer_dfa(CharRange alphabet, std::span<const Token> tokens) {
-        auto nfa = FiniteStateAutomaton(alphabet);
-        for (const auto& token : tokens) {
-            auto regex_start = nfa.add_state();
-            nfa.add_epsilon_transition(START, regex_start);
-            auto regex_end = token.regex->compile(nfa, regex_start);
-            nfa[regex_end].token = &token;
-        }
-
-        auto dfa = nfa.to_dfa();
-
-        for (size_t src = 0; src < dfa.num_states(); ++src) {
-            auto& state = dfa[src];
+    void FiniteStateAutomaton::add_lexer_loop() {
+        for (size_t src = 0; src < this->num_states(); ++src) {
+            auto& state = this->states[src];
             if (!state.token)
                 continue;
 
@@ -260,22 +250,32 @@ namespace pareas {
                 // careful though, was `src` might _be_ the start state
                 // in this case, we should add an edge to itself.
                 if (src == START) {
-                    dfa.add_transition(src, src, sym);
+                    this->add_transition(src, src, sym);
                     continue;
                 }
 
                 // Try to add the transition to the state after the start state.
                 // If no such transition exists, the dfa would end up in a reject state
                 // after this symbol. Just ignore it if so.
-                for (const auto t : dfa[START].transitions) {
+                for (const auto t : this->states[START].transitions) {
                     if (t.sym == sym) {
-                        dfa.add_transition(src, t.dst, sym);
+                        this->add_transition(src, t.dst, sym);
                         break;
                     }
                 }
             }
         }
+    }
 
-        return dfa;
+    FiniteStateAutomaton FiniteStateAutomaton::build_lexer_nfa(CharRange alphabet, std::span<const Token> tokens) {
+        auto nfa = FiniteStateAutomaton(alphabet);
+        for (const auto& token : tokens) {
+            auto regex_start = nfa.add_state();
+            nfa.add_epsilon_transition(START, regex_start);
+            auto regex_end = token.regex->compile(nfa, regex_start);
+            nfa[regex_end].token = &token;
+        }
+
+        return nfa;
     }
 }

@@ -105,44 +105,34 @@ void Dfa::dump_csv() const {
 }
 
 void Dfa::test() const {
-    auto seen = std::unordered_map<TransitionArray, std::string>();
+    auto seen = std::unordered_set<TransitionArray>();
+    auto queue = std::deque<TransitionArray>();
 
     for (const auto& [sym, ta] : this->transition_table) {
-        seen.insert({ta, std::string(1, sym)});
+        seen.insert({ta});
+        queue.push_back(ta);
     }
 
-    bool any_inserted = true;
-    while (any_inserted) {
-        any_inserted = false;
+    while (!queue.empty()) {
+        auto first = queue.front();
+        queue.pop_front();
 
-        auto new_tas = std::unordered_map<TransitionArray, std::string>();
+        for (const auto& second : seen) {
+            auto copy = first;
+            copy.merge(second);
 
-        for (const auto& [ta1, syms1] : seen) {
-            for (const auto& [ta2, syms2] : seen) {
-                auto syms = syms1 + syms2;
+            if (seen.insert(copy).second)
+                queue.push_back(copy);
 
-                auto copy = ta1;
-                copy.merge(ta2);
+            copy = second;
+            copy.merge(first);
 
-                new_tas[copy] = syms;
-            }
-        }
-
-        for (const auto& elem : new_tas) {
-            any_inserted |= seen.insert(elem).second;
+            if (seen.insert(copy).second)
+                queue.push_back(copy);
         }
     }
 
     fmt::print("Parallel DFA has {} states\n", seen.size());
-
-    // for (size_t i = 0; i < this->num_states; ++i) {
-    //     fmt::print(",{}", i);
-    // }
-    // fmt::print("\n");
-    // for (const auto& [ta, syms] : seen) {
-    //     fmt::print("{},", syms);
-    //     ta.dump_csv();
-    // }
 }
 
 auto test_input = R"(
@@ -200,7 +190,10 @@ int main() {
     auto lexer_parser = pareas::LexerParser(&parser);
     auto tokens = lexer_parser.parse();
 
-    auto dfa = pareas::FiniteStateAutomaton::build_lexer_dfa({0, 127}, tokens);
+    auto nfa = pareas::FiniteStateAutomaton::build_lexer_nfa({0, 127}, tokens);
+    auto dfa = nfa.to_dfa();
+    dfa.add_lexer_loop();
+
     fmt::print("Final DFA has {} states\n", dfa.num_states());
     // dfa.dump_dot(std::cout);
 
@@ -214,53 +207,6 @@ int main() {
 
     auto pdfa = Dfa(transitions);
     pdfa.test();
-
-    // dfa.dump_dot(std::cout);
-
-    // Transition transitions[] = {
-    //     {.src = 0, .dst =  1, .sym = 'b'},
-    //     {.src = 1, .dst =  2, .sym = 'a'},
-    //     {.src = 2, .dst =  3, .sym = 'b'},
-    // };
-
-    // Transition transitions[] = {
-    //     {.src = 0, .dst = 1, .sym = 'a'},
-    //     {.src = 0, .dst = 2, .sym = 'b'},
-
-    //     {.src = 1, .dst = 1, .sym = 'a'},
-    //     {.src = 1, .dst = 3, .sym = 'b'},
-
-    //     {.src = 2, .dst = 1, .sym = 'a'},
-    //     {.src = 2, .dst = 2, .sym = 'b'},
-
-    //     {.src = 3, .dst = 1, .sym = 'a'},
-    //     {.src = 3, .dst = 4, .sym = 'b'},
-
-    //     {.src = 4, .dst = 5, .sym = 'a'},
-    //     {.src = 4, .dst = 6, .sym = 'b'},
-
-    //     {.src = 5, .dst = 5, .sym = 'a'},
-    //     {.src = 5, .dst = 7, .sym = 'b'},
-
-    //     {.src = 6, .dst = 5, .sym = 'a'},
-    //     {.src = 6, .dst = 6, .sym = 'b'},
-
-    //     {.src = 7, .dst = 5, .sym = 'a'},
-    //     {.src = 7, .dst = 8, .sym = 'b'},
-
-    //     {.src = 8, .dst = 5, .sym = 'a'},
-    //     {.src = 8, .dst = 6, .sym = 'b'},
-    // };
-
-    // auto dfa = Dfa(transitions);
-    // dfa.dump_csv();
-    // dfa.test();
-
-    // auto fsa = pareas::FiniteStateAutomaton();
-    // auto p = fsa.add_state(false, "p");
-    // auto q = fsa.add_state(true, "q");
-
-    // fsa.dump_dot(std::cout);
 
     return EXIT_SUCCESS;
 }
