@@ -9,6 +9,7 @@
 #include <vector>
 #include <stdexcept>
 #include <string_view>
+#include <cstddef>
 
 namespace pareas {
     struct LexerParseError: std::runtime_error {
@@ -16,6 +17,7 @@ namespace pareas {
     };
 
     struct Token {
+        size_t priority;
         SourceLocation loc;
         std::string_view name;
         UniqueRegexNode regex;

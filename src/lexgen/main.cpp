@@ -144,7 +144,52 @@ void Dfa::test() const {
 }
 
 auto test_input = R"(
-if = /(oef|[a-c]*|auwie)*oei/ # auwie
+const = /const/
+double = /double/
+float = /float/
+int = /int/
+short = /short/
+struct = /struct/
+unsigned = /unsigned/
+break = /break/
+continue = /continue/
+else = /else/
+for = /for/
+long = /long/
+signed = /signed/
+switch = /switch/
+void = /void/
+case = /case/
+default = /default/
+enum = /enum/
+goto = /goto/
+register = /register/
+sizeof = /sizeof/
+typedef = /typedef/
+volatile = /volatile/
+char = /char/
+do = /do/
+extern = /extern/
+if = /if/
+return = /return/
+static = /static/
+union = /union/
+while = /while/
+rparen = /\(/
+lparen = /\)/
+rbracket = /\[/
+lbracket = /\]/
+rbrace = /{/
+lbrace = /}/
+plus = /+/
+minus = /-/
+slash = /\//
+star = /\*/
+semi = /;/
+id = /[a-zA-Z_][a-zA-Z0-9_]*/
+number = /[0-9][0-9]*/
+whitespace = /[ \r\n][ \t\r\n]*/
+comment = /\/\/[^\n]*\n/
 )";
 
 int main() {
@@ -153,20 +198,10 @@ int main() {
     auto lexer_parser = pareas::LexerParser(&parser);
     auto tokens = lexer_parser.parse();
 
-    for (const auto& [_, name, regex] : tokens) {
-        // fmt::print("{}: ", name);
-        // regex->print(std::cout);
-        // fmt::print("\n");
+    auto dfa = pareas::FiniteStateAutomaton::build_lexer_dfa({0, 127}, tokens);
+    fmt::print("Final DFA has {} states\n", dfa.num_states());
 
-        auto nfa = pareas::FiniteStateAutomaton({0, 127});
-        auto start = nfa.add_state();
-        nfa[start].tag = "start";
-
-        auto end = regex->compile(nfa, start);
-        nfa[end].accepting = true;
-        nfa[end].tag = name;
-        nfa.dump_dot(std::cout);
-    }
+    // dfa.dump_dot(std::cout);
 
     // Transition transitions[] = {
     //     {.src = 0, .dst =  1, .sym = 'b'},
@@ -210,10 +245,6 @@ int main() {
     // auto fsa = pareas::FiniteStateAutomaton();
     // auto p = fsa.add_state(false, "p");
     // auto q = fsa.add_state(true, "q");
-
-    // fsa.add_transition(p, p, '0');
-    // fsa.add_transition(p, p, '1');
-    // fsa.add_transition(p, q, '1');
 
     // fsa.dump_dot(std::cout);
 

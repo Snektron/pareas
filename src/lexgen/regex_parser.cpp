@@ -97,7 +97,7 @@ namespace pareas {
                 throw RegexParseError();
             return child;
         } else if (c == '\\') {
-            c = this->escaped_char();
+            return std::make_unique<CharNode>(this->escaped_char());
         } else if (is_control_char(c) || c == EOF) {
             return nullptr; // nullptr used as optional here
         } else if (!std::isprint(static_cast<unsigned char>(c))) {
@@ -114,12 +114,12 @@ namespace pareas {
 
     UniqueRegexNode RegexParser::group() {
         auto parse_char = [&] {
-            int c = this->parser->consume();
+            int c = this->parser->peek();
             if (c == EOF) {
                 this->parser->er->error(this->parser->loc(), "Unexpected EOF, expected <character>");
                 throw RegexParseError();
             } else if (c == '\\') {
-                c = this->escaped_char();
+                return this->escaped_char();
             } else if (!std::isprint(c)) {
                 this->parser->er->error(this->parser->loc(), fmt::format(
                     "Unexpected character '{}', expected <printable character>",
@@ -128,6 +128,7 @@ namespace pareas {
                 throw RegexParseError();
             }
 
+            this->parser->consume();
             return c;
         };
 
