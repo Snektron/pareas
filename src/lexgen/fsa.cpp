@@ -162,7 +162,7 @@ namespace pareas {
                 if (sym == Transition::EPSILON) {
                     fmt::print("    state{} -> state{} [label=\"Ɛ\"{}];\n", src, dst, style);
                 } else {
-                    fmt::print("    state{} -> state{} [label=\"{:q}\"{}];\n", src, dst, EscapeFormatter{sym}, style);
+                    fmt::print("    state{} -> state{} [label=\"{:q}\"{}];\n", src, dst, EscapeFormatter{static_cast<uint8_t>(sym)}, style);
                 }
             }
         }
@@ -246,7 +246,7 @@ namespace pareas {
                 outgoing.set(t.symbol());
             }
 
-            for (int sym = 0; sym <= outgoing.size(); ++sym) {
+            for (size_t sym = 0; sym < outgoing.size(); ++sym) {
                 if (outgoing.test(sym))
                     continue;
 

@@ -8,6 +8,7 @@
 #include <vector>
 #include <utility>
 #include <iosfwd>
+#include <cstdint>
 
 namespace pareas {
     struct RegexNode {
@@ -69,9 +70,9 @@ namespace pareas {
     };
 
     struct CharNode: public RegexNode {
-        char c;
+        uint8_t c;
 
-        CharNode(char c):
+        CharNode(uint8_t c):
             c(c) {}
 
         void print(std::ostream& os) const override;

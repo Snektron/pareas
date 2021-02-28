@@ -14,8 +14,8 @@ namespace pareas {
         bool error = false;
 
         this->parser->eat_delim();
-        int c;
-        while ((c = this->parser->peek()) != EOF) {
+
+        while (auto c = this->parser->peek()) {
             bool ok = c == '%' ? this->directive() : this->production();
             if (!ok) {
                 error = true;
@@ -151,7 +151,7 @@ namespace pareas {
 
         auto tag_loc = lhs_loc;
         auto tag = lhs;
-        if (this->parser->peek() == '[') {
+        if (this->parser->test('[')) {
             tag_loc = this->parser->loc();
             tag = this->tag();
             if (tag.size() == 0)
@@ -168,15 +168,14 @@ namespace pareas {
         auto syms = std::vector<Symbol>();
         bool delimited = true;
 
-        while (true) {
-            int c = this->parser->peek();
+        while (auto c = this->parser->peek()) {
             auto sym_loc = this->parser->loc();
             if (c == '\'') {
                 auto t = this->terminal();
                 if (t.size() == 0)
                     return false;
                 syms.push_back(Terminal{std::string(t)});
-            } else if (this->parser->is_word_start_char(c)) {
+            } else if (this->parser->is_word_start_char(c.value())) {
                 auto nt = this->parser->word();
                 if (nt.size() == 0)
                     return false;

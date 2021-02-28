@@ -5,10 +5,12 @@
 
 #include <cctype>
 #include <cstdlib>
+#include <cstdint>
+#include <climits>
 
 namespace pareas {
     struct EscapeFormatter {
-        int c;
+        uint8_t c;
     };
 }
 
@@ -73,7 +75,7 @@ struct fmt::formatter<pareas::EscapeFormatter> {
             default:
                 break;
         }
-        if (std::isprint(static_cast<unsigned char>(e.c)))
+        if (std::isprint(e.c) && e.c < CHAR_MAX)
             return format_to(ctx.out(), "{}", static_cast<char>(e.c));
         else
             return format_to(ctx.out(), "\\x{:02X}", e.c);

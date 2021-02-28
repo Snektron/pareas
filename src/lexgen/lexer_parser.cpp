@@ -10,7 +10,7 @@ namespace pareas {
     std::vector<Token>&& LexerParser::parse() {
         bool error = false;
         this->parser->eat_delim();
-        while (this->parser->peek() != EOF) {
+        while (auto _ = this->parser->peek()) {
             if (!this->token_decl()) {
                 error = true;
                 this->parser->skip_until('\n');

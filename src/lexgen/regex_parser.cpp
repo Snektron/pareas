@@ -8,7 +8,7 @@
 #include <cstdlib>
 
 namespace {
-    bool is_control_char(int c) {
+    bool is_control_char(uint8_t c) {
         switch (c) {
             case '[':
             case ']':
@@ -41,9 +41,8 @@ namespace pareas {
 
     UniqueRegexNode RegexParser::alternation() {
         auto first = this->sequence();
-        if (this->parser->peek() != '|') {
+        if (!this->parser->test('|'))
             return first;
-        }
 
         auto children = std::vector<UniqueRegexNode>();
         children.push_back(std::move(first));
@@ -94,10 +93,10 @@ namespace pareas {
     }
 
     UniqueRegexNode RegexParser::maybe_atom() {
-        int c = this->parser->peek();
+        auto c = this->parser->peek();
         auto loc = this->parser->loc();
 
-        if (this->parser->peek() == '[') {
+        if (c == '[') {
             return this->group();
         } else if (this->parser->eat('(')) {
             auto child = this->alternation();
@@ -106,38 +105,38 @@ namespace pareas {
             return child;
         } else if (c == '\\') {
             return std::make_unique<CharNode>(this->escaped_char());
-        } else if (is_control_char(c) || c == EOF) {
+        } else if (!c.has_value() || is_control_char(c.value())) {
             return nullptr; // nullptr used as optional here
-        } else if (!std::isprint(static_cast<uint8_t>(c))) {
+        } else if (!std::isprint(c.value())) {
             this->parser->er->error(loc, fmt::format(
                 "Unexpected character '{}', expected <printable character>",
-                EscapeFormatter{c}
+                EscapeFormatter{c.value()}
             ));
             throw RegexParseError();
         }
 
         this->parser->consume();
-        return std::make_unique<CharNode>(c);
+        return std::make_unique<CharNode>(c.value());
     }
 
     UniqueRegexNode RegexParser::group() {
         auto parse_char = [&] {
-            int c = this->parser->peek();
-            if (c == EOF) {
+            auto c = this->parser->peek();
+            if (!c.has_value()) {
                 this->parser->er->error(this->parser->loc(), "Unexpected EOF, expected <character>");
                 throw RegexParseError();
             } else if (c == '\\') {
                 return this->escaped_char();
-            } else if (!std::isprint(c)) {
+            } else if (!std::isprint(c.value())) {
                 this->parser->er->error(this->parser->loc(), fmt::format(
                     "Unexpected character '{}', expected <printable character>",
-                    EscapeFormatter{c}
+                    EscapeFormatter{c.value()}
                 ));
                 throw RegexParseError();
             }
 
             this->parser->consume();
-            return static_cast<uint8_t>(c);
+            return c.value();
         };
 
         if (!this->parser->expect('['))
@@ -163,7 +162,7 @@ namespace pareas {
         while (!this->parser->eat(']')) {
             uint8_t min = parse_char();
             if (!this->parser->eat('-')) {
-                insert_range({static_cast<uint8_t>(min), static_cast<uint8_t>(min)});
+                insert_range({min, min});
                 continue;
             }
 
@@ -179,13 +178,22 @@ namespace pareas {
                 throw RegexParseError();
             }
 
-            insert_range({static_cast<uint8_t>(min), static_cast<uint8_t>(max)});
+            insert_range({min, max});
         }
 
         return std::make_unique<CharSetNode>(std::move(ranges), inverted);
     }
 
     uint8_t RegexParser::escaped_char() {
+        auto loc = this->parser->loc();
+
+        auto next = [&]() {
+            if (auto c = this->parser->consume())
+                return c.value();
+            this->parser->er->error(loc, "Unexpected EOF in escape sequence");
+            throw RegexParseError();
+        };
+
         auto convert_hex = [](int x) {
             if ('a' <= x && x <= 'f')
                 return x - 'a';
@@ -196,11 +204,10 @@ namespace pareas {
             return -1;
         };
 
-        auto loc = this->parser->loc();
         if (!this->parser->expect('\\'))
             throw RegexParseError();
 
-        int c = this->parser->consume();
+        auto c = next();
 
         if (is_control_char(c))
             return c;
@@ -219,8 +226,8 @@ namespace pareas {
             case '^':
                 return c;
             case 'x': {
-                int hi = convert_hex(this->parser->consume());
-                int lo = convert_hex(this->parser->consume());
+                int hi = convert_hex(next());
+                int lo = convert_hex(next());
 
                 if (hi < 0 || lo < 0) {
                     this->parser->er->error(loc, "Invalid hex escape sequence");

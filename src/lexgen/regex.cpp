@@ -107,7 +107,7 @@ namespace pareas {
                 }
             }
 
-            for (int c = 0; c <= bits.size(); ++c) {
+            for (size_t c = 0; c < bits.size(); ++c) {
                 if (!bits.test(c))
                     fsa.add_transition(start, end, c);
             }

@@ -5,6 +5,7 @@
 
 #include <cctype>
 #include <cstdlib>
+#include <cassert>
 
 namespace pareas {
     Parser::Parser(ErrorReporter* er, std::string_view source):
@@ -14,41 +15,44 @@ namespace pareas {
         return {this->offset};
     }
 
-    int Parser::peek() const {
+    std::optional<uint8_t> Parser::peek() const {
         if (this->offset < this->source.size())
             return this->source[this->offset];
-        return EOF;
+        return std::nullopt;
     }
 
-    int Parser::consume() {
-        int c = this->peek();
-        if (c != EOF)
+    std::optional<uint8_t> Parser::consume() {
+        auto maybe_next = this->peek();
+        if (maybe_next.has_value())
             ++this->offset;
-
-        return c;
+        return maybe_next;
     }
 
-    bool Parser::eat(int c) {
-        if (this->peek() == c) {
-            this->consume();
-            return true;
-        }
-
+    bool Parser::test(uint8_t c) {
+        if (auto next = this->peek())
+            return next == c;
         return false;
     }
 
-    bool Parser::expect(int c) {
+    bool Parser::eat(uint8_t c) {
+        if (this->test(c)) {
+            this->consume();
+            return true;
+        }
+        return false;
+    }
+
+    bool Parser::expect(uint8_t c) {
         if (!this->eat(c)) {
-            int actual = this->peek();
-            if (actual == EOF) {
+            if (auto actual = this->peek()) {
                 this->er->error(this->loc(), fmt::format(
-                    "Unexpected EOF, expected '{}'",
+                    "Unexpected character '{}', expected '{}'",
+                    EscapeFormatter{actual.value()},
                     EscapeFormatter{c}
                 ));
             } else {
                 this->er->error(this->loc(), fmt::format(
-                    "Unexpected character '{}', expected '{}'",
-                    EscapeFormatter{actual},
+                    "Unexpected EOF, expected '{}'",
                     EscapeFormatter{c}
                 ));
             }
@@ -62,16 +66,19 @@ namespace pareas {
         bool delimited = false;
 
         while (true) {
-            int c = this->peek();
-            switch (c) {
+            auto c = this->peek();
+            if (!c.has_value())
+                return delimited;
+            switch (c.value()) {
                 case ' ':
                 case '\t':
                 case '\r':
                     this->consume();
                     break;
                 case '#':
-                    while (this->peek() != '\n' && this->peek() != EOF)
+                    while (!this->test('\n')) {
                         this->consume();
+                    }
                     break;
                 case '\n':
                     if (eat_newlines) {
@@ -83,51 +90,52 @@ namespace pareas {
             }
             delimited = true;
         }
-
-        return delimited;
     }
 
     std::string_view Parser::word() {
-        bool error = false;
         size_t start = this->offset;
-        int c = this->peek();
 
-        if (!this->is_word_start_char(c)) {
+        if (auto c = this->peek()) {
+            if (!this->is_word_start_char(c.value())) {
+                this->er->error(this->loc(), fmt::format(
+                    "Invalid character '{}', expected <word>",
+                    EscapeFormatter{c.value()}
+                ));
+                return "";
+            }
+        } else {
             this->er->error(this->loc(), fmt::format(
-                "Invalid character '{}', expected <word>",
-                static_cast<char>(c)
+                "Unexpected EOF, expected <word>",
+                EscapeFormatter{c.value()}
             ));
-            error = true;
+            return "";
         }
 
         this->consume();
 
-        c = this->peek();
-        while (this->is_word_continue_char(c)) {
+        while (auto c = this->peek()) {
+            if (!this->is_word_continue_char(c.value()))
+                break;
             this->consume();
-            c = this->peek();
         }
-
-        if (error)
-            return "";
 
         return this->source.substr(start, this->offset - start);
     }
 
-    void Parser::skip_until(int end) {
+    void Parser::skip_until(uint8_t end) {
         while (true) {
             this->eat_delim(); // make sure to skip comments
-            int c = this->consume();
-            if (c == EOF || c == end)
+            auto maybe_next = this->consume();
+            if (!maybe_next.has_value() || maybe_next == end)
                 break;
         }
     }
 
-    bool Parser::is_word_start_char(int c) const {
+    bool Parser::is_word_start_char(uint8_t c) const {
         return std::isalpha(c) || c == '_';
     }
 
-    bool Parser::is_word_continue_char(int c) const {
+    bool Parser::is_word_continue_char(uint8_t c) const {
         return std::isalnum(c) || c == '_';
     }
 }
