@@ -4,6 +4,8 @@
 
 #include <fmt/format.h>
 
+#include <algorithm>
+#include <unordered_map>
 #include <queue>
 #include <cassert>
 
@@ -48,6 +50,9 @@ struct std::hash<ParallelState> {
 };
 
 namespace pareas {
+    ParallelLexer::Transition::Transition():
+        Transition(false, REJECT) {}
+
     ParallelLexer::Transition::Transition(bool produces_token, ParallelStateIndex result_state):
         combined(produces_token ? result_state | PRODUCES_TOKEN_MASK : result_state) {
         assert(result_state < PRODUCES_TOKEN_MASK);
@@ -59,6 +64,46 @@ namespace pareas {
 
     auto ParallelLexer::Transition::result_state() const -> ParallelStateIndex {
         return this->combined & ~PRODUCES_TOKEN_MASK;
+    }
+
+    ParallelLexer::MergeTable::MergeTable():
+        num_states(0), capacity(0), merge_table(nullptr) {}
+
+    void ParallelLexer::MergeTable::resize(size_t new_num_states) {
+        if (new_num_states <= this->capacity) {
+            this->num_states = new_num_states;
+            return;
+        }
+
+        // Crude computation of new capacity, but it'll do
+        auto new_capacity = std::max(MIN_SIZE, this->capacity);
+        while (new_capacity < new_num_states)
+            new_capacity *= GROW_FACTOR;
+
+        auto new_ptr = std::make_unique<Transition[]>(new_capacity * new_capacity);
+        for (size_t second = 0; second < this->num_states; ++second) {
+            for (size_t first = 0; first < this->num_states; ++first) {
+                new_ptr[first + second * new_capacity] = (*this)(first, second);
+            }
+        }
+
+        this->num_states = new_num_states;
+        this->capacity = new_capacity;
+        this->merge_table = std::move(new_ptr);
+    }
+
+    size_t ParallelLexer::MergeTable::index(ParallelStateIndex first, ParallelStateIndex second) const {
+        assert(first <= this->num_states);
+        assert(second <= this->num_states);
+        return first + second * this->capacity;
+    }
+
+    auto ParallelLexer::MergeTable::operator()(ParallelStateIndex first, ParallelStateIndex second) -> Transition& {
+        return this->merge_table[this->index(first, second)];
+    }
+
+    auto ParallelLexer::MergeTable::operator()(ParallelStateIndex first, ParallelStateIndex second) const -> const Transition& {
+        return this->merge_table[this->index(first, second)];
     }
 
     ParallelLexer::ParallelLexer(std::span<const Token> tokens) {
@@ -77,9 +122,10 @@ namespace pareas {
         fmt::print("{} states\n", dfa.num_states());
 
         auto enqueue = [&](ParallelState&& ps) {
-            auto [it, inserted] = seen.insert({std::move(ps), seen.size()});
+            auto [it, inserted] = seen.insert({std::move(ps), states.size()});
             if (inserted) {
                 states.push_back(it->first);
+                this->merge_table.resize(it->second);
             }
             assert(it->second < Transition::PRODUCES_TOKEN_MASK);
             return it->second;
@@ -89,7 +135,7 @@ namespace pareas {
         // States indices of the DFA are mapped to the initial parallel states indices.
         {
             auto initial_states = std::vector<ParallelState>(num_syms, ParallelState(dfa.num_states()));
-            for (size_t src = FiniteStateAutomaton::START; src < dfa.num_states(); ++src) {
+            for (size_t src = 0; src < dfa.num_states(); ++src) {
                 for (const auto [sym, dst, poduces_token] : dfa[src].transitions) {
                     assert(sym.has_value()); // Not a DFA
                     initial_states[sym.value()].transitions[src] = dst;
@@ -103,9 +149,9 @@ namespace pareas {
         }
 
         // Repeatedly perform the merges until no new merge is added
-        for (size_t i = 0; i < states.size(); ++i) {
+        for (ParallelStateIndex i = 0; i < states.size(); ++i) {
             auto first = states[i];
-            for (size_t j = 0; j < states.size(); ++j) {
+            for (ParallelStateIndex j = 0; j < states.size(); ++j) {
                 auto second = states[j];
                 auto copy = first;
                 copy.merge(second);
@@ -115,8 +161,6 @@ namespace pareas {
                 enqueue(std::move(second));
             }
         }
-
-        fmt::print("{} states\n", states.size());
 
         this->final_states.resize(seen.size(), nullptr);
         for (const auto& [ps, i] : seen) {

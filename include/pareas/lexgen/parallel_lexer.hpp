@@ -5,7 +5,7 @@
 #include "pareas/lexgen/fsa.hpp"
 
 #include <span>
-#include <unordered_map>
+#include <memory>
 #include <vector>
 #include <limits>
 #include <cstdint>
@@ -29,9 +29,35 @@ namespace pareas {
 
             ParallelStateIndex combined;
 
+            Transition();
             Transition(bool produces_token, ParallelStateIndex result_state);
             bool produces_token() const;
             ParallelStateIndex result_state() const;
+        };
+
+        class MergeTable {
+            constexpr const static size_t GROW_FACTOR = 2;
+            constexpr const static size_t MIN_SIZE = 16;
+
+            size_t num_states;
+            size_t capacity;
+            std::unique_ptr<Transition[]> merge_table;
+
+        public:
+            MergeTable();
+
+            MergeTable(MergeTable&&) = delete;
+            MergeTable& operator=(MergeTable&&) = delete;
+
+            MergeTable(const MergeTable&) = delete;
+            MergeTable& operator=(const MergeTable&) = delete;
+
+            void resize(size_t num_states);
+
+            size_t index(ParallelStateIndex first, ParallelStateIndex second) const;
+
+            Transition& operator()(ParallelStateIndex first, ParallelStateIndex second);
+            const Transition& operator()(ParallelStateIndex first, ParallelStateIndex second) const;
         };
 
         // Char to initial state
@@ -40,6 +66,7 @@ namespace pareas {
         std::vector<ParallelStateIndex> initial_states;
 
         // TODO: State to new state table
+        MergeTable merge_table;
         // std::unordered_Map<ParallelStateIndexPair, Transition> merge_table;
 
         // ParallelState to token they might produce
