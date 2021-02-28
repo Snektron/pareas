@@ -57,6 +57,7 @@ executable(
 lexgen_sources = [
     'src/lexgen/char_range.cpp',
     'src/lexgen/fsa.cpp',
+    'src/lexgen/interpreter.cpp',
     'src/lexgen/lexer_parser.cpp',
     'src/lexgen/main.cpp',
     'src/lexgen/parallel_lexer.cpp',
