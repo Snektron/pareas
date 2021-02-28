@@ -91,8 +91,8 @@ namespace pareas {
             auto initial_states = std::vector<ParallelState>(num_syms, ParallelState(dfa.num_states()));
             for (size_t src = FiniteStateAutomaton::START; src < dfa.num_states(); ++src) {
                 for (const auto [sym, dst, poduces_token] : dfa[src].transitions) {
-                    assert(sym != FiniteStateAutomaton::Transition::EPSILON); // Not a DFA
-                    initial_states[sym].transitions[src] = dst;
+                    assert(sym.has_value()); // Not a DFA
+                    initial_states[sym.value()].transitions[src] = dst;
                 }
             }
 

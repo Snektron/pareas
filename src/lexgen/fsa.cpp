@@ -44,10 +44,9 @@ namespace {
             auto src = queue.front();
             queue.pop_front();
 
-            for (const auto& [transition_sym, dst, _] : fsa[src].transitions) {
-                if (transition_sym == FiniteStateAutomaton::Transition::EPSILON) {
+            for (const auto& [maybe_sym, dst, _] : fsa[src].transitions) {
+                if (!maybe_sym.has_value())
                     enqueue(dst);
-                }
             }
         }
     }
@@ -56,9 +55,9 @@ namespace {
         // Epsilon-transitions should already be dealt with at this point
         auto syms = std::unordered_set<Symbol>();
         for (auto src : ss.states) {
-            for (const auto& [sym, dst, _] : fsa[src].transitions) {
-                if (sym != FiniteStateAutomaton::Transition::EPSILON)
-                    syms.insert(sym);
+            for (const auto& [maybe_sym, dst, _] : fsa[src].transitions) {
+                if (maybe_sym.has_value())
+                    syms.insert(maybe_sym.value());
             }
         }
         return syms;
@@ -92,15 +91,6 @@ struct std::hash<StateSet> {
 };
 
 namespace pareas {
-    bool FiniteStateAutomaton::Transition::is_epsilon_transition() const {
-        return this->maybe_sym == EPSILON;
-    }
-
-    uint8_t FiniteStateAutomaton::Transition::symbol() const {
-        assert(!this->is_epsilon_transition());
-        return this->maybe_sym;
-    }
-
     FiniteStateAutomaton::FiniteStateAutomaton() {
         assert(this->add_state() == REJECT);
         assert(this->add_state() == START);
@@ -119,7 +109,7 @@ namespace pareas {
         return index;
     }
 
-    void FiniteStateAutomaton::add_transition(StateIndex src, StateIndex dst, uint8_t sym, bool produces_token) {
+    void FiniteStateAutomaton::add_transition(StateIndex src, StateIndex dst, std::optional<uint8_t> sym, bool produces_token) {
         assert(src < this->num_states());
         assert(dst < this->num_states());
 
@@ -127,10 +117,7 @@ namespace pareas {
     }
 
     void FiniteStateAutomaton::add_epsilon_transition(StateIndex src, StateIndex dst) {
-        assert(src < this->num_states());
-        assert(dst < this->num_states());
-
-        this->states[src].transitions.push_back({Transition::EPSILON, dst, false});
+        this->add_transition(src, dst, std::nullopt);
     }
 
     auto FiniteStateAutomaton::operator[](StateIndex state) -> State& {
@@ -157,12 +144,13 @@ namespace pareas {
                 token ? token->name : ""
             );
 
-            for (const auto& [sym, dst, produces_token] : transitions) {
+            for (const auto& [maybe_sym, dst, produces_token] : transitions) {
                 auto style = produces_token ? ", color=blue" : "";
-                if (sym == Transition::EPSILON) {
-                    fmt::print("    state{} -> state{} [label=\"Ɛ\"{}];\n", src, dst, style);
+
+                if (maybe_sym.has_value()) {
+                    fmt::print("    state{} -> state{} [label=\"{:q}\"{}];\n", src, dst, EscapeFormatter{maybe_sym.value()}, style);
                 } else {
-                    fmt::print("    state{} -> state{} [label=\"{:q}\"{}];\n", src, dst, EscapeFormatter{static_cast<uint8_t>(sym)}, style);
+                    fmt::print("    state{} -> state{} [label=\"Ɛ\"{}];\n", src, dst, style);
                 }
             }
         }
@@ -242,8 +230,9 @@ namespace pareas {
 
             auto outgoing = std::bitset<std::numeric_limits<Symbol>::max() + 1>();
             for (auto& t : state.transitions) {
-                assert(!outgoing.test(t.symbol())); // not a DFA
-                outgoing.set(t.symbol());
+                assert(t.maybe_sym.has_value()); // Not a DFA.
+                assert(!outgoing.test(t.maybe_sym.value())); // Not a DFA.
+                outgoing.set(t.maybe_sym.value());
             }
 
             for (size_t sym = 0; sym < outgoing.size(); ++sym) {
@@ -262,7 +251,8 @@ namespace pareas {
                 // If no such transition exists, the dfa would end up in a reject state
                 // after this symbol. Just ignore it if so.
                 for (const auto t : this->states[START].transitions) {
-                    if (t.symbol() == sym) {
+                    assert(t.maybe_sym.has_value());
+                    if (t.maybe_sym.value() == sym) {
                         this->add_transition(src, t.dst, sym, true);
                         break;
                     }

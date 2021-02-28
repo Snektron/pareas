@@ -7,6 +7,7 @@
 #include <span>
 #include <iosfwd>
 #include <limits>
+#include <optional>
 #include <cstddef>
 #include <cstdint>
 
@@ -26,14 +27,9 @@ namespace pareas {
         static constexpr const StateIndex START = 1;
 
         struct Transition {
-            static constexpr const int EPSILON = -1;
-
-            int maybe_sym;
+            std::optional<uint8_t> maybe_sym;
             StateIndex dst;
             bool produces_token;
-
-            bool is_epsilon_transition() const;
-            uint8_t symbol() const;
         };
 
         struct State {
@@ -49,7 +45,7 @@ namespace pareas {
 
         StateIndex add_state();
 
-        void add_transition(StateIndex src, StateIndex dst, uint8_t sym, bool produces_token = false);
+        void add_transition(StateIndex src, StateIndex dst, std::optional<uint8_t> sym, bool produces_token = false);
         void add_epsilon_transition(StateIndex src, StateIndex dst);
 
         State& operator[](StateIndex state);
