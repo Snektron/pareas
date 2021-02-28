@@ -98,7 +98,8 @@ namespace pareas {
         auto end = fsa.add_state();
 
         if (this->inverted) {
-            auto bits = std::bitset<std::numeric_limits<unsigned char>::max()>();
+            constexpr auto max_sym = std::numeric_limits<FiniteStateAutomaton::Symbol>::max();
+            auto bits = std::bitset<max_sym + 1>();
 
             for (const auto [min, max] : this->ranges) {
                 for (int c = min; c <= max; ++c) {
@@ -106,7 +107,7 @@ namespace pareas {
                 }
             }
 
-            for (int c = fsa.alphabet.min; c <= fsa.alphabet.max; ++c) {
+            for (int c = 0; c <= bits.size(); ++c) {
                 if (!bits.test(c))
                     fsa.add_transition(start, end, c);
             }

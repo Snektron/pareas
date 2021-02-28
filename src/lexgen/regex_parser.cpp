@@ -108,7 +108,7 @@ namespace pareas {
             return std::make_unique<CharNode>(this->escaped_char());
         } else if (is_control_char(c) || c == EOF) {
             return nullptr; // nullptr used as optional here
-        } else if (!std::isprint(static_cast<unsigned char>(c))) {
+        } else if (!std::isprint(static_cast<uint8_t>(c))) {
             this->parser->er->error(loc, fmt::format(
                 "Unexpected character '{}', expected <printable character>",
                 EscapeFormatter{c}
@@ -137,7 +137,7 @@ namespace pareas {
             }
 
             this->parser->consume();
-            return c;
+            return static_cast<uint8_t>(c);
         };
 
         if (!this->parser->expect('['))
@@ -161,31 +161,31 @@ namespace pareas {
         };
 
         while (!this->parser->eat(']')) {
-            char min = parse_char();
+            uint8_t min = parse_char();
             if (!this->parser->eat('-')) {
-                insert_range({static_cast<unsigned char>(min), static_cast<unsigned char>(min)});
+                insert_range({static_cast<uint8_t>(min), static_cast<uint8_t>(min)});
                 continue;
             }
 
-            char max = parse_char();
+            uint8_t max = parse_char();
             if (min > max) {
                 this->parser->er->error(this->parser->loc(), fmt::format(
                     "Invalid character range {} to {}: start code ({}) is greater than end code ({})",
                     EscapeFormatter{min},
                     EscapeFormatter{max},
-                    static_cast<int>(min),
-                    static_cast<int>(max)
+                    min,
+                    max
                 ));
                 throw RegexParseError();
             }
 
-            insert_range({static_cast<unsigned char>(min), static_cast<unsigned char>(max)});
+            insert_range({static_cast<uint8_t>(min), static_cast<uint8_t>(max)});
         }
 
         return std::make_unique<CharSetNode>(std::move(ranges), inverted);
     }
 
-    int RegexParser::escaped_char() {
+    uint8_t RegexParser::escaped_char() {
         auto convert_hex = [](int x) {
             if ('a' <= x && x <= 'f')
                 return x - 'a';

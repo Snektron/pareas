@@ -2,10 +2,10 @@
 #define _PAREAS_LEXGEN_REGEX_PARSER_HPP
 
 #include "pareas/common/parser.hpp"
-
 #include "pareas/lexgen/regex.hpp"
 
 #include <stdexcept>
+#include <cstdint>
 
 namespace pareas {
     struct RegexParseError: std::runtime_error {
@@ -25,7 +25,7 @@ namespace pareas {
         UniqueRegexNode maybe_repeat();
         UniqueRegexNode maybe_atom();
         UniqueRegexNode group();
-        int escaped_char();
+        uint8_t escaped_char();
     };
 }
 

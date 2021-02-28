@@ -12,12 +12,8 @@
 #include <cassert>
 
 namespace {
-    using pareas::Grammar;
-    using pareas::Symbol;
-    using pareas::Terminal;
-    using pareas::NonTerminal;
-    using pareas::llp::AdmissiblePair;
-    using pareas::llp::ParsingTable;
+    using namespace pareas;
+    using namespace pareas::llp;
 
     size_t int_bit_width(size_t x) {
         auto width = std::max(size_t{8}, std::bit_ceil(std::bit_width(x)));

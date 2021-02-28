@@ -19,7 +19,7 @@ using Symbol = pareas::FiniteStateAutomaton::Symbol;
 using StateIndex = pareas::FiniteStateAutomaton::StateIndex;
 
 namespace {
-    using pareas::FiniteStateAutomaton;
+    using namespace pareas;
 
     struct StateSet {
         std::unordered_set<StateIndex> states;
@@ -45,7 +45,7 @@ namespace {
             queue.pop_front();
 
             for (const auto& [transition_sym, dst, _] : fsa[src].transitions) {
-                if (transition_sym == FiniteStateAutomaton::EPSILON) {
+                if (transition_sym == FiniteStateAutomaton::Transition::EPSILON) {
                     enqueue(dst);
                 }
             }
@@ -57,7 +57,7 @@ namespace {
         auto syms = std::unordered_set<Symbol>();
         for (auto src : ss.states) {
             for (const auto& [sym, dst, _] : fsa[src].transitions) {
-                if (sym != FiniteStateAutomaton::EPSILON)
+                if (sym != FiniteStateAutomaton::Transition::EPSILON)
                     syms.insert(sym);
             }
         }
@@ -92,8 +92,17 @@ struct std::hash<StateSet> {
 };
 
 namespace pareas {
-    FiniteStateAutomaton::FiniteStateAutomaton(CharRange alphabet):
-        alphabet(alphabet) {
+    bool FiniteStateAutomaton::Transition::is_epsilon_transition() const {
+        return this->maybe_sym == EPSILON;
+    }
+
+    uint8_t FiniteStateAutomaton::Transition::symbol() const {
+        assert(!this->is_epsilon_transition());
+        return this->maybe_sym;
+    }
+
+    FiniteStateAutomaton::FiniteStateAutomaton() {
+        assert(this->add_state() == REJECT);
         assert(this->add_state() == START);
     }
 
@@ -110,16 +119,18 @@ namespace pareas {
         return index;
     }
 
-    void FiniteStateAutomaton::add_transition(StateIndex src, StateIndex dst, Symbol sym, bool produces_token) {
+    void FiniteStateAutomaton::add_transition(StateIndex src, StateIndex dst, uint8_t sym, bool produces_token) {
         assert(src < this->num_states());
         assert(dst < this->num_states());
-        assert(sym == EPSILON || this->alphabet.contains(sym));
 
         this->states[src].transitions.push_back({sym, dst, produces_token});
     }
 
     void FiniteStateAutomaton::add_epsilon_transition(StateIndex src, StateIndex dst) {
-        this->add_transition(src, dst, EPSILON);
+        assert(src < this->num_states());
+        assert(dst < this->num_states());
+
+        this->states[src].transitions.push_back({Transition::EPSILON, dst, false});
     }
 
     auto FiniteStateAutomaton::operator[](StateIndex state) -> State& {
@@ -148,7 +159,7 @@ namespace pareas {
 
             for (const auto& [sym, dst, produces_token] : transitions) {
                 auto style = produces_token ? ", color=blue" : "";
-                if (sym == EPSILON) {
+                if (sym == Transition::EPSILON) {
                     fmt::print("    state{} -> state{} [label=\"Ɛ\"{}];\n", src, dst, style);
                 } else {
                     fmt::print("    state{} -> state{} [label=\"{:q}\"{}];\n", src, dst, EscapeFormatter{sym}, style);
@@ -160,7 +171,7 @@ namespace pareas {
     }
 
     FiniteStateAutomaton FiniteStateAutomaton::to_dfa() const {
-        auto dfa = FiniteStateAutomaton(this->alphabet);
+        auto dfa = FiniteStateAutomaton();
         auto seen = std::unordered_map<StateSet, StateIndex>();
         auto queue = std::deque<StateSet>();
 
@@ -191,7 +202,6 @@ namespace pareas {
             auto follow_set = follow(*this, ss);
 
             for (auto sym : follow_set) {
-                assert(sym != EPSILON);
                 auto new_ss = move(*this, ss, sym);
                 // Move over all epsilon-transitions
                 closure(*this, new_ss);
@@ -207,16 +217,9 @@ namespace pareas {
                 const auto& nfa_state = this->states[nfa_index];
 
                 if (nfa_state.token && dfa_state.token) {
-                    // Ambiguity, pick lowest priority
-                    if (nfa_state.token->priority == dfa_state.token->priority) {
-                        // TODO: Make proper error
-                        fmt::print(
-                            std::cerr,
-                            "DFA ambiguity between {} and {}\n",
-                            dfa_state.token->name,
-                            nfa_state.token->name
-                        );
-                    } else if (nfa_state.token->priority < dfa_state.token->priority) {
+                    assert(nfa_state.token->priority != dfa_state.token->priority);
+
+                    if (nfa_state.token->priority < dfa_state.token->priority) {
                         dfa_state.token = nfa_state.token;
                     }
                 } else if (nfa_state.token) {
@@ -237,13 +240,13 @@ namespace pareas {
             // For all characters that aren't in an outgoing edge of the final state, add
             // a new edge by looking up where it goes from the start node.
 
-            auto outgoing = std::bitset<std::numeric_limits<unsigned char>::max()>();
+            auto outgoing = std::bitset<std::numeric_limits<Symbol>::max() + 1>();
             for (auto& t : state.transitions) {
-                assert(!outgoing.test(t.sym)); // not a DFA
-                outgoing.set(t.sym);
+                assert(!outgoing.test(t.symbol())); // not a DFA
+                outgoing.set(t.symbol());
             }
 
-            for (int sym = alphabet.min; sym <= alphabet.max; ++sym) {
+            for (int sym = 0; sym <= outgoing.size(); ++sym) {
                 if (outgoing.test(sym))
                     continue;
 
@@ -259,7 +262,7 @@ namespace pareas {
                 // If no such transition exists, the dfa would end up in a reject state
                 // after this symbol. Just ignore it if so.
                 for (const auto t : this->states[START].transitions) {
-                    if (t.sym == sym) {
+                    if (t.symbol() == sym) {
                         this->add_transition(src, t.dst, sym, true);
                         break;
                     }

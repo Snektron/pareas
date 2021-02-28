@@ -3,7 +3,7 @@
 #include <cassert>
 
 namespace pareas {
-    bool CharRange::contains(unsigned char c) const {
+    bool CharRange::contains(uint8_t c) const {
         return this->min <= c && c <= this->max;
     }
 

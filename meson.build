@@ -59,6 +59,7 @@ lexgen_sources = [
     'src/lexgen/fsa.cpp',
     'src/lexgen/lexer_parser.cpp',
     'src/lexgen/main.cpp',
+    'src/lexgen/parallel_lexer.cpp',
     'src/lexgen/regex.cpp',
     'src/lexgen/regex_parser.cpp',
 ]

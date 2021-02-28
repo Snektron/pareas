@@ -6,6 +6,7 @@
 #include "pareas/common/hash_util.hpp"
 #include "pareas/lexgen/lexer_parser.hpp"
 #include "pareas/lexgen/fsa.hpp"
+#include "pareas/lexgen/parallel_lexer.hpp"
 
 #include <iostream>
 #include <vector>
@@ -104,38 +105,64 @@ void Dfa::dump_csv() const {
     }
 }
 
+struct States {
+    size_t first;
+    size_t second;
+};
+
+bool operator==(const States& a, const States& b) {
+    return a.first == b.first && a.second == b.second;
+}
+
+template <>
+struct std::hash<States> {
+    size_t operator()(const States& s) const {
+        return pareas::hash_combine(s.first, s.second);
+    }
+};
+
 void Dfa::test() const {
     auto seen = std::unordered_set<TransitionArray>();
     auto queue = std::deque<TransitionArray>();
+    auto table = std::unordered_map<States, size_t>();
 
     for (const auto& [sym, ta] : this->transition_table) {
-        seen.insert({ta});
+        seen.insert(ta);
         queue.push_back(ta);
     }
+
+    auto enqueue = [&](const auto& ta) {
+        auto [it, inserted] = seen.insert(ta);
+        if (inserted)
+            queue.push_back(ta);
+    };
 
     while (!queue.empty()) {
         auto first = queue.front();
         queue.pop_front();
 
+        auto newly_seen = std::unordered_set<TransitionArray>();
+
         for (const auto& second : seen) {
-            auto copy = first;
-            copy.merge(second);
+            auto new1 = first;
+            new1.merge(second);
+            newly_seen.insert(new1);
 
-            if (seen.insert(copy).second)
-                queue.push_back(copy);
+            auto new2 = second;
+            new2.merge(first);
+            newly_seen.insert(new2);
+        }
 
-            copy = second;
-            copy.merge(first);
-
-            if (seen.insert(copy).second)
-                queue.push_back(copy);
+        for (const auto& new_ta : newly_seen) {
+            enqueue(new_ta);
         }
     }
 
     fmt::print("Parallel DFA has {} states\n", seen.size());
+    fmt::print("Table requires a maximum of {:L} bytes\n", seen.size() * seen.size() * 2);
 }
 
-auto test_input = R"(
+auto test_input = R"HERE(
 const = /const/
 double = /double/
 float = /float/
@@ -180,30 +207,25 @@ star = /\*/
 semi = /;/
 id = /[a-zA-Z_][a-zA-Z0-9_]*/
 number = /[0-9]+/
+# string = /"(\\[nt\\]|[^\\])*"/
 whitespace = /[ \r\n][ \t\r\n]*/
 comment = /\/\/[^\n]*\n/
-)";
-
-auto test2 = R"(
-aaa = /aaa/
-id = /[a-c]+/
-open = /\(/
-close = /\)/
-)";
+)HERE";
 
 int main() {
-    auto er = pareas::ErrorReporter(test2, std::clog);
-    auto parser = pareas::Parser(&er, test2);
+    auto er = pareas::ErrorReporter(test_input, std::clog);
+    auto parser = pareas::Parser(&er, test_input);
     auto lexer_parser = pareas::LexerParser(&parser);
     auto tokens = lexer_parser.parse();
+    auto parallel_lexer = pareas::ParallelLexer(tokens);
 
-    auto nfa = pareas::FiniteStateAutomaton({0, 127});
-    nfa.build_lexer(tokens);
-    auto dfa = nfa.to_dfa();
-    dfa.add_lexer_loop();
+    // auto nfa = pareas::FiniteStateAutomaton({0, 127});
+    // nfa.build_lexer(tokens);
+    // auto dfa = nfa.to_dfa();
+    // dfa.add_lexer_loop();
 
     // fmt::print("Final DFA has {} states\n", dfa.num_states());
-    dfa.dump_dot(std::cout);
+    // // dfa.dump_dot(std::cout);
 
     // auto transitions = std::vector<Transition>();
     // for (size_t src = 0; src < dfa.num_states(); ++src) {
