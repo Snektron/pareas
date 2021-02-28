@@ -11,28 +11,20 @@
 #include <cstdint>
 
 namespace pareas {
-    // The most significant bit of this type is used to store whether the
-    // transition produced a token in the merge table, so the upper bit may not
-    // be used.
-    using ParallelStateIndex = uint16_t;
-
     struct ParallelLexer {
+        using StateIndex = FiniteStateAutomaton::StateIndex;
+
         // The DFA states of the dfa corresponding to the lexer are mapped to the first
         // few entries of the state reduction table, and so the reject and start
         // states appear in the same offsets.
-        constexpr const static ParallelStateIndex REJECT = FiniteStateAutomaton::REJECT;
-        constexpr const static ParallelStateIndex START = FiniteStateAutomaton::START;
+        constexpr const static StateIndex REJECT = FiniteStateAutomaton::REJECT;
+        constexpr const static StateIndex START = FiniteStateAutomaton::START;
 
         struct Transition {
-            constexpr const static ParallelStateIndex PRODUCES_TOKEN_MASK =
-                1 << (std::numeric_limits<ParallelStateIndex>::digits - 1);
-
-            ParallelStateIndex combined;
+            StateIndex result_state;
+            bool produces_token;
 
             Transition();
-            Transition(bool produces_token, ParallelStateIndex result_state);
-            bool produces_token() const;
-            ParallelStateIndex result_state() const;
         };
 
         class MergeTable {
@@ -46,28 +38,21 @@ namespace pareas {
         public:
             MergeTable();
 
-            MergeTable(MergeTable&&) = delete;
-            MergeTable& operator=(MergeTable&&) = delete;
-
-            MergeTable(const MergeTable&) = delete;
-            MergeTable& operator=(const MergeTable&) = delete;
-
             void resize(size_t num_states);
 
-            size_t index(ParallelStateIndex first, ParallelStateIndex second) const;
+            size_t index(StateIndex first, StateIndex second) const;
 
-            Transition& operator()(ParallelStateIndex first, ParallelStateIndex second);
-            const Transition& operator()(ParallelStateIndex first, ParallelStateIndex second) const;
+            Transition& operator()(StateIndex first, StateIndex second);
+            const Transition& operator()(StateIndex first, StateIndex second) const;
         };
 
         // Char to initial state
         // Moving from the initial state could also produce a transition,
         // if the start state is accepting.
-        std::vector<ParallelStateIndex> initial_states;
+        std::vector<StateIndex> initial_states;
 
         // TODO: State to new state table
         MergeTable merge_table;
-        // std::unordered_Map<ParallelStateIndexPair, Transition> merge_table;
 
         // ParallelState to token they might produce
         std::vector<const Token*> final_states;

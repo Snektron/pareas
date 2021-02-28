@@ -11,21 +11,23 @@
 
 namespace {
     using namespace pareas;
+    using StateIndex = ParallelLexer::StateIndex;
+    using Transition = ParallelLexer::Transition;
 
     struct ParallelState {
-        std::vector<ParallelStateIndex> transitions;
+        std::vector<Transition> transitions;
 
         ParallelState(size_t states);
         void merge(const ParallelState& other);
     };
 
     ParallelState::ParallelState(size_t states):
-        transitions(states, ParallelLexer::REJECT) {
+        transitions(states) {
     }
 
     void ParallelState::merge(const ParallelState& other) {
         for (auto& state : this->transitions) {
-            state = other.transitions[state];
+            state = other.transitions[state.result_state];
         }
     }
 
@@ -34,7 +36,10 @@ namespace {
             lhs.transitions.begin(),
             lhs.transitions.end(),
             rhs.transitions.begin(),
-            rhs.transitions.end()
+            rhs.transitions.end(),
+            [](const auto& lhs, const auto& rhs) {
+                return lhs.result_state == rhs.result_state && lhs.produces_token == rhs.produces_token;
+            }
         );
     }
 }
@@ -43,28 +48,17 @@ template <>
 struct std::hash<ParallelState> {
     size_t operator()(const ParallelState& ps) const {
         size_t hash = 0;
-        for (auto state : ps.transitions)
-            hash = pareas::hash_combine(hash, state);
+        for (auto state : ps.transitions) {
+            hash = pareas::hash_combine(hash, state.result_state);
+            hash = pareas::hash_combine(hash, state.produces_token);
+        }
         return hash;
     }
 };
 
 namespace pareas {
     ParallelLexer::Transition::Transition():
-        Transition(false, REJECT) {}
-
-    ParallelLexer::Transition::Transition(bool produces_token, ParallelStateIndex result_state):
-        combined(produces_token ? result_state | PRODUCES_TOKEN_MASK : result_state) {
-        assert(result_state < PRODUCES_TOKEN_MASK);
-    }
-
-    bool ParallelLexer::Transition::produces_token() const {
-        return (this->combined & PRODUCES_TOKEN_MASK) != 0;
-    }
-
-    auto ParallelLexer::Transition::result_state() const -> ParallelStateIndex {
-        return this->combined & ~PRODUCES_TOKEN_MASK;
-    }
+        result_state(REJECT), produces_token(false) {}
 
     ParallelLexer::MergeTable::MergeTable():
         num_states(0), capacity(0), merge_table(nullptr) {}
@@ -92,17 +86,17 @@ namespace pareas {
         this->merge_table = std::move(new_ptr);
     }
 
-    size_t ParallelLexer::MergeTable::index(ParallelStateIndex first, ParallelStateIndex second) const {
+    size_t ParallelLexer::MergeTable::index(StateIndex first, StateIndex second) const {
         assert(first <= this->num_states);
         assert(second <= this->num_states);
         return first + second * this->capacity;
     }
 
-    auto ParallelLexer::MergeTable::operator()(ParallelStateIndex first, ParallelStateIndex second) -> Transition& {
+    auto ParallelLexer::MergeTable::operator()(StateIndex first, StateIndex second) -> Transition& {
         return this->merge_table[this->index(first, second)];
     }
 
-    auto ParallelLexer::MergeTable::operator()(ParallelStateIndex first, ParallelStateIndex second) const -> const Transition& {
+    auto ParallelLexer::MergeTable::operator()(StateIndex first, StateIndex second) const -> const Transition& {
         return this->merge_table[this->index(first, second)];
     }
 
@@ -115,7 +109,7 @@ namespace pareas {
         auto dfa = nfa.to_dfa();
         dfa.add_lexer_loop();
 
-        auto seen = std::unordered_map<ParallelState, ParallelStateIndex>();
+        auto seen = std::unordered_map<ParallelState, StateIndex>();
         auto states = std::vector<ParallelState>();
         auto transitions = std::vector<Transition>();
 
@@ -127,7 +121,6 @@ namespace pareas {
                 states.push_back(it->first);
                 this->merge_table.resize(it->second);
             }
-            assert(it->second < Transition::PRODUCES_TOKEN_MASK);
             return it->second;
         };
 
@@ -136,9 +129,10 @@ namespace pareas {
         {
             auto initial_states = std::vector<ParallelState>(num_syms, ParallelState(dfa.num_states()));
             for (size_t src = 0; src < dfa.num_states(); ++src) {
-                for (const auto [sym, dst, poduces_token] : dfa[src].transitions) {
+                for (const auto [sym, dst, produces_token] : dfa[src].transitions) {
                     assert(sym.has_value()); // Not a DFA
-                    initial_states[sym.value()].transitions[src] = dst;
+                    initial_states[sym.value()].transitions[src].result_state = dst;
+                    initial_states[sym.value()].transitions[src].produces_token = produces_token;
                 }
             }
 
@@ -149,22 +143,35 @@ namespace pareas {
         }
 
         // Repeatedly perform the merges until no new merge is added
-        for (ParallelStateIndex i = 0; i < states.size(); ++i) {
+        for (StateIndex i = 0; i < states.size(); ++i) {
             auto first = states[i];
-            for (ParallelStateIndex j = 0; j < states.size(); ++j) {
+            for (StateIndex j = 0; j < states.size(); ++j) {
                 auto second = states[j];
                 auto copy = first;
                 copy.merge(second);
                 second.merge(first);
 
-                enqueue(std::move(copy));
-                enqueue(std::move(second));
+                {
+                    bool ij_produces_token = copy.transitions[START].produces_token;
+                    auto ij = enqueue(std::move(copy));
+                    this->merge_table(i, j).result_state = ij;
+                    this->merge_table(i, j).produces_token = ij_produces_token;
+                }
+
+                {
+                    bool ji_produces_token = second.transitions[START].produces_token;
+                    auto ji = enqueue(std::move(second));
+                    this->merge_table(j, i).result_state = ji;
+                    this->merge_table(j, i).produces_token = ji_produces_token;
+                }
             }
         }
 
         this->final_states.resize(seen.size(), nullptr);
         for (const auto& [ps, i] : seen) {
-            this->final_states[i] = dfa[ps.transitions[START]].token;
+            this->final_states[i] = dfa[ps.transitions[START].result_state].token;
         }
+
+        fmt::print("{} states\n", seen.size());
     }
 };
