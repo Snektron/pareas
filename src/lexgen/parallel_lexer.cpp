@@ -121,7 +121,7 @@ namespace pareas {
             auto [it, inserted] = seen.insert({std::move(ps), states.size()});
             if (inserted) {
                 states.push_back(it->first);
-                this->merge_table.resize(it->second);
+                this->merge_table.resize(it->second + 1);
             }
             return it->second;
         };

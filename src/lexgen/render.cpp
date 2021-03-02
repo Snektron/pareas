@@ -10,12 +10,12 @@ namespace pareas {
     }
 
     void LexerRenderer::render_code(std::ostream& out) const {
-        fmt::print("module token = u{}\n", this->token_bits);
+        fmt::print(out, "module token = u{}\n", this->token_bits);
         for (size_t i = 0; i < tokens.size(); ++i) {
-            fmt::print("let token_{}: token.t = {}\n", tokens[i].name, i);
+            fmt::print(out, "let token_{}: token.t = {}\n", tokens[i].name, i);
         }
-        fmt::print("let num_tokens: i64 = {}\n", tokens.size());
-        fmt::print("let identity_index: i64 = {}\n", this->lexer->identity_state_index);
+        fmt::print(out, "let num_tokens: i64 = {}\n", tokens.size());
+        fmt::print(out, "let identity_state: u{} = {}\n", ENCODED_TRANSITION_BITS, this->lexer->identity_state_index);
     }
 
     void LexerRenderer::render_initial_state_dataset(std::ostream& out) const {
