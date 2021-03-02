@@ -49,10 +49,10 @@ int main() {
     auto tokens = lexer_parser.parse();
     auto parallel_lexer = pareas::ParallelLexer(tokens);
     auto renderer = pareas::LexerRenderer(tokens, &parallel_lexer);
-    // renderer.render_token_definitions(std::cout);
+    // renderer.render_code(std::cout);
     // renderer.render_initial_state_dataset(std::cout);
     // renderer.render_merge_table_dataset(std::cout);
-    renderer.render_final_state_dataset(std::cout);
+    // renderer.render_final_state_dataset(std::cout);
 
     return EXIT_SUCCESS;
 }

@@ -146,6 +146,15 @@ namespace pareas {
             }
         }
 
+        // Add the identity mapping, which is required for futhark's scan operation.
+        {
+            auto identity = ParallelState(dfa.num_states());
+            for (size_t i = 0; i < identity.transitions.size(); ++i) {
+                identity.transitions[i].result_state = i;
+            }
+            this->identity_state_index = enqueue(std::move(identity));
+        }
+
         // Repeatedly perform the merges until no new merge is added
         for (StateIndex i = 0; i < states.size(); ++i) {
             auto first = states[i];
@@ -170,8 +179,6 @@ namespace pareas {
                 }
             }
         }
-
-        // Add the identity mapping, which is required for futhark's scan operation.
 
         // Compute the final state mapping
         this->final_states.resize(seen.size(), nullptr);

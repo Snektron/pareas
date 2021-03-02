@@ -22,7 +22,7 @@ namespace pareas {
     public:
         LexerRenderer(std::span<const Token> tokens, const ParallelLexer* lexer);
 
-        void render_token_definitions(std::ostream& out) const;
+        void render_code(std::ostream& out) const;
         void render_initial_state_dataset(std::ostream& out) const;
         void render_merge_table_dataset(std::ostream& out) const;
         void render_final_state_dataset(std::ostream& out) const;
