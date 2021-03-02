@@ -23,6 +23,7 @@ fmt_dep = subproject('fmt').get_variable('fmt_dep')
 
 # common
 pareas_common_sources = [
+    'src/common/cli_util.cpp',
     'src/common/error_reporter.cpp',
     'src/common/parser.cpp',
 ]

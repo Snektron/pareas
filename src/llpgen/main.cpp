@@ -6,6 +6,7 @@
 #include "pareas/llpgen/llp/render.hpp"
 #include "pareas/common/error_reporter.hpp"
 #include "pareas/common/parser.hpp"
+#include "pareas/common/cli_util.hpp"
 
 #include <fmt/format.h>
 #include <fmt/ostream.h>
@@ -60,7 +61,7 @@ bool parse_options(Options* opts, int argc, const char* argv[]) {
 
         if (arg == "-o" || arg == "--output") {
             if (++i >= argc) {
-                fmt::print(std::cerr, "Error: Expected argument <output> to option {}\n", arg);
+                fmt::print(std::cerr, "Error: Expected argument <path> to option {}\n", arg);
                 return false;
             }
             opts->output_path = argv[i];
@@ -103,21 +104,11 @@ int main(int argc, const char* argv[]) {
     }
 
     std::string input;
-    if (std::string_view(opts.input_path) == "-") {
-        input.assign(
-            std::istreambuf_iterator<char>(std::cin),
-            std::istreambuf_iterator<char>()
-        );
+    if (auto maybe_input = pareas::read_input(opts.input_path)) {
+        input = std::move(maybe_input.value());
     } else {
-        auto in = std::ifstream(opts.input_path, std::ios::binary);
-        if (!in) {
-            fmt::print(std::cerr, "Error: Failed to open input path '{}'\n", opts.input_path);
-            return EXIT_FAILURE;
-        }
-        input.assign(
-            std::istreambuf_iterator<char>(in),
-            std::istreambuf_iterator<char>()
-        );
+        fmt::print(std::cerr, "Error: Failed to open input path '{}'\n", opts.input_path);
+        return EXIT_FAILURE;
     }
 
     auto er = pareas::ErrorReporter(input, std::clog);

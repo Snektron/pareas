@@ -4,8 +4,6 @@
 
 #include <fmt/ostream.h>
 
-#include <iterator>
-
 namespace pareas {
     LexerRenderer::LexerRenderer(std::span<const Token> tokens, const ParallelLexer* lexer):
         tokens(tokens), lexer(lexer), token_bits(int_bit_width(tokens.size())) {
