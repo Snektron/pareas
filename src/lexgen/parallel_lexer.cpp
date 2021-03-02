@@ -100,6 +100,10 @@ namespace pareas {
         return this->merge_table[this->index(first, second)];
     }
 
+    size_t ParallelLexer::MergeTable::states() const {
+        return this->num_states;
+    }
+
     ParallelLexer::ParallelLexer(std::span<const Token> tokens) {
         auto max_sym = std::numeric_limits<FiniteStateAutomaton::Symbol>::max();
         auto num_syms = max_sym + 1;
@@ -112,8 +116,6 @@ namespace pareas {
         auto seen = std::unordered_map<ParallelState, StateIndex>();
         auto states = std::vector<ParallelState>();
         auto transitions = std::vector<Transition>();
-
-        fmt::print("{} states\n", dfa.num_states());
 
         auto enqueue = [&](ParallelState&& ps) {
             auto [it, inserted] = seen.insert({std::move(ps), states.size()});
@@ -138,7 +140,9 @@ namespace pareas {
 
             this->initial_states.resize(initial_states.size());
             for (int sym = 0; sym < initial_states.size(); ++sym) {
-                this->initial_states[sym] = enqueue(std::move(initial_states[sym]));
+                auto& state = initial_states[sym];
+                this->initial_states[sym].produces_token = state.transitions[START].produces_token;
+                this->initial_states[sym].result_state = enqueue(std::move(state));
             }
         }
 
@@ -167,11 +171,12 @@ namespace pareas {
             }
         }
 
+        // Add the identity mapping, which is required for futhark's scan operation.
+
+        // Compute the final state mapping
         this->final_states.resize(seen.size(), nullptr);
         for (const auto& [ps, i] : seen) {
             this->final_states[i] = dfa[ps.transitions[START].result_state].token;
         }
-
-        fmt::print("{} states\n", seen.size());
     }
 };

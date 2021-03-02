@@ -11,15 +11,15 @@ namespace pareas {
     void LexerInterpreter::lex_linear(std::string_view input) const {
         auto states = std::vector<ParallelLexer::StateIndex>();
 
-        fmt::print("-- init --\n");
-
         for (auto c : input) {
             auto state = this->lexer->initial_states[c];
-            states.push_back(state);
-            fmt::print("{} -> {}\n", c, state);
+            states.push_back(state.result_state);
+            if (state.produces_token) {
+                auto t = this->lexer->final_states[ParallelLexer::START];
+                fmt::print("{}\n", t ? t->name : "(internal error)");
+            }
         }
 
-        fmt::print("-- lex --\n");
         for (size_t i = 1; i < input.size(); ++i) {
             auto prev = states[i - 1];
             auto state = this->lexer->merge_table(states[i - 1], states[i]);

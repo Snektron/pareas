@@ -44,18 +44,22 @@ namespace pareas {
 
             Transition& operator()(StateIndex first, StateIndex second);
             const Transition& operator()(StateIndex first, StateIndex second) const;
+
+            size_t states() const;
         };
 
         // Char to initial state
         // Moving from the initial state could also produce a transition,
         // if the start state is accepting.
-        std::vector<StateIndex> initial_states;
+        std::vector<Transition> initial_states;
 
         // TODO: State to new state table
         MergeTable merge_table;
 
         // ParallelState to token they might produce
         std::vector<const Token*> final_states;
+
+        StateIndex identity_state_index;
 
         explicit ParallelLexer(std::span<const Token> tokens);
     };

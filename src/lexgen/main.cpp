@@ -6,7 +6,7 @@
 #include "pareas/lexgen/lexer_parser.hpp"
 #include "pareas/lexgen/fsa.hpp"
 #include "pareas/lexgen/parallel_lexer.hpp"
-#include "pareas/lexgen/interpreter.hpp"
+#include "pareas/lexgen/render.hpp"
 
 #include <iostream>
 #include <cstdlib>
@@ -48,8 +48,11 @@ int main() {
     auto lexer_parser = pareas::LexerParser(&parser);
     auto tokens = lexer_parser.parse();
     auto parallel_lexer = pareas::ParallelLexer(tokens);
-    auto test_lexer = pareas::LexerInterpreter(&parallel_lexer);
-    test_lexer.lex_linear("for(int i=0;i<10;++i)// oef \nauwie");
+    auto renderer = pareas::LexerRenderer(tokens, &parallel_lexer);
+    // renderer.render_token_definitions(std::cout);
+    // renderer.render_initial_state_dataset(std::cout);
+    // renderer.render_merge_table_dataset(std::cout);
+    renderer.render_final_state_dataset(std::cout);
 
     return EXIT_SUCCESS;
 }

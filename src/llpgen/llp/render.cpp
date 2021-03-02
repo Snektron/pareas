@@ -1,5 +1,6 @@
 #include "pareas/llpgen/llp/render.hpp"
 #include "pareas/llpgen/llp/admissible_pair.hpp"
+#include "pareas/common/render_util.hpp"
 
 #include <fmt/ostream.h>
 
@@ -14,13 +15,6 @@
 namespace {
     using namespace pareas;
     using namespace pareas::llp;
-
-    size_t int_bit_width(size_t x) {
-        auto width = std::max(size_t{8}, std::bit_ceil(std::bit_width(x)));
-        // This should only happen if there are a LOT of rules anyway.
-        assert(width <= 64);
-        return width;
-    }
 
     struct String {
         int32_t offset;
