@@ -7,8 +7,7 @@
 
 namespace pareas {
     GrammarParser::GrammarParser(Parser* parser):
-        parser(parser),
-        start{"", {0}}, left_delim{"", {0}}, right_delim{"", {0}} {}
+        parser(parser), left_delim{"", {0}}, right_delim{"", {0}} {}
 
     Grammar GrammarParser::parse() {
         bool error = false;
@@ -24,11 +23,6 @@ namespace pareas {
             this->parser->eat_delim();
         }
 
-        if (this->start.value.size() == 0) {
-            this->parser->er->error(this->parser->loc(), "Missing directive %start");
-            error = true;
-        }
-
         if (this->left_delim.value.size() == 0) {
             this->parser->er->error(this->parser->loc(), "Missing directive %left_delim");
             error = true;
@@ -39,44 +33,37 @@ namespace pareas {
             error = true;
         }
 
-        const auto* start = this->find_start_rule();
-
-        if (error || !start)
+        if (error || !this->check_start_rule())
             throw GrammarParseError();
 
         auto g = Grammar{
             .left_delim = Terminal{std::string(this->left_delim.value)},
             .right_delim = Terminal{std::string(this->right_delim.value)},
-            .start = start,
             .productions = std::move(this->productions),
         };
         g.validate(*this->parser->er);
         return g;
     }
 
-    const Production* GrammarParser::find_start_rule() const {
-        // Find the start rule
-        // Only one is allowed
-        const Production* start = nullptr;
+    bool GrammarParser::check_start_rule() const {
+        // Only one start rule is allowed, and exactly one must exist
+        if (this->productions.size() <= Grammar::START_INDEX) {
+            this->parser->er->error(this->parser->loc(), "Missing start rule");
+            return false;
+        }
+
+        auto* start = &this->productions[Grammar::START_INDEX];
         bool error = false;
 
-        auto start_nt = NonTerminal{std::string(this->start.value)};
-
         for (const auto& prod : this->productions) {
-            if (prod.lhs != start_nt)
+            if (&prod == start)
                 continue;
-            if (start) {
+
+            if (prod.lhs == start->lhs) {
                 this->parser->er->error(prod.loc, "Duplicate start rule definition");
                 this->parser->er->note(start->loc, "First defined here");
                 error = true;
-            } else {
-                start = &prod;
             }
-        }
-
-        if (!start) {
-            this->parser->er->error(this->parser->loc(), "Missing start rule");
-            return nullptr;
         }
 
         auto left_delim = Terminal{std::string(this->left_delim.value)};
@@ -89,11 +76,7 @@ namespace pareas {
             error = true;
         }
 
-        if (error) {
-            return nullptr;
-        }
-
-        return start;
+        return !error;
     }
 
     bool GrammarParser::directive() {
@@ -105,11 +88,7 @@ namespace pareas {
             return false;
 
         Directive* dir = nullptr;
-        bool word = false;
-        if (name == "start") {
-            dir = &this->start;
-            word = true;
-        } else if (name == "left_delim") {
+         if (name == "left_delim") {
             dir = &this->left_delim;
         } else if (name == "right_delim") {
             dir = &this->right_delim;
@@ -132,7 +111,7 @@ namespace pareas {
             return false;
         this->parser->eat_delim();
 
-        auto value = word ? this->parser->word() : this->terminal();
+        auto value = this->terminal();
         if (value.size() == 0)
             return false;
 

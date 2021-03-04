@@ -23,14 +23,14 @@ namespace pareas {
 
         std::vector<Production> productions;
         std::unordered_map<std::string_view, SourceLocation> tags;
-        Directive start, left_delim, right_delim;
+        Directive left_delim, right_delim;
 
     public:
         GrammarParser(Parser* parser);
         Grammar parse();
 
     private:
-        const Production* find_start_rule() const;
+        bool check_start_rule() const;
 
         bool directive();
         bool production();

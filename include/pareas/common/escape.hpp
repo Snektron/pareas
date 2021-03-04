@@ -46,7 +46,6 @@ struct fmt::formatter<pareas::EscapeFormatter> {
         };
 
         switch (e.c) {
-                return format_to(ctx.out(), "\\\\");
             case '\n':
                 return format_to(ctx.out(), "\\n");
             case '\t':

@@ -63,14 +63,16 @@ namespace pareas {
     };
 
     struct Grammar {
+        constexpr const static size_t START_INDEX = 0;
+
         Terminal left_delim;
         Terminal right_delim;
 
-        const Production* start;
         std::vector<Production> productions;
 
         void dump(std::ostream& os) const;
         void validate(ErrorReporter& er) const;
+        const Production* start() const;
     };
 
     std::ostream& operator<<(std::ostream& os, const Terminal& t);

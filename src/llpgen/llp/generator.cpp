@@ -62,7 +62,7 @@ namespace pareas::llp {
         auto llp = ParsingTable();
 
         for (const auto& [ap, entry] : psls.table) {
-            if (entry.prod == this->g->start) {
+            if (entry.prod == this->g->start()) {
                 assert(ap.x == this->g->left_delim);
                 // assert(entry.gamma.size() == 1 && entry.gamma[0] == this->g->left_delim);
                 // In order to make the LLP table a bit more concise, we do a hack here:
@@ -78,7 +78,7 @@ namespace pareas::llp {
                 // omitted. It would be harder to fix that up in the renderer when the above
                 // change is applied, so instead, we simply set the initial stack of any
                 // admissible pair with x = left delimiter to empty.
-                auto stack = std::vector<Symbol>({this->g->start->lhs});
+                auto stack = std::vector<Symbol>({this->g->start()->lhs});
                 auto prod1 = ll.partial_parse(ap.x, stack);
                 auto prod2 = ll.partial_parse(ap.y, stack);
                 prod1.insert(prod1.end(), prod2.begin(), prod2.end());
@@ -117,8 +117,8 @@ namespace pareas::llp {
         {
             auto initial = LLPItemSet();
             initial.items.insert({
-                .prod = this->g->start,
-                .dot = this->g->start->rhs.size(),
+                .prod = this->g->start(),
+                .dot = this->g->start()->rhs.size(),
                 .lookback = this->g->right_delim,
                 .lookahead = Terminal::null(),
                 .gamma = {},

@@ -47,7 +47,7 @@ namespace pareas {
     }
 
     void Grammar::dump(std::ostream& os) const {
-        os << "Start symbol: " << this->start->lhs << " " << std::endl;
+        os << "Start symbol: " << this->start()->lhs << " " << std::endl;
         for (const auto& prod : this->productions) {
             os << prod << std::endl;
         }
@@ -79,6 +79,10 @@ namespace pareas {
 
         if (error)
             throw MissingRuleDefinitionError();
+    }
+
+    const Production* Grammar::start() const {
+        return &this->productions[START_INDEX];
     }
 
     std::ostream& operator<<(std::ostream& os, const Terminal& t) {
