@@ -28,11 +28,22 @@ namespace pareas {
     };
 
     struct Terminal {
+        enum class Type {
+            USER_DEFINED, // `name` contains a user defined string.
+            EMPTY, // ε
+            START_OF_INPUT, // ⊢
+            END_OF_INPUT // ⊣
+        };
+
+        Type type;
         std::string name;
 
-        static Terminal null();
-        bool is_null() const;
+        bool is_empty() const;
         bool operator==(const Terminal& other) const;
+
+        static const Terminal EMPTY;
+        static const Terminal START_OF_INPUT;
+        static const Terminal END_OF_INPUT;
     };
 
     struct NonTerminal {
@@ -42,13 +53,22 @@ namespace pareas {
     };
 
     struct Symbol {
-        bool is_terminal;
+        enum class Type {
+            USER_DEFINED_TERMINAL,
+            EMPTY_TERMINAL,
+            START_OF_INPUT_TERMINAL,
+            END_OF_INPUT_TERMINAL,
+            NON_TERMINAL,
+        };
+
+        Type type;
         std::string name;
 
         Symbol(Terminal t);
         Symbol(NonTerminal nt);
 
-        bool is_null() const;
+        bool is_empty_terminal() const;
+        bool is_terminal() const;
         bool operator==(const Symbol& other) const;
 
         Terminal as_terminal() const;
@@ -64,9 +84,6 @@ namespace pareas {
 
     struct Grammar {
         constexpr const static size_t START_INDEX = 0;
-
-        Terminal left_delim;
-        Terminal right_delim;
 
         std::vector<Production> productions;
 

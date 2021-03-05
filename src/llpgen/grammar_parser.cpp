@@ -7,7 +7,7 @@
 
 namespace pareas {
     GrammarParser::GrammarParser(Parser* parser):
-        parser(parser), left_delim{"", {0}}, right_delim{"", {0}} {}
+        parser(parser) {}
 
     Grammar GrammarParser::parse() {
         bool error = false;
@@ -15,30 +15,17 @@ namespace pareas {
         this->parser->eat_delim();
 
         while (auto c = this->parser->peek()) {
-            bool ok = c == '%' ? this->directive() : this->production();
-            if (!ok) {
+            if (!this->production()) {
                 error = true;
                 this->parser->skip_until(';');
             }
             this->parser->eat_delim();
         }
 
-        if (this->left_delim.value.size() == 0) {
-            this->parser->er->error(this->parser->loc(), "Missing directive %left_delim");
-            error = true;
-        }
-
-        if (this->right_delim.value.size() == 0) {
-            this->parser->er->error(this->parser->loc(), "Missing directive %right_delim");
-            error = true;
-        }
-
         if (error || !this->check_and_fixup_start_rule())
             throw GrammarParseError();
 
         auto g = Grammar{
-            .left_delim = Terminal{std::string(this->left_delim.value)},
-            .right_delim = Terminal{std::string(this->right_delim.value)},
             .productions = std::move(this->productions),
         };
         g.validate(*this->parser->er);
@@ -66,61 +53,10 @@ namespace pareas {
             }
         }
 
-        auto left_delim = Terminal{std::string(this->left_delim.value)};
-        auto right_delim = Terminal{std::string(this->right_delim.value)};
-
-        start->rhs.insert(start->rhs.begin(), left_delim);
-        start->rhs.insert(start->rhs.end(), left_delim);
-
-        // Verify that the starting rule is of the right form
-        // if (start->rhs.empty() || start->rhs.front() != left_delim || start->rhs.back() != right_delim) {
-        //     this->parser->er->error(start->loc, "Start rule not in correct form");
-        //     this->parser->er->note(start->loc, fmt::format("Expected form {} -> '{}' ... '{}';", start->lhs, left_delim, right_delim));
-        //     error = true;
-        // }
+        start->rhs.insert(start->rhs.begin(), Terminal::START_OF_INPUT);
+        start->rhs.insert(start->rhs.end(), Terminal::END_OF_INPUT);
 
         return !error;
-    }
-
-    bool GrammarParser::directive() {
-        auto directive_loc = this->parser->loc();
-        if (!this->parser->expect('%'))
-            return false;
-        auto name = this->parser->word();
-        if (name.size() == 0)
-            return false;
-
-        Directive* dir = nullptr;
-         if (name == "left_delim") {
-            dir = &this->left_delim;
-        } else if (name == "right_delim") {
-            dir = &this->right_delim;
-        } else {
-            this->parser->er->error(directive_loc, fmt::format("Invalid directive '%{}'", name));
-            return false;
-        }
-
-        bool error = false;
-        if (dir->value.size() != 0) {
-            this->parser->er->error(directive_loc, fmt::format("Duplicate directive '%{}'", name));
-            this->parser->er->note(dir->loc, "First defined here");
-            error = true;
-        } else {
-            dir->loc = directive_loc;
-        }
-
-        this->parser->eat_delim();
-        if (!this->parser->expect('='))
-            return false;
-        this->parser->eat_delim();
-
-        auto value = this->terminal();
-        if (value.size() == 0)
-            return false;
-
-        dir->value = value;
-        this->parser->eat_delim();
-        return this->parser->expect(';') && !error;
     }
 
     bool GrammarParser::production() {
@@ -156,7 +92,7 @@ namespace pareas {
                 auto t = this->terminal();
                 if (t.size() == 0)
                     return false;
-                syms.push_back(Terminal{std::string(t)});
+                syms.push_back(Terminal{Terminal::Type::USER_DEFINED, std::string(t)});
             } else if (this->parser->is_word_start_char(c.value())) {
                 auto nt = this->parser->word();
                 if (nt.size() == 0)

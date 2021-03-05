@@ -23,9 +23,9 @@ namespace pareas::ll {
             auto top = stack.back();
             stack.pop_back();
 
-            if (top.is_null()) {
+            if (top.is_empty_terminal()) {
                 continue;
-            } else if (top.is_terminal) {
+            } else if (top.is_terminal()) {
                 assert(y == top.as_terminal());
                 break;
             }

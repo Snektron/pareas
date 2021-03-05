@@ -135,7 +135,7 @@ namespace {
         for (const auto& prod : g.productions) {
             this->prod_mapping.insert({prod.tag, this->prod_mapping.size()});
             for (const auto& sym : prod.rhs) {
-                if (sym.is_terminal)
+                if (sym.is_terminal())
                     this->token_mapping.insert({sym.as_terminal(), this->token_mapping.size()});
             }
         }
@@ -219,7 +219,7 @@ namespace {
         for (const auto& prod : this->g.productions) {
             size_t arity = 0;
             for (const auto& sym : prod.rhs) {
-                if (!sym.is_terminal)
+                if (!sym.is_terminal())
                     ++arity;
             }
 

@@ -14,16 +14,10 @@ namespace pareas {
     };
 
     class GrammarParser {
-        struct Directive {
-            std::string_view value;
-            SourceLocation loc;
-        };
-
         Parser* parser;
 
         std::vector<Production> productions;
         std::unordered_map<std::string_view, SourceLocation> tags;
-        Directive left_delim, right_delim;
 
     public:
         GrammarParser(Parser* parser);
@@ -32,7 +26,6 @@ namespace pareas {
     private:
         bool check_and_fixup_start_rule();
 
-        bool directive();
         bool production();
 
         std::string_view terminal(); // quoted word
