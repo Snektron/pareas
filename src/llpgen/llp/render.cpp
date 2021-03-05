@@ -166,7 +166,19 @@ namespace {
         fmt::print(this->out, "let num_tokens: i64 = {}\n", this->token_mapping.size());
 
         for (const auto& [token, id] : this->token_mapping) {
-            fmt::print(this->out, "let token_{}: token.t = {}\n", token, id);
+            switch (token.type) {
+                case Terminal::Type::USER_DEFINED:
+                    fmt::print(this->out, "let token_{}: token.t = {}\n", token, id);
+                    break;
+                case Terminal::Type::START_OF_INPUT:
+                    fmt::print(this->out, "let special_token_soi: token.t = {}\n", id);
+                    break;
+                case Terminal::Type::END_OF_INPUT:
+                    fmt::print(this->out, "let special_token_eoi: token.t = {}\n", id);
+                    break;
+                case Terminal::Type::EMPTY:
+                    assert(false);
+            }
         }
     }
 
