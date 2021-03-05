@@ -33,7 +33,7 @@ namespace pareas {
             error = true;
         }
 
-        if (error || !this->check_start_rule())
+        if (error || !this->check_and_fixup_start_rule())
             throw GrammarParseError();
 
         auto g = Grammar{
@@ -45,7 +45,7 @@ namespace pareas {
         return g;
     }
 
-    bool GrammarParser::check_start_rule() const {
+    bool GrammarParser::check_and_fixup_start_rule() {
         // Only one start rule is allowed, and exactly one must exist
         if (this->productions.size() <= Grammar::START_INDEX) {
             this->parser->er->error(this->parser->loc(), "Missing start rule");
@@ -69,12 +69,15 @@ namespace pareas {
         auto left_delim = Terminal{std::string(this->left_delim.value)};
         auto right_delim = Terminal{std::string(this->right_delim.value)};
 
+        start->rhs.insert(start->rhs.begin(), left_delim);
+        start->rhs.insert(start->rhs.end(), left_delim);
+
         // Verify that the starting rule is of the right form
-        if (start->rhs.empty() || start->rhs.front() != left_delim || start->rhs.back() != right_delim) {
-            this->parser->er->error(start->loc, "Start rule not in correct form");
-            this->parser->er->note(start->loc, fmt::format("Expected form {} -> '{}' ... '{}';", start->lhs, left_delim, right_delim));
-            error = true;
-        }
+        // if (start->rhs.empty() || start->rhs.front() != left_delim || start->rhs.back() != right_delim) {
+        //     this->parser->er->error(start->loc, "Start rule not in correct form");
+        //     this->parser->er->note(start->loc, fmt::format("Expected form {} -> '{}' ... '{}';", start->lhs, left_delim, right_delim));
+        //     error = true;
+        // }
 
         return !error;
     }

@@ -1,7 +1,7 @@
 %left_delim = 'soi';
 %right_delim = 'eoi';
 
-start -> 'soi' program 'eoi';
+start -> program;
 
 program -> fn_decl program;
 program [program_end] -> ;

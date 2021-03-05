@@ -30,7 +30,7 @@ namespace pareas {
         Grammar parse();
 
     private:
-        bool check_start_rule() const;
+        bool check_and_fixup_start_rule();
 
         bool directive();
         bool production();
