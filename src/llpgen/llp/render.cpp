@@ -110,7 +110,6 @@ namespace {
         const Grammar& g;
         const ParsingTable& pt;
         std::unordered_map<Terminal, size_t> token_mapping;
-        std::unordered_map<std::string, size_t> prod_mapping;
         std::unordered_map<Symbol, size_t> symbol_mapping;
 
         Renderer(std::ostream& out, const Grammar& g, const ParsingTable& pt);
@@ -133,7 +132,6 @@ namespace {
         }
 
         for (const auto& prod : g.productions) {
-            this->prod_mapping.insert({prod.tag, this->prod_mapping.size()});
             for (const auto& sym : prod.rhs) {
                 if (sym.is_terminal())
                     this->token_mapping.insert({sym.as_terminal(), this->token_mapping.size()});
@@ -151,12 +149,17 @@ namespace {
     }
 
     void Renderer::render_production_type() {
-        auto bits = int_bit_width(this->prod_mapping.size());
+        auto n = this->g.productions.size();
+        auto bits = int_bit_width(n);
         fmt::print(this->out, "module production = u{}\n", bits);
-        fmt::print(this->out, "let num_productions: i64 = {}\n", this->prod_mapping.size());
+        fmt::print(this->out, "let num_productions: i64 = {}\n", n);
 
-        for (const auto& [tag, id] : this->prod_mapping) {
-            fmt::print(this->out, "let production_{}: production.t = {}\n", tag, id);
+        // Tags are already guaranteed to be unique, so we don't need to do any kind
+        // of deduplication here. As added bonus, the ID of a production is now only
+        // dependent on the order in which the productions are defined.
+        for (size_t i = 0; i < n; ++i) {
+            const auto& prod = this->g.productions[i];
+            fmt::print(this->out, "let production_{}: production.t = {}\n", prod.tag, i);
         }
     }
 
@@ -226,16 +229,11 @@ namespace {
     }
 
     void Renderer::render_production_arities() {
-        auto arities = std::vector<size_t>(this->prod_mapping.size());
-
+        // Production id's are assigned according to their index in the
+        // productions vector, so we can just push_back the arities.
+        auto arities = std::vector<size_t>();
         for (const auto& prod : this->g.productions) {
-            size_t arity = 0;
-            for (const auto& sym : prod.rhs) {
-                if (!sym.is_terminal())
-                    ++arity;
-            }
-
-            arities[this->prod_mapping.at(prod.tag)] = arity;
+            arities.push_back(prod.arity());
         }
 
         fmt::print(out, "let production_arity = [{}] :> [num_productions]i32\n", fmt::join(arities, ", "));

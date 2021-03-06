@@ -68,6 +68,8 @@ namespace pareas {
         std::string tag;
         NonTerminal lhs;
         std::vector<Symbol> rhs;
+
+        size_t arity() const;
     };
 
     struct Grammar {

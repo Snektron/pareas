@@ -77,6 +77,15 @@ namespace pareas {
         return NonTerminal{this->name};
     }
 
+    size_t Production::arity() const {
+        size_t arity = 0;
+        for (const auto& sym : this->rhs) {
+            if (!sym.is_terminal())
+                ++arity;
+        }
+        return arity;
+    }
+
     void Grammar::dump(std::ostream& os) const {
         os << "Start symbol: " << this->start()->lhs << " " << std::endl;
         for (const auto& prod : this->productions) {

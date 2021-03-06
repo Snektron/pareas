@@ -138,7 +138,7 @@ namespace pareas {
                     std::span(prod.rhs).subspan(0, i);
 
                 auto ts = this->compute_first_or_last_set(b, follow);
-                // Should be pre-inserted.  If not, there is no production which has this
+                // Should be pre-inserted. If not, there is no production which has this
                 // symbol as LHS.
                 auto set = sets.at(nt);
 
