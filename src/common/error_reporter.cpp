@@ -16,15 +16,23 @@ namespace pareas {
         }
     }
 
-    void ErrorReporter::error(SourceLocation loc, std::string_view msg) const {
+    void ErrorReporter::error(SourceLocation loc, std::string_view msg) {
         this->print(loc, "error", msg);
     }
 
-    void ErrorReporter::note(SourceLocation loc, std::string_view msg) const {
+    void ErrorReporter::error(std::string_view msg) {
+        this->print("error", msg);
+    }
+
+    void ErrorReporter::note(SourceLocation loc, std::string_view msg) {
         this->print(loc, "note", msg);
     }
 
-    void ErrorReporter::print(SourceLocation loc, std::string_view tag, std::string_view msg) const {
+    void ErrorReporter::note(std::string_view msg) {
+        this->print("note", msg);
+    }
+
+    void ErrorReporter::print(SourceLocation loc, std::string_view tag, std::string_view msg) {
         auto info = this->line(loc);
 
         fmt::print(
@@ -38,6 +46,15 @@ namespace pareas {
             fmt::arg("msg", msg),
             fmt::arg("src", info.text),
             fmt::arg("empty", "")
+        );
+    }
+
+    void ErrorReporter::print(std::string_view tag, std::string_view msg) {
+        fmt::print(
+            this->out,
+            "{tag}: {msg}\n",
+            fmt::arg("tag", tag),
+            fmt::arg("msg", msg)
         );
     }
 

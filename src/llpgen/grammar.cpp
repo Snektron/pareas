@@ -2,6 +2,7 @@
 #include "pareas/common/hash_util.hpp"
 
 #include <fmt/format.h>
+#include <fmt/ostream.h>
 
 #include <ostream>
 #include <algorithm>
@@ -84,8 +85,19 @@ namespace pareas {
     }
 
     void Grammar::validate(ErrorReporter& er) const {
-        // Tags are already guaranteed to be unique by the parser, and the start symbol is
-        // also verified and checked, so we just need to check whether rules exist here.
+        // Tag uniqueness is already checked by the grammar parser, so skip that here.
+        bool error = !this->check_production_definitions(er);
+        error |= !this->check_start_rule(er);
+
+        if (error)
+            throw InvalidGrammarError("Invalid grammar");
+    }
+
+    const Production* Grammar::start() const {
+        return &this->productions[START_INDEX];
+    }
+
+    bool Grammar::check_production_definitions(ErrorReporter& er) const {
         bool error = false;
 
         auto exists = [&](const auto& lhs) {
@@ -107,12 +119,42 @@ namespace pareas {
             }
         }
 
-        if (error)
-            throw MissingRuleDefinitionError();
+        return !error;
     }
 
-    const Production* Grammar::start() const {
-        return &this->productions[START_INDEX];
+
+    bool Grammar::check_start_rule(ErrorReporter& er) const {
+        if (this->productions.size() <= START_INDEX) {
+            er.error("Missing start rule");
+            return false;
+        }
+
+        auto* start = &this->productions[START_INDEX];
+        bool error = false;
+
+        for (const auto& prod : this->productions) {
+            if (&prod == start)
+                continue;
+
+            if (prod.lhs == start->lhs) {
+                er.error(prod.loc, "Duplicate start rule definition");
+                er.note(start->loc, "First defined here");
+                error = true;
+            }
+        }
+
+        if (start->rhs.empty() || start->rhs.front() != Terminal::START_OF_INPUT || start->rhs.back() != Terminal::END_OF_INPUT) {
+            er.error(start->loc, "Start rule not in correct form");
+            er.note(start->loc, fmt::format(
+                "Expected form {} -> '{}' ... '{}';",
+                start->lhs,
+                Terminal::START_OF_INPUT,
+                Terminal::END_OF_INPUT
+            ));
+            error = true;
+        }
+
+        return !error;
     }
 
     std::ostream& operator<<(std::ostream& os, const Terminal& t) {

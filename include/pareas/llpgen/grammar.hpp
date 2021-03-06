@@ -15,18 +15,6 @@ namespace pareas {
         InvalidGrammarError(const std::string& msg): std::runtime_error(msg) {}
     };
 
-    struct MultipleStartRulesError: InvalidGrammarError {
-        MultipleStartRulesError(): InvalidGrammarError("Start rule appears in multiple productions") {}
-    };
-
-    struct InvalidStartRuleError: InvalidGrammarError {
-        InvalidStartRuleError(): InvalidGrammarError("Start rule is not in right form") {}
-    };
-
-    struct MissingRuleDefinitionError: InvalidGrammarError {
-        MissingRuleDefinitionError(): InvalidGrammarError("Missing definition for rule") {}
-    };
-
     struct Terminal {
         enum class Type {
             USER_DEFINED, // `name` contains a user defined string.
@@ -90,6 +78,10 @@ namespace pareas {
         void dump(std::ostream& os) const;
         void validate(ErrorReporter& er) const;
         const Production* start() const;
+
+    private:
+        bool check_production_definitions(ErrorReporter& er) const;
+        bool check_start_rule(ErrorReporter& er) const;
     };
 
     std::ostream& operator<<(std::ostream& os, const Terminal& t);

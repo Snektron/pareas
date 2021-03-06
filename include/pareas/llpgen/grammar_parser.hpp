@@ -24,10 +24,7 @@ namespace pareas {
         Grammar parse();
 
     private:
-        bool check_and_fixup_start_rule();
-
         bool production();
-
         std::string_view terminal(); // quoted word
         std::string_view tag(); // [word]
     };

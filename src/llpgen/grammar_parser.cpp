@@ -22,41 +22,20 @@ namespace pareas {
             this->parser->eat_delim();
         }
 
-        if (error || !this->check_and_fixup_start_rule())
+        if (this->productions.size() > Grammar::START_INDEX) {
+            auto* start = &this->productions[Grammar::START_INDEX];
+            start->rhs.insert(start->rhs.begin(), Terminal::START_OF_INPUT);
+            start->rhs.insert(start->rhs.end(), Terminal::END_OF_INPUT);
+        } else {
+            // Checked by g.validate()
+        }
+
+        if (error)
             throw GrammarParseError();
 
-        auto g = Grammar{
-            .productions = std::move(this->productions),
-        };
+        auto g = Grammar{std::move(this->productions)};
         g.validate(*this->parser->er);
         return g;
-    }
-
-    bool GrammarParser::check_and_fixup_start_rule() {
-        // Only one start rule is allowed, and exactly one must exist
-        if (this->productions.size() <= Grammar::START_INDEX) {
-            this->parser->er->error(this->parser->loc(), "Missing start rule");
-            return false;
-        }
-
-        auto* start = &this->productions[Grammar::START_INDEX];
-        bool error = false;
-
-        for (const auto& prod : this->productions) {
-            if (&prod == start)
-                continue;
-
-            if (prod.lhs == start->lhs) {
-                this->parser->er->error(prod.loc, "Duplicate start rule definition");
-                this->parser->er->note(start->loc, "First defined here");
-                error = true;
-            }
-        }
-
-        start->rhs.insert(start->rhs.begin(), Terminal::START_OF_INPUT);
-        start->rhs.insert(start->rhs.end(), Terminal::END_OF_INPUT);
-
-        return !error;
     }
 
     bool GrammarParser::production() {
