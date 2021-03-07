@@ -21,61 +21,38 @@ inc = include_directories('include')
 
 fmt_dep = subproject('fmt').get_variable('fmt_dep')
 
-# common
-pareas_common_sources = [
-    'src/common/cli_util.cpp',
-    'src/common/error_reporter.cpp',
-    'src/common/parser.cpp',
+lpg_sources = [
+    'src/lpg/cli_util.cpp',
+    'src/lpg/error_reporter.cpp',
+    'src/lpg/main.cpp',
+    'src/lpg/parser.cpp',
+    'src/lpg/lexer/char_range.cpp',
+    'src/lpg/lexer/fsa.cpp',
+    'src/lpg/lexer/interpreter.cpp',
+    'src/lpg/lexer/lexer_parser.cpp',
+    'src/lpg/lexer/parallel_lexer.cpp',
+    'src/lpg/lexer/regex.cpp',
+    'src/lpg/lexer/regex_parser.cpp',
+    'src/lpg/lexer/render.cpp',
+    'src/lpg/parser/grammar.cpp',
+    'src/lpg/parser/grammar_parser.cpp',
+    'src/lpg/parser/terminal_set_functions.cpp',
+    'src/lpg/parser/ll/generator.cpp',
+    'src/lpg/parser/ll/parsing_table.cpp',
+    'src/lpg/parser/llp/admissible_pair.cpp',
+    'src/lpg/parser/llp/generator.cpp',
+    'src/lpg/parser/llp/item.cpp',
+    'src/lpg/parser/llp/parsing_table.cpp',
+    'src/lpg/parser/llp/psls_table.cpp',
+    'src/lpg/parser/llp/render.cpp',
+    'src/lpg/parser/llp/test_parser.cpp',
 ]
 
-pareas_common_dep = declare_dependency(
+executable(
+    'pareas-lpg',
+    lpg_sources,
     dependencies: fmt_dep,
-    sources: pareas_common_sources,
     include_directories: inc,
-)
-
-# llpgen
-llpgen_sources = [
-    'src/llpgen/grammar.cpp',
-    'src/llpgen/grammar_parser.cpp',
-    'src/llpgen/ll/generator.cpp',
-    'src/llpgen/ll/parsing_table.cpp',
-    'src/llpgen/llp/admissible_pair.cpp',
-    'src/llpgen/llp/generator.cpp',
-    'src/llpgen/llp/item.cpp',
-    'src/llpgen/llp/parsing_table.cpp',
-    'src/llpgen/llp/psls_table.cpp',
-    'src/llpgen/llp/render.cpp',
-    'src/llpgen/llp/test_parser.cpp',
-    'src/llpgen/main.cpp',
-    'src/llpgen/terminal_set_functions.cpp',
-]
-
-executable(
-    'pareas-llpgen',
-    llpgen_sources,
-    dependencies: [pareas_common_dep, fmt_dep],
-    include_directories: inc,
-)
-
-# lexgen
-lexgen_sources = [
-    'src/lexgen/char_range.cpp',
-    'src/lexgen/fsa.cpp',
-    'src/lexgen/interpreter.cpp',
-    'src/lexgen/lexer_parser.cpp',
-    'src/lexgen/main.cpp',
-    'src/lexgen/parallel_lexer.cpp',
-    'src/lexgen/regex.cpp',
-    'src/lexgen/regex_parser.cpp',
-    'src/lexgen/render.cpp',
-]
-
-executable(
-    'pareas-lexgen',
-    lexgen_sources,
-    dependencies: [pareas_common_dep, fmt_dep],
-    include_directories: inc
 )
 
 dependencies = [fmt_dep]
