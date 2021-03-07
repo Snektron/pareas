@@ -14,27 +14,17 @@ namespace pareas {
     };
 
     class GrammarParser {
-        struct Directive {
-            std::string_view value;
-            SourceLocation loc;
-        };
-
         Parser* parser;
 
         std::vector<Production> productions;
         std::unordered_map<std::string_view, SourceLocation> tags;
-        Directive left_delim, right_delim;
 
     public:
         GrammarParser(Parser* parser);
         Grammar parse();
 
     private:
-        bool check_start_rule() const;
-
-        bool directive();
         bool production();
-
         std::string_view terminal(); // quoted word
         std::string_view tag(); // [word]
     };

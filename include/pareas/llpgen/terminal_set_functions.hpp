@@ -12,7 +12,7 @@ namespace pareas {
     using TerminalSet = std::unordered_set<Terminal>;
     using TerminalSetMap = std::unordered_map<NonTerminal, TerminalSet>;
 
-    bool merge_terminal_sets_omit_null(TerminalSet& dst, const TerminalSet& src);
+    bool merge_terminal_sets_omit_empty(TerminalSet& dst, const TerminalSet& src);
 
     struct TerminalSetFunctions {
         ErrorReporter* er;

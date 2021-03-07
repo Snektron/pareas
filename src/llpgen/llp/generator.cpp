@@ -43,9 +43,9 @@ namespace pareas::llp {
                 if (item.is_dot_at_begin())
                     continue;
                 const auto& sym = item.sym_before_dot();
-                if (!sym.is_terminal)
+                if (!sym.is_terminal())
                     continue;
-                else if (item.lookahead.is_null() || item.lookback.is_null())
+                else if (item.lookahead.is_empty() || item.lookback.is_empty())
                     continue;
 
                 insert(item);
@@ -63,8 +63,7 @@ namespace pareas::llp {
 
         for (const auto& [ap, entry] : psls.table) {
             if (entry.prod == this->g->start()) {
-                assert(ap.x == this->g->left_delim);
-                // assert(entry.gamma.size() == 1 && entry.gamma[0] == this->g->left_delim);
+                assert(ap.x == Terminal::START_OF_INPUT);
                 // In order to make the LLP table a bit more concise, we do a hack here:
                 // Instead of generating the parse from the left delimiter, we generate
                 // it from the start rule. This way, what would otherwise need to be
@@ -119,8 +118,8 @@ namespace pareas::llp {
             initial.items.insert({
                 .prod = this->g->start(),
                 .dot = this->g->start()->rhs.size(),
-                .lookback = this->g->right_delim,
-                .lookahead = Terminal::null(),
+                .lookback = Terminal::END_OF_INPUT,
+                .lookahead = Terminal::EMPTY,
                 .gamma = {},
             });
 
@@ -150,11 +149,11 @@ namespace pareas::llp {
             alpha = alpha.subspan(0, alpha.size() - 1);
 
             auto us = this->tsf->compute_last(alpha);
-            if (us.contains(Terminal::null())) {
+            if (us.contains(Terminal::EMPTY)) {
                 const auto& before = this->tsf->before(item.prod->lhs);
                 if (!before.empty()) // Special case: Start rule
-                    us.erase(Terminal::null());
-                merge_terminal_sets_omit_null(us, before);
+                    us.erase(Terminal::EMPTY);
+                merge_terminal_sets_omit_empty(us, before);
             }
 
             Symbol xvi[] = {sym, item.lookahead};
@@ -182,13 +181,13 @@ namespace pareas::llp {
 
         auto enqueue = [&](const Item& item) {
             bool inserted = set.items.insert(item).second;
-            if (item.is_dot_at_begin() || item.sym_before_dot().is_terminal || !inserted)
+            if (item.is_dot_at_begin() || item.sym_before_dot().is_terminal() || !inserted)
                 return;
             queue.push_back(item);
         };
 
         for (const auto& item : set.items) {
-            if (!item.is_dot_at_begin() && !item.sym_before_dot().is_terminal)
+            if (!item.is_dot_at_begin() && !item.sym_before_dot().is_terminal())
                 queue.push_back(item);
         }
 
@@ -204,9 +203,9 @@ namespace pareas::llp {
                     continue;
 
                 auto us = this->tsf->compute_last(std::span(prod.rhs));
-                if (us.contains(Terminal::null())) {
-                    us.erase(Terminal::null());
-                    merge_terminal_sets_omit_null(us, this->tsf->before(prod.lhs));
+                if (us.contains(Terminal::EMPTY)) {
+                    us.erase(Terminal::EMPTY);
+                    merge_terminal_sets_omit_empty(us, this->tsf->before(prod.lhs));
                 }
 
                 for (const auto& u : us) {
@@ -223,8 +222,8 @@ namespace pareas::llp {
     }
 
     std::vector<Symbol> Generator::compute_gamma(const Terminal& v, const Symbol& x, std::span<const Symbol> delta) {
-        assert(!x.is_null());
-        assert(!v.is_null());
+        assert(!x.is_empty_terminal());
+        assert(!v.is_empty());
 
         auto x_delta = std::vector<Symbol>();
         x_delta.push_back(x);
@@ -233,7 +232,7 @@ namespace pareas::llp {
         auto gamma = std::vector<Symbol>();
         for (const auto& sym : x_delta) {
             gamma.push_back(sym);
-            if (sym.is_terminal) {
+            if (sym.is_terminal()) {
                 assert(sym.as_terminal() == v);
                 return gamma;
             }
@@ -245,7 +244,7 @@ namespace pareas::llp {
                 return gamma;
             }
 
-            assert(first.contains(Terminal::null()));
+            assert(first.contains(Terminal::EMPTY));
         }
 
         assert(false);

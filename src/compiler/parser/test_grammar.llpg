@@ -1,7 +1,4 @@
-%left_delim = 'soi';
-%right_delim = 'eoi';
-
-start -> 'soi' expr 'eoi';
+start -> expr;
 
 expr -> atom sum;
 

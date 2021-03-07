@@ -22,6 +22,7 @@ struct Options {
     const char* input_path;
     const char* output_path;
     bool help;
+    bool verbose_grammar;
     bool verbose_sets;
     bool verbose_psls;
     bool verbose_ll;
@@ -33,6 +34,7 @@ void print_usage(const char* progname) {
         "Usage: {} [options...] <input path>\n"
         "Available options:\n"
         "-o --output <path>  Write the output to <output path>. (default: stdout)\n"
+        "--verbose-grammar   Dump parsed grammar to stderr\n"
         "--verbose-sets      Dump first/last/follow/before sets to stderr\n"
         "--verbose-psls      Dump PSLS table to stderr\n"
         "--verbose-ll        Dump LL table to stderr\n"
@@ -50,6 +52,7 @@ bool parse_options(Options* opts, int argc, const char* argv[]) {
         .input_path = nullptr,
         .output_path = "-",
         .help = false,
+        .verbose_grammar = false,
         .verbose_sets = false,
         .verbose_psls = false,
         .verbose_ll = false,
@@ -67,6 +70,8 @@ bool parse_options(Options* opts, int argc, const char* argv[]) {
             opts->output_path = argv[i];
         } else if (arg == "--help" || arg == "-h") {
             opts->help = true;
+        } else if (arg == "--verbose-grammar") {
+            opts->verbose_grammar = true;
         } else if (arg == "--verbose-sets") {
             opts->verbose_sets = true;
         } else if (arg == "--verbose-psls") {
@@ -117,6 +122,9 @@ int main(int argc, const char* argv[]) {
         auto parser = pareas::Parser(&er, input);
         auto grammar_parser = pareas::GrammarParser(&parser);
         auto g = grammar_parser.parse();
+
+        if (opts.verbose_grammar)
+            g.dump(std::clog);
 
         auto tsf = pareas::TerminalSetFunctions(g);
         if (opts.verbose_sets)

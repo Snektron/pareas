@@ -10,6 +10,8 @@ module type grammar = {
 
     module token: integral
     val num_tokens: i64
+    val special_token_soi: token.t
+    val special_token_eoi: token.t
 
     module bracket: integral
     module stack_change_offset: integral

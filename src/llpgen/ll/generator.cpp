@@ -24,17 +24,17 @@ namespace pareas::ll {
         for (const auto& prod : this->g->productions) {
             auto first = this->tsf->compute_first(prod.rhs);
 
-            bool has_null = false;
+            bool has_empty = false;
             for (const auto& t : first) {
-                if (t.is_null()) {
-                    has_null = true;
+                if (t.is_empty()) {
+                    has_empty = true;
                     continue;
                 }
 
                 insert({prod.lhs, t}, &prod);
             }
 
-            if (has_null) {
+            if (has_empty) {
                 const auto& follow = this->tsf->follow(prod.lhs);
                 for (const auto& t : follow) {
                     insert({prod.lhs, t}, &prod);

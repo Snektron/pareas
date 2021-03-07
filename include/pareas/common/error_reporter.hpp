@@ -20,11 +20,15 @@ namespace pareas {
 
         ErrorReporter(std::string_view source, std::ostream& out);
 
-        void error(SourceLocation loc, std::string_view msg) const;
-        void note(SourceLocation loc, std::string_view msg) const;
+        void error(SourceLocation loc, std::string_view msg);
+        void error(std::string_view msg);
+
+        void note(SourceLocation loc, std::string_view msg);
+        void note(std::string_view msg);
 
     private:
-        void print(SourceLocation loc, std::string_view tag, std::string_view msg) const;
+        void print(SourceLocation loc, std::string_view tag, std::string_view msg);
+        void print(std::string_view tag, std::string_view msg);
 
         struct LineInfo {
             size_t line; // one-indexed

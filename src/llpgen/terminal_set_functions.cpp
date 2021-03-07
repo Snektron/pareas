@@ -5,10 +5,10 @@
 #include <cassert>
 
 namespace pareas {
-    bool merge_terminal_sets_omit_null(TerminalSet& dst, const TerminalSet& src) {
+    bool merge_terminal_sets_omit_empty(TerminalSet& dst, const TerminalSet& src) {
         bool changed = false;
         for (const auto& t : src) {
-            if (t.is_null())
+            if (t.is_empty())
                 continue;
             changed |= dst.insert(t).second;
         }
@@ -72,7 +72,6 @@ namespace pareas {
         dump_nt_ts(this->before_sets);
     }
 
-
     TerminalSetMap TerminalSetFunctions::compute_base_first_or_last_set(const Grammar& g, bool first) const {
         auto sets = std::unordered_map<NonTerminal, TerminalSet>();
 
@@ -82,17 +81,17 @@ namespace pareas {
             for (size_t i = 0; i < prod.rhs.size(); ++i) {
                 const auto& sym = first ? prod.rhs[i] : prod.rhs[prod.rhs.size() - i - 1];
 
-                if (sym.is_null()) {
+                if (sym.is_empty_terminal()) {
                     continue;
-                } else if (sym.is_terminal) {
+                } else if (sym.is_terminal()) {
                     changed |= sets[prod.lhs].insert(sym.as_terminal()).second;
                     return changed;
                 } else {
                     auto dst_set = sets[prod.lhs]; // be lazy and copy for now
                     const auto& sym_set = sets[sym.as_non_terminal()];
-                    bool sym_set_has_empty = sym_set.contains(Terminal::null());
+                    bool sym_set_has_empty = sym_set.contains(Terminal::EMPTY);
 
-                    changed |= merge_terminal_sets_omit_null(dst_set, sym_set);
+                    changed |= merge_terminal_sets_omit_empty(dst_set, sym_set);
                     sets[prod.lhs] = dst_set;
 
                     if (!sym_set_has_empty)
@@ -100,7 +99,7 @@ namespace pareas {
                 }
             }
 
-            changed |= sets[prod.lhs].insert(Terminal::null()).second;
+            changed |= sets[prod.lhs].insert(Terminal::EMPTY).second;
             return changed;
         };
 
@@ -130,7 +129,7 @@ namespace pareas {
 
             for (size_t i = 0; i < prod.rhs.size(); ++i) {
                 const auto& sym = prod.rhs[i];
-                if (sym.is_terminal)
+                if (sym.is_terminal())
                     continue;
                 auto nt = sym.as_non_terminal();
 
@@ -139,13 +138,13 @@ namespace pareas {
                     std::span(prod.rhs).subspan(0, i);
 
                 auto ts = this->compute_first_or_last_set(b, follow);
-                // Should be pre-inserted.  If not, there is no production which has this
+                // Should be pre-inserted. If not, there is no production which has this
                 // symbol as LHS.
                 auto set = sets.at(nt);
 
-                changed = merge_terminal_sets_omit_null(set, ts);
-                if (ts.contains(Terminal::null())) {
-                    changed |= merge_terminal_sets_omit_null(set, sets[prod.lhs]);
+                changed = merge_terminal_sets_omit_empty(set, ts);
+                if (ts.contains(Terminal::EMPTY)) {
+                    changed |= merge_terminal_sets_omit_empty(set, sets[prod.lhs]);
                 }
 
                 sets[nt] = set;
@@ -172,23 +171,23 @@ namespace pareas {
 
         for (size_t i = 0; i < symbols.size(); ++i) {
             const auto& sym = first ? symbols[i] : symbols[symbols.size() - i - 1];
-            if (sym.is_null()) {
+            if (sym.is_empty_terminal()) {
                 continue;
-            } if (sym.is_terminal) {
+            } if (sym.is_terminal()) {
                 set.insert(sym.as_terminal());
                 return set;
             }
 
             auto nt = sym.as_non_terminal();
             const auto& ts = base_sets.at(nt);
-            merge_terminal_sets_omit_null(set, ts);
+            merge_terminal_sets_omit_empty(set, ts);
 
-            if (!ts.contains(Terminal::null())) {
+            if (!ts.contains(Terminal::EMPTY)) {
                 return set;
             }
         }
 
-        set.insert(Terminal::null());
+        set.insert(Terminal::EMPTY);
         return set;
     }
 }
