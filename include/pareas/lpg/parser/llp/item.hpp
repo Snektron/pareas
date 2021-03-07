@@ -24,16 +24,15 @@ namespace pareas::parser::llp {
 
         std::span<const Symbol> syms_before_dot() const;
         std::span<const Symbol> syms_after_dot() const;
+
+        struct Hash {
+            size_t operator()(const Item& item) const;
+        };
     };
 
     bool operator==(const Item& lhs, const Item& rhs);
 
     std::ostream& operator<<(std::ostream& os, const Item& item);
 }
-
-template <>
-struct std::hash<pareas::parser::llp::Item> {
-    size_t operator()(const pareas::parser::llp::Item& item) const;
-};
 
 #endif

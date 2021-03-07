@@ -9,8 +9,8 @@
 #include <iosfwd>
 
 namespace pareas::parser {
-    using TerminalSet = std::unordered_set<Terminal>;
-    using TerminalSetMap = std::unordered_map<NonTerminal, TerminalSet>;
+    using TerminalSet = std::unordered_set<Terminal, Terminal::Hash>;
+    using TerminalSetMap = std::unordered_map<NonTerminal, TerminalSet, NonTerminal::Hash>;
 
     bool merge_terminal_sets_omit_empty(TerminalSet& dst, const TerminalSet& src);
 

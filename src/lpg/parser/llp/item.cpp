@@ -67,13 +67,13 @@ namespace pareas::parser::llp {
         fmt::print(os, "]");
         return os;
     }
-}
 
-size_t std::hash<pareas::parser::llp::Item>::operator()(const pareas::parser::llp::Item& item) const {
-    size_t hash = std::hash<const pareas::parser::Production*>{}(item.prod);
-    hash = pareas::hash_combine(hash, std::hash<size_t>{}(item.dot));
-    hash = pareas::hash_combine(hash, std::hash<pareas::parser::Terminal>{}(item.lookahead));
-    hash = pareas::hash_combine(hash, std::hash<pareas::parser::Terminal>{}(item.lookback));
-    hash = pareas::hash_combine(hash, pareas::hash_iterator_range(item.gamma.begin(), item.gamma.end(), std::hash<pareas::parser::Symbol>{}));
-    return hash;
+    size_t Item::Hash::operator()(const Item& item) const {
+        size_t hash = std::hash<const Production*>{}(item.prod);
+        hash = pareas::hash_combine(hash, std::hash<size_t>{}(item.dot));
+        hash = pareas::hash_combine(hash, Terminal::Hash{}(item.lookahead));
+        hash = pareas::hash_combine(hash, Terminal::Hash{}(item.lookback));
+        hash = pareas::hash_combine(hash, hash_range(item.gamma.begin(), item.gamma.end(), Symbol::Hash{}));
+        return hash;
+    }
 }

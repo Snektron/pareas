@@ -45,8 +45,8 @@ namespace pareas::parser::llp {
             fmt::print(os, ")\"");
         };
 
-        auto ys = std::unordered_set<Terminal>();
-        auto xs = std::unordered_set<Terminal>();
+        auto ys = std::unordered_set<Terminal, Terminal::Hash>();
+        auto xs = std::unordered_set<Terminal, Terminal::Hash>();
 
         for (const auto& [ap, gamma] : this->table) {
             const auto& [x, y] = ap;

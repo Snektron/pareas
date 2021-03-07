@@ -42,6 +42,7 @@ lpg_sources = [
     'src/lpg/parser/llp/admissible_pair.cpp',
     'src/lpg/parser/llp/generator.cpp',
     'src/lpg/parser/llp/item.cpp',
+    'src/lpg/parser/llp/item_set.cpp',
     'src/lpg/parser/llp/parsing_table.cpp',
     'src/lpg/parser/llp/psls_table.cpp',
     'src/lpg/parser/llp/render.cpp',

@@ -7,7 +7,7 @@
 
 namespace pareas::parser::ll {
         size_t State::Hash::operator()(const State& key) const {
-        return hash_combine(std::hash<NonTerminal>{}(key.stack_top), std::hash<Terminal>{}(key.lookahead));
+        return hash_combine(NonTerminal::Hash{}(key.stack_top), Terminal::Hash{}(key.lookahead));
     }
 
     bool operator==(const State& lhs, const State& rhs) {
@@ -44,8 +44,8 @@ namespace pareas::parser::ll {
     }
 
     void ParsingTable::dump_csv(std::ostream& os) const {
-        auto nts = std::unordered_set<NonTerminal>();
-        auto ts = std::unordered_set<Terminal>();
+        auto nts = std::unordered_set<NonTerminal, NonTerminal::Hash>();
+        auto ts = std::unordered_set<Terminal, Terminal::Hash>();
 
         for (const auto& [state, prod] : this->table) {
             const auto& [nt, t] = state;

@@ -12,10 +12,19 @@ namespace pareas {
     }
 
     template <typename It, typename Hasher>
-    size_t hash_iterator_range(It begin, It end, Hasher hasher) {
+    size_t hash_range(It begin, It end, Hasher hasher) {
         size_t hash = 0;
         while (begin != end) {
             hash = hash_combine(hash, hasher(*begin++));
+        }
+        return hash;
+    }
+
+    template <typename It, typename Hasher>
+    size_t hash_order_independent_range(It begin, It end, Hasher hasher) {
+        size_t hash = 0;
+        while (begin != end) {
+            hash ^= hasher(*begin++);
         }
         return hash;
     }

@@ -21,7 +21,7 @@ namespace pareas::parser::llp {
             const Production* prod;
         };
 
-        std::unordered_map<AdmissiblePair, Entry> table;
+        std::unordered_map<AdmissiblePair, Entry, AdmissiblePair::Hash> table;
 
         void insert(const AdmissiblePair& ap, std::span<const Symbol> symbols);
         void dump_csv(std::ostream& os) const;

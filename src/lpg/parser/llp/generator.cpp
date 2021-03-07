@@ -1,6 +1,5 @@
 #include "pareas/lpg/parser/llp/generator.hpp"
 
-#include <fmt/format.h>
 #include <fmt/ostream.h>
 
 #include <deque>
@@ -104,9 +103,9 @@ namespace pareas::parser::llp {
         if (!this->item_sets.empty())
             return; // Already computed
 
-        auto queue = std::deque<LLPItemSet>();
+        auto queue = std::deque<ItemSet>();
 
-        auto enqueue = [&](const LLPItemSet& set) {
+        auto enqueue = [&](const ItemSet& set) {
             bool inserted = this->item_sets.insert(set).second;
             if (inserted) {
                 queue.emplace_back(set);
@@ -114,7 +113,7 @@ namespace pareas::parser::llp {
         };
 
         {
-            auto initial = LLPItemSet();
+            auto initial = ItemSet();
             initial.items.insert({
                 .prod = this->g->start(),
                 .dot = this->g->start()->rhs.size(),
@@ -139,8 +138,8 @@ namespace pareas::parser::llp {
         }
     }
 
-    LLPItemSet Generator::predecessor(const LLPItemSet& set, const Symbol& sym) {
-        auto new_set = LLPItemSet();
+    ItemSet Generator::predecessor(const ItemSet& set, const Symbol& sym) {
+        auto new_set = ItemSet();
         for (const auto& item : set.items) {
             if (item.is_dot_at_begin() || item.sym_before_dot() != sym)
                 continue;
@@ -176,7 +175,7 @@ namespace pareas::parser::llp {
         return new_set;
     }
 
-    void Generator::closure(LLPItemSet& set) {
+    void Generator::closure(ItemSet& set) {
         auto queue = std::deque<Item>();
 
         auto enqueue = [&](const Item& item) {

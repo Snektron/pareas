@@ -49,7 +49,7 @@ namespace pareas::parser {
     }
 
     void TerminalSetFunctions::dump(std::ostream& os) {
-        auto dump_nt_ts = [&](const std::unordered_map<NonTerminal, TerminalSet>& sets){
+        auto dump_nt_ts = [&](const auto& sets){
             for (auto [nt, set] : sets) {
                 fmt::print(os, "    {}:\t", nt);
                 for (const auto& t : set) {
@@ -73,7 +73,7 @@ namespace pareas::parser {
     }
 
     TerminalSetMap TerminalSetFunctions::compute_base_first_or_last_set(const Grammar& g, bool first) const {
-        auto sets = std::unordered_map<NonTerminal, TerminalSet>();
+        auto sets = TerminalSetMap();
 
         auto add_prod = [&](const Production& prod) {
             bool changed = false;
@@ -115,7 +115,7 @@ namespace pareas::parser {
     }
 
     TerminalSetMap TerminalSetFunctions::compute_follow_or_before_sets(const Grammar& g, bool follow) const {
-        auto sets = std::unordered_map<NonTerminal, TerminalSet>();
+        auto sets = TerminalSetMap();
 
         // Pre-insert left-hand sides: this will both make sure that a key is allocated
         // (allowing us to omit a copy), and will make sure that any LHS with empty follow/

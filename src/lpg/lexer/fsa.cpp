@@ -10,7 +10,6 @@
 #include <iostream>
 #include <deque>
 #include <unordered_map>
-#include <functional>
 #include <bitset>
 #include <limits>
 #include <cassert>
@@ -23,7 +22,16 @@ namespace {
 
     struct StateSet {
         std::unordered_set<StateIndex> states;
+
+        struct Hash {
+            size_t operator()(const StateSet& ss) const;
+        };
     };
+
+    size_t StateSet::Hash::operator()(const StateSet& ss) const {
+        // Need to make sure that the order doesn't matter for this hash.
+        return pareas::hash_order_independent_range(ss.states.begin(), ss.states.end(), std::hash<StateIndex>{});
+    }
 
     bool operator==(const StateSet& lhs, const StateSet& rhs) {
         return lhs.states == rhs.states;
@@ -75,20 +83,6 @@ namespace {
         return after_move;
     }
 }
-
-template <>
-struct std::hash<StateSet> {
-    size_t operator()(const StateSet& ss) const {
-        // need to make sure that the order doesn't matter for this hash
-        // so just use an XOR on the hashes of the items.
-        auto hasher = std::hash<StateIndex>{};
-        size_t hash = 0;
-        for (const auto& state : ss.states) {
-            hash ^= hasher(state);
-        }
-        return hash;
-    }
-};
 
 namespace pareas::lexer {
     FiniteStateAutomaton::FiniteStateAutomaton() {
@@ -160,7 +154,7 @@ namespace pareas::lexer {
 
     FiniteStateAutomaton FiniteStateAutomaton::to_dfa() const {
         auto dfa = FiniteStateAutomaton();
-        auto seen = std::unordered_map<StateSet, StateIndex>();
+        auto seen = std::unordered_map<StateSet, StateIndex, StateSet::Hash>();
         auto queue = std::deque<StateSet>();
 
         auto enqueue = [&](const StateSet& ss) {

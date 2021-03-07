@@ -16,7 +16,7 @@ namespace pareas::parser::llp {
             std::vector<const Production*> productions;
         };
 
-        std::unordered_map<AdmissiblePair, Entry> table;
+        std::unordered_map<AdmissiblePair, Entry, AdmissiblePair::Hash> table;
 
         void dump_csv(std::ostream& os);
     };

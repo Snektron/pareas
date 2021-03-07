@@ -23,21 +23,29 @@ namespace pareas::parser {
             END_OF_INPUT // ⊣
         };
 
+        static const Terminal EMPTY;
+        static const Terminal START_OF_INPUT;
+        static const Terminal END_OF_INPUT;
+
         Type type;
         std::string name;
 
         bool is_empty() const;
         bool operator==(const Terminal& other) const;
 
-        static const Terminal EMPTY;
-        static const Terminal START_OF_INPUT;
-        static const Terminal END_OF_INPUT;
+        struct Hash {
+            size_t operator()(const Terminal& t) const;
+        };
     };
 
     struct NonTerminal {
         std::string name;
 
         bool operator==(const NonTerminal& other) const;
+
+        struct Hash {
+            size_t operator()(const NonTerminal& nt) const;
+        };
     };
 
     struct Symbol {
@@ -61,6 +69,10 @@ namespace pareas::parser {
 
         Terminal as_terminal() const;
         NonTerminal as_non_terminal() const;
+
+        struct Hash {
+            size_t operator()(const Symbol& sym) const;
+        };
     };
 
     struct Production {
@@ -96,20 +108,5 @@ namespace pareas::parser {
         NonTerminal operator ""_nt(const char* name, size_t len);
     }
 }
-
-template <>
-struct std::hash<pareas::parser::Terminal> {
-    size_t operator()(const pareas::parser::Terminal& t) const;
-};
-
-template <>
-struct std::hash<pareas::parser::NonTerminal> {
-    size_t operator()(const pareas::parser::NonTerminal& nt) const;
-};
-
-template <>
-struct std::hash<pareas::parser::Symbol> {
-    size_t operator()(const pareas::parser::Symbol& sym) const;
-};
 
 #endif

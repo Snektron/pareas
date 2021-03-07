@@ -9,6 +9,11 @@
 #include <cassert>
 
 namespace pareas::parser {
+    // Just give these some name that makes them nice to print
+    const Terminal Terminal::EMPTY = {Type::EMPTY, "ε"};
+    const Terminal Terminal::START_OF_INPUT = {Type::START_OF_INPUT, "⊢"};
+    const Terminal Terminal::END_OF_INPUT = {Type::END_OF_INPUT, "⊣"};
+
     bool Terminal::is_empty() const {
         return this->type == Type::EMPTY;
     }
@@ -17,13 +22,19 @@ namespace pareas::parser {
         return this->type == other.type && this->name == other.name;
     }
 
-    // Just give these some name that makes them nice to print
-    const Terminal Terminal::EMPTY = {Type::EMPTY, "ε"};
-    const Terminal Terminal::START_OF_INPUT = {Type::START_OF_INPUT, "⊢"};
-    const Terminal Terminal::END_OF_INPUT = {Type::END_OF_INPUT, "⊣"};
+    size_t Terminal::Hash::operator()(const Terminal& t) const {
+        return pareas::hash_combine(
+            std::hash<Terminal::Type>{}(t.type),
+            std::hash<std::string>{}(t.name)
+        );
+    }
 
     bool NonTerminal::operator==(const NonTerminal& other) const {
         return this->name == other.name;
+    }
+
+    size_t NonTerminal::Hash::operator()(const NonTerminal& nt) const {
+        return std::hash<std::string>{}(nt.name);
     }
 
     Symbol::Symbol(Terminal t): name(t.name) {
@@ -75,6 +86,13 @@ namespace pareas::parser {
     NonTerminal Symbol::as_non_terminal() const {
         assert(this->type == Type::NON_TERMINAL);
         return NonTerminal{this->name};
+    }
+
+    size_t Symbol::Hash::operator()(const Symbol& sym) const {
+        return hash_combine(
+            std::hash<Symbol::Type>{}(sym.type),
+            std::hash<std::string>{}(sym.name)
+        );
     }
 
     size_t Production::arity() const {
@@ -202,22 +220,4 @@ namespace pareas::parser {
             return NonTerminal{std::string(name, len)};
         }
     }
-}
-
-size_t std::hash<pareas::parser::Terminal>::operator()(const pareas::parser::Terminal& t) const {
-    return pareas::hash_combine(
-        std::hash<pareas::parser::Terminal::Type>{}(t.type),
-        std::hash<std::string>{}(t.name)
-    );
-}
-
-size_t std::hash<pareas::parser::NonTerminal>::operator()(const pareas::parser::NonTerminal& nt) const {
-    return std::hash<std::string>{}(nt.name);
-}
-
-size_t std::hash<pareas::parser::Symbol>::operator()(const pareas::parser::Symbol& sym) const {
-    return pareas::hash_combine(
-        std::hash<pareas::parser::Symbol::Type>{}(sym.type),
-        std::hash<std::string>{}(sym.name)
-    );
 }

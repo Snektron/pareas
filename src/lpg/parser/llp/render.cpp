@@ -24,7 +24,7 @@ namespace {
     template <typename T>
     struct StringTable {
         std::vector<T> superstring;
-        std::unordered_map<AdmissiblePair, String> strings;
+        std::unordered_map<AdmissiblePair, String, AdmissiblePair::Hash> strings;
 
         template <typename F>
         StringTable(const ParsingTable& pt, F get_string);
@@ -33,7 +33,7 @@ namespace {
             std::ostream& out,
             const std::string& base_name,
             const std::string& table_type,
-            const std::unordered_map<Terminal, size_t>& token_mapping
+            const std::unordered_map<Terminal, size_t, Terminal::Hash>& token_mapping
         );
     };
 
@@ -55,7 +55,7 @@ namespace {
         std::ostream& out,
         const std::string& base_name,
         const std::string& table_type,
-        const std::unordered_map<Terminal, size_t>& token_mapping
+        const std::unordered_map<Terminal, size_t, Terminal::Hash>& token_mapping
     ) {
         // Multiply by 2 to account for the sign bit
         size_t offset_bits = pareas::int_bit_width(2 * this->superstring.size());
@@ -109,8 +109,8 @@ namespace {
         std::ostream& out;
         const Grammar& g;
         const ParsingTable& pt;
-        std::unordered_map<Terminal, size_t> token_mapping;
-        std::unordered_map<Symbol, size_t> symbol_mapping;
+        std::unordered_map<Terminal, size_t, Terminal::Hash> token_mapping;
+        std::unordered_map<Symbol, size_t, Symbol::Hash> symbol_mapping;
 
         Renderer(std::ostream& out, const Grammar& g, const ParsingTable& pt);
         size_t bracket_id(const Symbol& sym, bool left) const;
