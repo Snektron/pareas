@@ -25,7 +25,7 @@ namespace {
     }
 }
 
-namespace pareas {
+namespace pareas::lexer {
     RegexParser::RegexParser(Parser* parser):
         parser(parser) {}
 

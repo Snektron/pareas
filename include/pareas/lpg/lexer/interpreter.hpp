@@ -5,7 +5,7 @@
 
 #include <string_view>
 
-namespace pareas {
+namespace pareas::lexer {
     struct LexerInterpreter {
         const ParallelLexer* lexer;
 

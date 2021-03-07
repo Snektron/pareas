@@ -10,7 +10,7 @@
 #include <string_view>
 #include <cstddef>
 
-namespace pareas {
+namespace pareas::parser {
     struct InvalidGrammarError: std::runtime_error {
         InvalidGrammarError(const std::string& msg): std::runtime_error(msg) {}
     };
@@ -98,18 +98,18 @@ namespace pareas {
 }
 
 template <>
-struct std::hash<pareas::Terminal> {
-    size_t operator()(const pareas::Terminal& t) const;
+struct std::hash<pareas::parser::Terminal> {
+    size_t operator()(const pareas::parser::Terminal& t) const;
 };
 
 template <>
-struct std::hash<pareas::NonTerminal> {
-    size_t operator()(const pareas::NonTerminal& nt) const;
+struct std::hash<pareas::parser::NonTerminal> {
+    size_t operator()(const pareas::parser::NonTerminal& nt) const;
 };
 
 template <>
-struct std::hash<pareas::Symbol> {
-    size_t operator()(const pareas::Symbol& sym) const;
+struct std::hash<pareas::parser::Symbol> {
+    size_t operator()(const pareas::parser::Symbol& sym) const;
 };
 
 #endif

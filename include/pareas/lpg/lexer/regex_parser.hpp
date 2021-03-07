@@ -7,7 +7,7 @@
 #include <stdexcept>
 #include <cstdint>
 
-namespace pareas {
+namespace pareas::lexer {
     struct RegexParseError: std::runtime_error {
         RegexParseError(): std::runtime_error("Parse error") {}
     };

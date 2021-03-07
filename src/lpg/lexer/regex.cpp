@@ -7,7 +7,7 @@
 #include <limits>
 #include <cassert>
 
-namespace pareas {
+namespace pareas::lexer {
     void SequenceNode::print(std::ostream& os) const {
         if (this->children.size() == 1) {
             this->children[0]->print(os);

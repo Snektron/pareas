@@ -8,7 +8,7 @@
 #include <iosfwd>
 #include <cstddef>
 
-namespace pareas::ll {
+namespace pareas::parser::ll {
     struct State {
         NonTerminal stack_top;
         Terminal lookahead;

@@ -8,7 +8,7 @@
 #include <span>
 #include <iosfwd>
 
-namespace pareas::llp {
+namespace pareas::parser::llp {
     enum class BracketSide {
         LEFT,
         RIGHT,

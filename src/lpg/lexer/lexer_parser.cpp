@@ -3,7 +3,7 @@
 
 #include <fmt/format.h>
 
-namespace pareas {
+namespace pareas::lexer {
     LexerParser::LexerParser(Parser* parser):
         parser(parser) {}
 

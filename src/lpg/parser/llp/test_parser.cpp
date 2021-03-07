@@ -4,7 +4,7 @@
 
 #include <stdexcept>
 
-namespace pareas::llp {
+namespace pareas::parser::llp {
     TestParser::TestParser(const ParsingTable* llp_table, std::span<const Terminal> input):
         llp_table(llp_table), input(input) {}
 

@@ -7,7 +7,7 @@
 #include <algorithm>
 #include <cassert>
 
-namespace pareas::llp {
+namespace pareas::parser::llp {
     Generator::Generator(ErrorReporter* er, const Grammar* g, const TerminalSetFunctions* tsf):
         er(er), g(g), tsf(tsf) {}
 

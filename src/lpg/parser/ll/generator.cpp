@@ -1,6 +1,6 @@
 #include "pareas/lpg/parser/ll/generator.hpp"
 
-namespace pareas::ll {
+namespace pareas::parser::ll {
     Generator::Generator(ErrorReporter* er, const Grammar* g, const TerminalSetFunctions* tsf):
         er(er), g(g), tsf(tsf) {}
 

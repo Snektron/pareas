@@ -15,11 +15,11 @@
 #include <limits>
 #include <cassert>
 
-using Symbol = pareas::FiniteStateAutomaton::Symbol;
-using StateIndex = pareas::FiniteStateAutomaton::StateIndex;
+using Symbol = pareas::lexer::FiniteStateAutomaton::Symbol;
+using StateIndex = pareas::lexer::FiniteStateAutomaton::StateIndex;
 
 namespace {
-    using namespace pareas;
+    using namespace pareas::lexer;
 
     struct StateSet {
         std::unordered_set<StateIndex> states;
@@ -90,7 +90,7 @@ struct std::hash<StateSet> {
     }
 };
 
-namespace pareas {
+namespace pareas::lexer {
     FiniteStateAutomaton::FiniteStateAutomaton() {
         assert(this->add_state() == REJECT);
         assert(this->add_state() == START);

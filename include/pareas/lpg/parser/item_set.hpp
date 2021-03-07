@@ -9,7 +9,7 @@
 #include <iosfwd>
 #include <concepts>
 
-namespace pareas {
+namespace pareas::parser {
     template <typename T>
     concept Item = requires (T a, T b, std::ostream& os) {
         // Hash requirements
@@ -80,13 +80,13 @@ namespace pareas {
     }
 }
 
-template <pareas::Item T>
-struct std::hash<pareas::ItemSet<T>> {
-    size_t operator()(const pareas::ItemSet<T>& item) const;
+template <pareas::parser::Item T>
+struct std::hash<pareas::parser::ItemSet<T>> {
+    size_t operator()(const pareas::parser::ItemSet<T>& item) const;
 };
 
-template <pareas::Item T>
-size_t std::hash<pareas::ItemSet<T>>::operator()(const pareas::ItemSet<T>& item) const {
+template <pareas::parser::Item T>
+size_t std::hash<pareas::parser::ItemSet<T>>::operator()(const pareas::parser::ItemSet<T>& item) const {
     // need to make sure that the order doesn't matter for this hash
     // so just use an XOR on the hashes of the items.
     auto hasher = std::hash<T>{};

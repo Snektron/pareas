@@ -10,7 +10,7 @@
 #include <limits>
 #include <cstdint>
 
-namespace pareas {
+namespace pareas::lexer {
     struct ParallelLexer {
         using StateIndex = FiniteStateAutomaton::StateIndex;
 

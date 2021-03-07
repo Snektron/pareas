@@ -9,7 +9,7 @@
 #include <iosfwd>
 #include <cstdint>
 
-namespace pareas {
+namespace pareas::lexer {
     class LexerRenderer {
         using EncodedTransition = uint16_t;
         constexpr const static auto ENCODED_TRANSITION_BITS = std::numeric_limits<EncodedTransition>::digits;

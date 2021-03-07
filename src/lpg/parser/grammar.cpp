@@ -8,7 +8,7 @@
 #include <algorithm>
 #include <cassert>
 
-namespace pareas {
+namespace pareas::parser {
     bool Terminal::is_empty() const {
         return this->type == Type::EMPTY;
     }
@@ -204,20 +204,20 @@ namespace pareas {
     }
 }
 
-size_t std::hash<pareas::Terminal>::operator()(const pareas::Terminal& t) const {
+size_t std::hash<pareas::parser::Terminal>::operator()(const pareas::parser::Terminal& t) const {
     return pareas::hash_combine(
-        std::hash<pareas::Terminal::Type>{}(t.type),
+        std::hash<pareas::parser::Terminal::Type>{}(t.type),
         std::hash<std::string>{}(t.name)
     );
 }
 
-size_t std::hash<pareas::NonTerminal>::operator()(const pareas::NonTerminal& nt) const {
+size_t std::hash<pareas::parser::NonTerminal>::operator()(const pareas::parser::NonTerminal& nt) const {
     return std::hash<std::string>{}(nt.name);
 }
 
-size_t std::hash<pareas::Symbol>::operator()(const pareas::Symbol& sym) const {
+size_t std::hash<pareas::parser::Symbol>::operator()(const pareas::parser::Symbol& sym) const {
     return pareas::hash_combine(
-        std::hash<pareas::Symbol::Type>{}(sym.type),
+        std::hash<pareas::parser::Symbol::Type>{}(sym.type),
         std::hash<std::string>{}(sym.name)
     );
 }

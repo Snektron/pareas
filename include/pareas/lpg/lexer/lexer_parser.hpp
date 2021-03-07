@@ -10,7 +10,7 @@
 #include <string_view>
 #include <cstddef>
 
-namespace pareas {
+namespace pareas::lexer {
     struct LexerParseError: std::runtime_error {
         LexerParseError(): std::runtime_error("Parse error") {}
     };

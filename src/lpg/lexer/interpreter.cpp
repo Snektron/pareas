@@ -4,7 +4,7 @@
 
 #include <vector>
 
-namespace pareas {
+namespace pareas::lexer {
     LexerInterpreter::LexerInterpreter(const ParallelLexer* lexer):
         lexer(lexer) {}
 

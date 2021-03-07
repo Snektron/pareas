@@ -10,7 +10,7 @@
 #include <cassert>
 
 namespace {
-    using namespace pareas;
+    using namespace pareas::lexer;
     using StateIndex = ParallelLexer::StateIndex;
     using Transition = ParallelLexer::Transition;
 
@@ -56,7 +56,7 @@ struct std::hash<ParallelState> {
     }
 };
 
-namespace pareas {
+namespace pareas::lexer {
     ParallelLexer::Transition::Transition():
         result_state(REJECT), produces_token(false) {}
 

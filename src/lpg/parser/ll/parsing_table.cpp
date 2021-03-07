@@ -5,7 +5,7 @@
 
 #include <unordered_set>
 
-namespace pareas::ll {
+namespace pareas::parser::ll {
         size_t State::Hash::operator()(const State& key) const {
         return hash_combine(std::hash<NonTerminal>{}(key.stack_top), std::hash<Terminal>{}(key.lookahead));
     }

@@ -2,7 +2,7 @@
 
 #include <cassert>
 
-namespace pareas {
+namespace pareas::lexer {
     bool CharRange::contains(uint8_t c) const {
         return this->min <= c && c <= this->max;
     }

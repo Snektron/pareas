@@ -120,23 +120,23 @@ int main(int argc, const char* argv[]) {
 
     try {
         auto parser = pareas::Parser(&er, input);
-        auto grammar_parser = pareas::GrammarParser(&parser);
+        auto grammar_parser = pareas::parser::GrammarParser(&parser);
         auto g = grammar_parser.parse();
 
         if (opts.verbose_grammar)
             g.dump(std::clog);
 
-        auto tsf = pareas::TerminalSetFunctions(g);
+        auto tsf = pareas::parser::TerminalSetFunctions(g);
         if (opts.verbose_sets)
             tsf.dump(std::clog);
 
-        auto gen = pareas::llp::Generator(&er, &g, &tsf);
+        auto gen = pareas::parser::llp::Generator(&er, &g, &tsf);
 
         auto psls_table = gen.build_psls_table();
         if (opts.verbose_psls)
             psls_table.dump_csv(std::clog);
 
-        auto ll_table = pareas::ll::Generator(&er, &g, &tsf).build_parsing_table();
+        auto ll_table = pareas::parser::ll::Generator(&er, &g, &tsf).build_parsing_table();
         if (opts.verbose_ll)
             ll_table.dump_csv(std::clog);
 
@@ -145,16 +145,16 @@ int main(int argc, const char* argv[]) {
             llp_table.dump_csv(std::clog);
 
         if (std::string_view(opts.output_path) == "-") {
-            pareas::llp::render_parser(std::cout, g, llp_table);
+            pareas::parser::llp::render_parser(std::cout, g, llp_table);
         } else {
             auto out = std::ofstream(opts.output_path, std::ios::binary);
             if (!out) {
                 fmt::print(std::cerr, "Error: Failed to open output path '{}'\n", opts.output_path);
                 return EXIT_FAILURE;
             }
-            pareas::llp::render_parser(out, g, llp_table);
+            pareas::parser::llp::render_parser(out, g, llp_table);
         }
-    } catch (const pareas::InvalidGrammarError& e) {
+    } catch (const pareas::parser::InvalidGrammarError& e) {
         fmt::print(std::cerr, "Failed: {}\n", e.what());
         return EXIT_FAILURE;
     }

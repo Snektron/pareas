@@ -7,7 +7,7 @@
 #include <stdexcept>
 #include <cassert>
 
-namespace pareas::llp {
+namespace pareas::parser::llp {
     bool Item::is_dot_at_end() const {
         return this->dot == this->prod->rhs.size();
     }
@@ -69,11 +69,11 @@ namespace pareas::llp {
     }
 }
 
-size_t std::hash<pareas::llp::Item>::operator()(const pareas::llp::Item& item) const {
-    size_t hash = std::hash<const pareas::Production*>{}(item.prod);
+size_t std::hash<pareas::parser::llp::Item>::operator()(const pareas::parser::llp::Item& item) const {
+    size_t hash = std::hash<const pareas::parser::Production*>{}(item.prod);
     hash = pareas::hash_combine(hash, std::hash<size_t>{}(item.dot));
-    hash = pareas::hash_combine(hash, std::hash<pareas::Terminal>{}(item.lookahead));
-    hash = pareas::hash_combine(hash, std::hash<pareas::Terminal>{}(item.lookback));
-    hash = pareas::hash_combine(hash, hash_iterator_range(item.gamma.begin(), item.gamma.end(), std::hash<pareas::Symbol>{}));
+    hash = pareas::hash_combine(hash, std::hash<pareas::parser::Terminal>{}(item.lookahead));
+    hash = pareas::hash_combine(hash, std::hash<pareas::parser::Terminal>{}(item.lookback));
+    hash = pareas::hash_combine(hash, pareas::hash_iterator_range(item.gamma.begin(), item.gamma.end(), std::hash<pareas::parser::Symbol>{}));
     return hash;
 }

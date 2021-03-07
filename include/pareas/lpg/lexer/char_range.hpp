@@ -3,7 +3,7 @@
 
 #include <cstdint>
 
-namespace pareas {
+namespace pareas::lexer {
     struct CharRange {
         uint8_t min;
         uint8_t max;

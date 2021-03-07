@@ -5,7 +5,7 @@
 #include "pareas/lpg/parser/ll/parsing_table.hpp"
 #include "pareas/lpg/error_reporter.hpp"
 
-namespace pareas::ll {
+namespace pareas::parser::ll {
     class Generator {
         ErrorReporter* er;
         const Grammar* g;

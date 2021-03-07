@@ -8,7 +8,7 @@
 #include <unordered_map>
 #include <cstddef>
 
-namespace pareas {
+namespace pareas::parser {
     struct GrammarParseError: InvalidGrammarError {
         GrammarParseError(): InvalidGrammarError("Parse error") {}
     };

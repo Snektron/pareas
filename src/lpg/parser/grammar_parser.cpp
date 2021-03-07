@@ -5,7 +5,7 @@
 #include <algorithm>
 #include <cstdio>
 
-namespace pareas {
+namespace pareas::parser {
     GrammarParser::GrammarParser(Parser* parser):
         parser(parser) {}
 

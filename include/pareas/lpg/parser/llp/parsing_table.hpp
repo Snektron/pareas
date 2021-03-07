@@ -8,7 +8,7 @@
 #include <unordered_map>
 #include <iosfwd>
 
-namespace pareas::llp {
+namespace pareas::parser::llp {
     struct ParsingTable {
         struct Entry {
             std::vector<Symbol> initial_stack;

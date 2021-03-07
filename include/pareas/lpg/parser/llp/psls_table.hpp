@@ -10,7 +10,7 @@
 #include <iosfwd>
 #include <stdexcept>
 
-namespace pareas::llp {
+namespace pareas::parser::llp {
     struct PSLSConflictError : public InvalidGrammarError {
         PSLSConflictError(): InvalidGrammarError("PSLS conflict: Grammar is not LLP(1, 1)") {}
     };

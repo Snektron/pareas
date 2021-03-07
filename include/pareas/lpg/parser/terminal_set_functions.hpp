@@ -8,7 +8,7 @@
 #include <span>
 #include <iosfwd>
 
-namespace pareas {
+namespace pareas::parser {
     using TerminalSet = std::unordered_set<Terminal>;
     using TerminalSetMap = std::unordered_map<NonTerminal, TerminalSet>;
 

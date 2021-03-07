@@ -13,8 +13,8 @@
 #include <cassert>
 
 namespace {
-    using namespace pareas;
-    using namespace pareas::llp;
+    using namespace pareas::parser;
+    using namespace pareas::parser::llp;
 
     struct String {
         int32_t offset;
@@ -58,7 +58,7 @@ namespace {
         const std::unordered_map<Terminal, size_t>& token_mapping
     ) {
         // Multiply by 2 to account for the sign bit
-        size_t offset_bits = int_bit_width(2 * this->superstring.size());
+        size_t offset_bits = pareas::int_bit_width(2 * this->superstring.size());
 
         fmt::print(out, "module {}_offset = i{}\n", base_name, offset_bits);
         fmt::print(out, "let {}_table_size: i64 = {}\n", base_name, this->superstring.size());
@@ -150,7 +150,7 @@ namespace {
 
     void Renderer::render_production_type() {
         auto n = this->g.productions.size();
-        auto bits = int_bit_width(n);
+        auto bits = pareas::int_bit_width(n);
         fmt::print(this->out, "module production = u{}\n", bits);
         fmt::print(this->out, "let num_productions: i64 = {}\n", n);
 
@@ -164,7 +164,7 @@ namespace {
     }
 
     void Renderer::render_token_type() {
-        auto bits = int_bit_width(this->token_mapping.size());
+        auto bits = pareas::int_bit_width(this->token_mapping.size());
         fmt::print(this->out, "module token = u{}\n", bits);
         fmt::print(this->out, "let num_tokens: i64 = {}\n", this->token_mapping.size());
 
@@ -210,7 +210,7 @@ namespace {
             }
         );
 
-        size_t bracket_bits = int_bit_width(2 * this->symbol_mapping.size());
+        size_t bracket_bits = pareas::int_bit_width(2 * this->symbol_mapping.size());
         fmt::print(this->out, "module bracket = u{}\n", bracket_bits);
         strtab.render(this->out, "stack_change", fmt::format("u{}", bracket_bits), this->token_mapping);
     }
@@ -240,7 +240,7 @@ namespace {
     }
 }
 
-namespace pareas::llp {
+namespace pareas::parser::llp {
     void render_parser(std::ostream& out, const Grammar& g, const ParsingTable& pt) {
         auto renderer = Renderer(out, g, pt);
         renderer.render_production_type();

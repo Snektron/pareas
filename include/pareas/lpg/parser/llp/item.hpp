@@ -8,7 +8,7 @@
 #include <span>
 #include <cstddef>
 
-namespace pareas::llp {
+namespace pareas::parser::llp {
     struct Item {
         const Production* prod;
         size_t dot;
@@ -32,8 +32,8 @@ namespace pareas::llp {
 }
 
 template <>
-struct std::hash<pareas::llp::Item> {
-    size_t operator()(const pareas::llp::Item& item) const;
+struct std::hash<pareas::parser::llp::Item> {
+    size_t operator()(const pareas::parser::llp::Item& item) const;
 };
 
 #endif

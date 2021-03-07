@@ -11,7 +11,7 @@
 #include <cstddef>
 #include <cstdint>
 
-namespace pareas {
+namespace pareas::lexer {
     struct Token;
 
     struct FiniteStateAutomaton {

@@ -4,7 +4,7 @@
 
 #include <cassert>
 
-namespace pareas {
+namespace pareas::parser {
     bool merge_terminal_sets_omit_empty(TerminalSet& dst, const TerminalSet& src) {
         bool changed = false;
         for (const auto& t : src) {

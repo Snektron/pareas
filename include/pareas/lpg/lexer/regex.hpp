@@ -10,7 +10,7 @@
 #include <iosfwd>
 #include <cstdint>
 
-namespace pareas {
+namespace pareas::lexer {
     struct RegexNode {
         using StateIndex = FiniteStateAutomaton::StateIndex;
 

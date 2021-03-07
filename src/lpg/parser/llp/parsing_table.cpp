@@ -5,7 +5,7 @@
 #include <unordered_set>
 #include <ostream>
 
-namespace pareas::llp {
+namespace pareas::parser::llp {
     void ParsingTable::dump_csv(std::ostream& os) {
         // Print stacks in reverse to keep it the same as in the paper
         auto dump_syms_rev = [&](const auto& syms) {
