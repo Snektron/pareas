@@ -1,18 +1,15 @@
 #ifndef _PAREAS_LPG_LEXER_FSA_HPP
 #define _PAREAS_LPG_LEXER_FSA_HPP
 
-#include <unordered_set>
-#include <string>
 #include <vector>
-#include <span>
 #include <iosfwd>
-#include <limits>
 #include <optional>
 #include <cstddef>
 #include <cstdint>
 
 namespace pareas::lexer {
     struct Token;
+    struct LexicalGrammar;
 
     struct FiniteStateAutomaton {
         using Symbol = uint8_t;
@@ -57,7 +54,7 @@ namespace pareas::lexer {
 
         void add_lexer_loop();
 
-        void build_lexer(std::span<const Token> tokens);
+        void build_lexer(const LexicalGrammar* g);
     };
 }
 

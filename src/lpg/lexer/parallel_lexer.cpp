@@ -104,12 +104,12 @@ namespace pareas::lexer {
         return this->num_states;
     }
 
-    ParallelLexer::ParallelLexer(std::span<const Token> tokens) {
+    ParallelLexer::ParallelLexer(const LexicalGrammar* g) {
         auto max_sym = std::numeric_limits<FiniteStateAutomaton::Symbol>::max();
         auto num_syms = max_sym + 1;
 
         auto nfa = FiniteStateAutomaton();
-        nfa.build_lexer(tokens);
+        nfa.build_lexer(g);
         auto dfa = nfa.to_dfa();
         dfa.add_lexer_loop();
 

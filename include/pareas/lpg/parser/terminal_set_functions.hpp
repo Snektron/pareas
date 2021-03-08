@@ -35,6 +35,7 @@ namespace pareas::parser {
         TerminalSet compute_last(std::span<const Symbol> symbols) const;
 
         void dump(std::ostream& os);
+
     private:
         TerminalSetMap compute_base_first_or_last_set(const Grammar& g, bool first) const;
         TerminalSetMap compute_follow_or_before_sets(const Grammar& g, bool follow) const;

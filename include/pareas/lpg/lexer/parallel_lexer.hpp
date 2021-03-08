@@ -1,7 +1,7 @@
 #ifndef _PAREAS_LPG_LEXER_PARALLEL_LEXER_HPP
 #define _PAREAS_LPG_LEXER_PARALLEL_LEXER_HPP
 
-#include "pareas/lpg/lexer/lexer_parser.hpp"
+#include "pareas/lpg/lexer/lexical_grammar.hpp"
 #include "pareas/lpg/lexer/fsa.hpp"
 
 #include <span>
@@ -61,7 +61,7 @@ namespace pareas::lexer {
 
         StateIndex identity_state_index;
 
-        explicit ParallelLexer(std::span<const Token> tokens);
+        explicit ParallelLexer(const LexicalGrammar* g);
     };
 }
 

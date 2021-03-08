@@ -2,7 +2,7 @@
 #define _PAREAS_LPG_LEXER_RENDER_HPP
 
 #include "pareas/lpg/lexer/parallel_lexer.hpp"
-#include "pareas/lpg/lexer/lexer_parser.hpp"
+#include "pareas/lpg/lexer/lexical_grammar.hpp"
 
 #include <limits>
 #include <span>
@@ -15,12 +15,12 @@ namespace pareas::lexer {
         constexpr const static auto ENCODED_TRANSITION_BITS = std::numeric_limits<EncodedTransition>::digits;
         constexpr const static auto PRODUCES_TOKEN_MASK = 1 << (ENCODED_TRANSITION_BITS - 1);
 
-        std::span<const Token> tokens;
+        const LexicalGrammar* g;
         const ParallelLexer* lexer;
         size_t token_bits;
 
     public:
-        LexerRenderer(std::span<const Token> tokens, const ParallelLexer* lexer);
+        LexerRenderer(const LexicalGrammar* g, const ParallelLexer* lexer);
 
         void render_code(std::ostream& out) const;
         void render_initial_state_dataset(std::ostream& out) const;

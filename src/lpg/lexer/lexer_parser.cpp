@@ -7,7 +7,7 @@ namespace pareas::lexer {
     LexerParser::LexerParser(Parser* parser):
         parser(parser) {}
 
-    std::vector<Token>&& LexerParser::parse() {
+    LexicalGrammar LexerParser::parse() {
         bool error = false;
         this->parser->eat_delim();
         while (auto _ = this->parser->peek()) {
@@ -21,7 +21,7 @@ namespace pareas::lexer {
         if (error)
             throw LexerParseError();
 
-        return std::move(this->tokens);
+        return {std::move(this->tokens)};
     }
 
     bool LexerParser::token_decl() {

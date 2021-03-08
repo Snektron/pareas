@@ -1,6 +1,6 @@
 #include "pareas/lpg/lexer/fsa.hpp"
 #include "pareas/lpg/lexer/regex.hpp"
-#include "pareas/lpg/lexer/lexer_parser.hpp"
+#include "pareas/lpg/lexer/lexical_grammar.hpp"
 #include "pareas/lpg/escape.hpp"
 #include "pareas/lpg/hash_util.hpp"
 
@@ -10,6 +10,7 @@
 #include <iostream>
 #include <deque>
 #include <unordered_map>
+#include <unordered_set>
 #include <bitset>
 #include <limits>
 #include <cassert>
@@ -255,8 +256,8 @@ namespace pareas::lexer {
         }
     }
 
-    void FiniteStateAutomaton::build_lexer(std::span<const Token> tokens) {
-        for (const auto& token : tokens) {
+    void FiniteStateAutomaton::build_lexer(const LexicalGrammar* g) {
+        for (const auto& token : g->tokens) {
             auto regex_start = this->add_state();
             this->add_epsilon_transition(START, regex_start);
             auto regex_end = token.regex->compile(*this, regex_start);

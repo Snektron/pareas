@@ -1,7 +1,9 @@
 #ifndef _PAREAS_LPG_LEXER_LEXER_PARSER_HPP
 #define _PAREAS_LPG_LEXER_LEXER_PARSER_HPP
 
+#include "pareas/lpg/error_reporter.hpp"
 #include "pareas/lpg/parser.hpp"
+#include "pareas/lpg/lexer/lexical_grammar.hpp"
 #include "pareas/lpg/lexer/regex.hpp"
 
 #include <unordered_map>
@@ -15,13 +17,6 @@ namespace pareas::lexer {
         LexerParseError(): std::runtime_error("Parse error") {}
     };
 
-    struct Token {
-        size_t priority;
-        SourceLocation loc;
-        std::string_view name;
-        UniqueRegexNode regex;
-    };
-
     class LexerParser {
         Parser* parser;
 
@@ -30,7 +25,7 @@ namespace pareas::lexer {
 
     public:
         LexerParser(Parser* parser);
-        std::vector<Token>&& parse();
+        LexicalGrammar parse();
 
     private:
         bool token_decl();

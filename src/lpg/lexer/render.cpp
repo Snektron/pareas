@@ -5,16 +5,16 @@
 #include <fmt/ostream.h>
 
 namespace pareas::lexer {
-    LexerRenderer::LexerRenderer(std::span<const Token> tokens, const ParallelLexer* lexer):
-        tokens(tokens), lexer(lexer), token_bits(pareas::int_bit_width(tokens.size())) {
+    LexerRenderer::LexerRenderer(const LexicalGrammar* g, const ParallelLexer* lexer):
+        g(g), lexer(lexer), token_bits(pareas::int_bit_width(this->g->tokens.size())) {
     }
 
     void LexerRenderer::render_code(std::ostream& out) const {
         fmt::print(out, "module token = u{}\n", this->token_bits);
-        for (size_t i = 0; i < tokens.size(); ++i) {
-            fmt::print(out, "let token_{}: token.t = {}\n", tokens[i].name, i);
+        for (const auto& token : this->g->tokens) {
+            fmt::print(out, "let token_{}: token.t = {}\n", token.name, this->g->token_id(&token));
         }
-        fmt::print(out, "let num_tokens: i64 = {}\n", tokens.size());
+        fmt::print(out, "let num_tokens: i64 = {}\n", this->g->tokens.size());
         fmt::print(out, "let identity_state: u{} = {}\n", ENCODED_TRANSITION_BITS, this->lexer->identity_state_index);
     }
 
@@ -50,8 +50,8 @@ namespace pareas::lexer {
             if (!token) {
                 data.push_back(0);
             } else {
-                auto offset = token - &this->tokens.front(); // TODO: Improve this
-                data.push_back(static_cast<uint8_t>(offset));
+                auto id = this->g->token_id(token);
+                data.push_back(static_cast<uint8_t>(id));
             }
         }
 
