@@ -10,7 +10,9 @@
 #include <cassert>
 
 namespace {
+    using namespace pareas;
     using namespace pareas::lexer;
+
     using StateIndex = ParallelLexer::StateIndex;
     using Transition = ParallelLexer::Transition;
 
@@ -19,6 +21,10 @@ namespace {
 
         ParallelState(size_t states);
         void merge(const ParallelState& other);
+
+        struct Hash {
+            size_t operator()(const ParallelState& ps) const;
+        };
     };
 
     ParallelState::ParallelState(size_t states):
@@ -42,19 +48,16 @@ namespace {
             }
         );
     }
-}
 
-template <>
-struct std::hash<ParallelState> {
-    size_t operator()(const ParallelState& ps) const {
+    size_t ParallelState::Hash::operator()(const ParallelState& ps) const {
         size_t hash = 0;
         for (auto state : ps.transitions) {
-            hash = pareas::hash_combine(hash, state.result_state);
-            hash = pareas::hash_combine(hash, state.produces_token);
+            hash = hash_combine(hash, state.result_state);
+            hash = hash_combine(hash, state.produces_token);
         }
         return hash;
     }
-};
+}
 
 namespace pareas::lexer {
     ParallelLexer::Transition::Transition():
@@ -113,7 +116,7 @@ namespace pareas::lexer {
         auto dfa = nfa.to_dfa();
         dfa.add_lexer_loop();
 
-        auto seen = std::unordered_map<ParallelState, StateIndex>();
+        auto seen = std::unordered_map<ParallelState, StateIndex, ParallelState::Hash>();
         auto states = std::vector<ParallelState>();
         auto transitions = std::vector<Transition>();
 
