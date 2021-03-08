@@ -153,7 +153,7 @@ namespace pareas::lexer {
         fmt::print(os, "}}\n");
     }
 
-    FiniteStateAutomaton FiniteStateAutomaton::to_dfa() const {
+    FiniteStateAutomaton FiniteStateAutomaton::to_dfa(const LexicalGrammar* g) const {
         auto dfa = FiniteStateAutomaton();
         auto seen = std::unordered_map<StateSet, StateIndex, StateSet::Hash>();
         auto queue = std::deque<StateSet>();
@@ -200,9 +200,7 @@ namespace pareas::lexer {
                 const auto& nfa_state = this->states[nfa_index];
 
                 if (nfa_state.token && dfa_state.token) {
-                    assert(nfa_state.token->priority != dfa_state.token->priority);
-
-                    if (nfa_state.token->priority < dfa_state.token->priority) {
+                    if (g->token_id(nfa_state.token) < g->token_id(dfa_state.token)) {
                         dfa_state.token = nfa_state.token;
                     }
                 } else if (nfa_state.token) {

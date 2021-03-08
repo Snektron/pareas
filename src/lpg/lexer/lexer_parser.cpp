@@ -61,7 +61,7 @@ namespace pareas::lexer {
         if (duplicate)
             return false;
 
-        this->tokens.push_back({this->tokens.size(), loc, token_name, std::move(root)});
+        this->tokens.push_back({loc, token_name, std::move(root)});
 
         return this->parser->expect('\n');
     }

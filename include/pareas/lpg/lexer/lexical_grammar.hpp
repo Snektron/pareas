@@ -10,7 +10,6 @@
 
 namespace pareas::lexer {
     struct Token {
-        size_t priority;
         SourceLocation loc;
         std::string_view name;
         UniqueRegexNode regex;

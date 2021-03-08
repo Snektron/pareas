@@ -113,7 +113,7 @@ namespace pareas::lexer {
 
         auto nfa = FiniteStateAutomaton();
         nfa.build_lexer(g);
-        auto dfa = nfa.to_dfa();
+        auto dfa = nfa.to_dfa(g);
         dfa.add_lexer_loop();
 
         auto seen = std::unordered_map<ParallelState, StateIndex, ParallelState::Hash>();

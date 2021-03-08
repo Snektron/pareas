@@ -50,7 +50,7 @@ namespace pareas::lexer {
 
         void dump_dot(std::ostream& os) const;
 
-        FiniteStateAutomaton to_dfa() const;
+        FiniteStateAutomaton to_dfa(const LexicalGrammar* g) const;
 
         void add_lexer_loop();
 
