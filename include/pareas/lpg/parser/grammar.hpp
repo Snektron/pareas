@@ -2,6 +2,7 @@
 #define _PAREAS_LPG_PARSER_GRAMMAR_HPP
 
 #include "pareas/lpg/error_reporter.hpp"
+#include "pareas/lpg/token_mapping.hpp"
 
 #include <string>
 #include <vector>
@@ -13,6 +14,10 @@
 namespace pareas::parser {
     struct InvalidGrammarError: std::runtime_error {
         InvalidGrammarError(const std::string& msg): std::runtime_error(msg) {}
+    };
+
+    struct TokenLinkError: InvalidGrammarError {
+        TokenLinkError(): InvalidGrammarError("Undefined token") {}
     };
 
     struct Terminal {
@@ -92,6 +97,8 @@ namespace pareas::parser {
         void dump(std::ostream& os) const;
         void validate(ErrorReporter& er) const;
         const Production* start() const;
+        TokenMapping build_token_mapping() const;
+        void link_tokens(ErrorReporter& er, const TokenMapping& mapping) const;
 
     private:
         bool check_production_definitions(ErrorReporter& er) const;

@@ -124,6 +124,37 @@ namespace pareas::parser {
         return &this->productions[START_INDEX];
     }
 
+    TokenMapping Grammar::build_token_mapping() const {
+        auto token_ids = TokenIdMap();
+        for (const auto& prod : this->productions) {
+            for (const auto& sym : prod.rhs) {
+                if (sym.type != parser::Symbol::Type::USER_DEFINED_TERMINAL)
+                    continue;
+
+                token_ids.insert({sym.name, token_ids.size()});
+            }
+        }
+
+        return TokenMapping(std::move(token_ids));
+    }
+
+    void Grammar::link_tokens(ErrorReporter& er, const TokenMapping& mapping) const {
+        bool error = false;
+
+        for (const auto& prod : this->productions) {
+            for (const auto& sym : prod.rhs) {
+                if (sym.type != parser::Symbol::Type::USER_DEFINED_TERMINAL || !mapping.contains(sym.name))
+                    continue;
+
+                error = true;
+                er.error(prod.loc, fmt::format("Undefined token '{}'", sym.name));
+            }
+        }
+
+        if (error)
+            throw TokenLinkError();
+    }
+
     bool Grammar::check_production_definitions(ErrorReporter& er) const {
         bool error = false;
 

@@ -7,4 +7,12 @@ namespace pareas::lexer {
         assert(token >= this->tokens.data() && token < &this->tokens.data()[this->tokens.size()]);
         return token - this->tokens.data();
     }
+
+    TokenMapping LexicalGrammar::build_token_mapping() const {
+        auto token_ids = TokenIdMap();
+        for (const auto& token : this->tokens) {
+            token_ids.insert({token.name, this->token_id(&token)});
+        }
+        return TokenMapping(std::move(token_ids));
+    }
 }

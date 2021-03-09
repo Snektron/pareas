@@ -26,6 +26,7 @@ lpg_sources = [
     'src/lpg/error_reporter.cpp',
     'src/lpg/main.cpp',
     'src/lpg/parser.cpp',
+    'src/lpg/token_mapping.cpp',
     'src/lpg/lexer/char_range.cpp',
     'src/lpg/lexer/fsa.cpp',
     'src/lpg/lexer/interpreter.cpp',

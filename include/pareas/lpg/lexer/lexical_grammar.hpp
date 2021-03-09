@@ -2,6 +2,7 @@
 #define _PAREAS_LPG_LEXER_LEXICAL_GRAMMAR_HPP
 
 #include "pareas/lpg/error_reporter.hpp"
+#include "pareas/lpg/token_mapping.hpp"
 #include "pareas/lpg/lexer/regex.hpp"
 
 #include <string_view>
@@ -19,6 +20,7 @@ namespace pareas::lexer {
         std::vector<Token> tokens;
 
         size_t token_id(const Token* token) const;
+        TokenMapping build_token_mapping() const;
     };
 }
 
