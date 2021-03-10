@@ -32,7 +32,6 @@ lpg_sources = [
     'src/lpg/lexer/interpreter.cpp',
     'src/lpg/lexer/lexer_parser.cpp',
     'src/lpg/lexer/lexical_grammar.cpp',
-    'src/lpg/lexer/main.cpp',
     'src/lpg/lexer/parallel_lexer.cpp',
     'src/lpg/lexer/regex.cpp',
     'src/lpg/lexer/regex_parser.cpp',
