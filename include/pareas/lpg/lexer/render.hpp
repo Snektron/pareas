@@ -10,7 +10,7 @@
 #include <cstdint>
 
 namespace pareas::lexer {
-    class LexerRenderer {
+    class Renderer {
         using EncodedTransition = uint16_t;
         constexpr const static auto ENCODED_TRANSITION_BITS = std::numeric_limits<EncodedTransition>::digits;
         constexpr const static auto PRODUCES_TOKEN_MASK = 1 << (ENCODED_TRANSITION_BITS - 1);
@@ -19,7 +19,7 @@ namespace pareas::lexer {
         const ParallelLexer* lexer;
 
     public:
-        LexerRenderer(const TokenMapping* tm, const ParallelLexer* lexer);
+        Renderer(const TokenMapping* tm, const ParallelLexer* lexer);
 
         void render_futhark(std::ostream& out) const;
         void render_initial_state_data(std::ostream& out) const;

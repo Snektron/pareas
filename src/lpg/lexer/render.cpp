@@ -4,15 +4,15 @@
 #include <fmt/ostream.h>
 
 namespace pareas::lexer {
-    LexerRenderer::LexerRenderer(const TokenMapping* tm, const ParallelLexer* lexer):
+    Renderer::Renderer(const TokenMapping* tm, const ParallelLexer* lexer):
         tm(tm), lexer(lexer) {
     }
 
-    void LexerRenderer::render_futhark(std::ostream& out) const {
+    void Renderer::render_futhark(std::ostream& out) const {
         fmt::print(out, "let identity_state: u{} = {}\n", ENCODED_TRANSITION_BITS, this->lexer->identity_state_index);
     }
 
-    void LexerRenderer::render_initial_state_data(std::ostream& out) const {
+    void Renderer::render_initial_state_data(std::ostream& out) const {
         uint64_t dim = this->lexer->initial_states.size();
         auto data = futhark::Array<EncodedTransition>({dim});
 
@@ -24,7 +24,7 @@ namespace pareas::lexer {
         data.write(out);
     }
 
-    void LexerRenderer::render_merge_table_data(std::ostream& out) const {
+    void Renderer::render_merge_table_data(std::ostream& out) const {
         const auto& merge_table = this->lexer->merge_table;
 
         uint64_t dim = merge_table.states();
@@ -40,7 +40,7 @@ namespace pareas::lexer {
         data.write(out);
     }
 
-    void LexerRenderer::render_final_state_data(std::ostream& out) const {
+    void Renderer::render_final_state_data(std::ostream& out) const {
         switch (this->tm->backing_type_bits()) {
             case 8:
                 this->render_final_state_data_with_type<uint8_t>(out);
@@ -60,7 +60,7 @@ namespace pareas::lexer {
     }
 
     template <typename T>
-    void LexerRenderer::render_final_state_data_with_type(std::ostream& out) const {
+    void Renderer::render_final_state_data_with_type(std::ostream& out) const {
         uint64_t dim = this->lexer->final_states.size();
         auto data = futhark::Array<T>({dim});
 
@@ -76,7 +76,7 @@ namespace pareas::lexer {
         data.write(out);
     }
 
-    auto LexerRenderer::encode(const ParallelLexer::Transition& t) const -> EncodedTransition {
+    auto Renderer::encode(const ParallelLexer::Transition& t) const -> EncodedTransition {
         assert(t.result_state < PRODUCES_TOKEN_MASK);
         return t.result_state | (t.produces_token ? PRODUCES_TOKEN_MASK : 0);
     }

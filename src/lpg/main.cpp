@@ -259,7 +259,7 @@ int main(int argc, const char* argv[]) {
     tm.value().render_futhark(futhark_out.value());
 
     if (lexer.has_value()) {
-        auto lexer_renderer = pareas::lexer::LexerRenderer(&tm.value(), &lexer->parallel_lexer);
+        auto lexer_renderer = pareas::lexer::Renderer(&tm.value(), &lexer->parallel_lexer);
 
         auto data_out = open_output(opts.output, ".lexer.in");
         if (!data_out.has_value())
