@@ -10,6 +10,7 @@
 #include "pareas/lpg/parser/llp/render.hpp"
 #include "pareas/lpg/lexer/lexer_parser.hpp"
 #include "pareas/lpg/lexer/parallel_lexer.hpp"
+#include "pareas/lpg/lexer/render.hpp"
 
 #include <fmt/format.h>
 #include <fmt/ostream.h>
@@ -22,8 +23,11 @@
 #include <stdexcept>
 #include <optional>
 #include <cstdlib>
+#include <cassert>
 
 namespace {
+    using namespace pareas;
+
     struct Options {
         const char* parser_src;
         const char* lexer_src;
@@ -136,7 +140,10 @@ namespace {
         return std::string(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
     }
 
-    std::optional<std::ofstream> open_output(const std::string& filename) {
+    std::optional<std::ofstream> open_output(const char* basename, const char* ext) {
+        auto filename = std::string(basename);
+        filename.append(ext);
+
         auto out = std::ofstream(filename, std::ios::binary);
         if (!out) {
             fmt::print(std::cerr, "Error: Failed to create output file '{}'\n", filename);
@@ -145,57 +152,66 @@ namespace {
         return out;
     }
 
-    bool generate_lexer(const Options& opts) {
+    struct LexerGeneration {
+        lexer::LexicalGrammar grammar;
+        lexer::ParallelLexer parallel_lexer;
+    };
+
+    std::optional<LexerGeneration> generate_lexer(const Options& opts) {
         std::string input;
         if (auto maybe_input = read_input(opts.lexer_src)) {
             input = std::move(maybe_input.value());
         } else {
-            return false;
+            return std::nullopt;
         }
 
         try {
-            auto er = pareas::ErrorReporter(input, std::clog);
-            auto parser = pareas::Parser(&er, input);
-            auto lexer_parser = pareas::lexer::LexerParser(&parser);
-            auto grammar = lexer_parser.parse();
-            auto parallel_lexer = pareas::lexer::ParallelLexer(&grammar);
-            // auto renderer = pareas::lexer::LexerRenderer(&grammar, &parallel_lexer);
+            auto er = ErrorReporter(input, std::clog);
+            auto parser = Parser(&er, input);
+            auto lexer_parser = lexer::LexerParser(&parser);
+            auto g = lexer_parser.parse();
+            auto parallel_lexer = lexer::ParallelLexer(&g);
+
+            return {{std::move(g), std::move(parallel_lexer)}};
         } catch (const std::runtime_error& e) {
             fmt::print(std::cerr, "Failed to generate lexer: {}\n", e.what());
-            return false;
+            return std::nullopt;
         }
-
-        return true;
     }
 
-    bool generate_parser(const Options& opts) {
+    struct ParserGeneration {
+        parser::Grammar grammar;
+        parser::llp::ParsingTable llp_table;
+    };
+
+    std::optional<ParserGeneration> generate_parser(const Options& opts, std::optional<TokenMapping>& tm) {
         std::string input;
         if (auto maybe_input = read_input(opts.parser_src)) {
             input = std::move(maybe_input.value());
         } else {
-            return false;
+            return std::nullopt;
         }
 
         try {
-            auto er = pareas::ErrorReporter(input, std::clog);
-            auto parser = pareas::Parser(&er, input);
-            auto grammar_parser = pareas::parser::GrammarParser(&parser);
+            auto er = ErrorReporter(input, std::clog);
+            auto parser = Parser(&er, input);
+            auto grammar_parser = parser::GrammarParser(&parser);
             auto g = grammar_parser.parse();
 
             if (opts.verbose_grammar)
                 g.dump(std::clog);
 
-            auto tsf = pareas::parser::TerminalSetFunctions(g);
+            auto tsf = parser::TerminalSetFunctions(g);
             if (opts.verbose_sets)
                 tsf.dump(std::clog);
 
-            auto gen = pareas::parser::llp::Generator(&er, &g, &tsf);
+            auto gen = parser::llp::Generator(&er, &g, &tsf);
 
             auto psls_table = gen.build_psls_table();
             if (opts.verbose_psls)
                 psls_table.dump_csv(std::clog);
 
-            auto ll_table = pareas::parser::ll::Generator(&er, &g, &tsf).build_parsing_table();
+            auto ll_table = parser::ll::Generator(&er, &g, &tsf).build_parsing_table();
             if (opts.verbose_ll)
                 ll_table.dump_csv(std::clog);
 
@@ -203,17 +219,17 @@ namespace {
             if (opts.verbose_llp)
                 llp_table.dump_csv(std::clog);
 
-            // if (auto out = open_output(std::string(opts.output) + ".parser.fut")) {
-            //     pareas::parser::llp::render_parser(out.value(), g, llp_table);
-            // } else {
-            //     return false;
-            // }
+            if (tm.has_value()) {
+                g.link_tokens(er, tm.value());
+            } else {
+                tm = g.build_token_mapping();
+            }
+
+            return {{std::move(g), std::move(llp_table)}};
         } catch (const std::runtime_error& e) {
             fmt::print(std::cerr, "Failed to generate parser: {}\n", e.what());
-            return false;
+            return std::nullopt;
         }
-
-        return true;
     }
 }
 
@@ -226,9 +242,38 @@ int main(int argc, const char* argv[]) {
         print_usage(argv[0]);
     }
 
-    if (opts.parser_src) {
-        if (!generate_parser(opts))
+    auto lexer = opts.lexer_src ? generate_lexer(opts) : std::nullopt;
+    auto tm = lexer.has_value() ? std::optional<TokenMapping>(lexer->grammar.build_token_mapping()) : std::nullopt;
+    auto parser = opts.parser_src ? generate_parser(opts, tm) : std::nullopt;
+
+    // Only do this check here so we can report errors for both parser and lexer construction.
+    if ((opts.lexer_src && !lexer.has_value()) || (opts.parser_src && !parser.has_value()))
+        return EXIT_FAILURE;
+
+    assert(tm.has_value());
+
+    auto futhark_out = open_output(opts.output, ".fut");
+    if (!futhark_out.has_value())
+        return EXIT_FAILURE;
+
+    tm.value().render_futhark(futhark_out.value());
+
+    if (lexer.has_value()) {
+        auto lexer_renderer = pareas::lexer::LexerRenderer(&tm.value(), &lexer->parallel_lexer);
+
+        auto data_out = open_output(opts.output, ".lexer.in");
+        if (!data_out.has_value())
             return EXIT_FAILURE;
+
+        lexer_renderer.render_futhark(futhark_out.value());
+
+        lexer_renderer.render_initial_state_data(data_out.value());
+        lexer_renderer.render_merge_table_data(data_out.value());
+        lexer_renderer.render_final_state_data(data_out.value());
+    }
+
+    if (parser.has_value()) {
+        pareas::parser::llp::render_parser(futhark_out.value(), tm.value(), parser->grammar, parser->llp_table);
     }
 
     return EXIT_SUCCESS;

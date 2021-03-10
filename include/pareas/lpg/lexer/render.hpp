@@ -21,13 +21,13 @@ namespace pareas::lexer {
     public:
         LexerRenderer(const TokenMapping* tm, const ParallelLexer* lexer);
 
-        void render_code(std::ostream& out) const;
-        void render_initial_state_dataset(std::ostream& out) const;
-        void render_merge_table_dataset(std::ostream& out) const;
-        void render_final_state_dataset(std::ostream& out) const;
+        void render_futhark(std::ostream& out) const;
+        void render_initial_state_data(std::ostream& out) const;
+        void render_merge_table_data(std::ostream& out) const;
+        void render_final_state_data(std::ostream& out) const;
 
         template <typename T>
-        void render_final_state_dataset_with_type(std::ostream& out) const;
+        void render_final_state_data_with_type(std::ostream& out) const;
 
     private:
         EncodedTransition encode(const ParallelLexer::Transition& t) const;

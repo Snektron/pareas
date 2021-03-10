@@ -115,7 +115,6 @@ namespace {
         Renderer(std::ostream& out, const Grammar& g, const ParsingTable& pt);
         size_t bracket_id(const Symbol& sym, bool left) const;
         void render_production_type();
-        void render_token_type();
         void render_stack_change_table();
         void render_parse_table();
         void render_production_arities();
@@ -160,28 +159,6 @@ namespace {
         for (size_t i = 0; i < n; ++i) {
             const auto& prod = this->g.productions[i];
             fmt::print(this->out, "let production_{}: production.t = {}\n", prod.tag, i);
-        }
-    }
-
-    void Renderer::render_token_type() {
-        auto bits = pareas::int_bit_width(this->token_mapping.size());
-        fmt::print(this->out, "module token = u{}\n", bits);
-        fmt::print(this->out, "let num_tokens: i64 = {}\n", this->token_mapping.size());
-
-        for (const auto& [token, id] : this->token_mapping) {
-            switch (token.type) {
-                case Terminal::Type::USER_DEFINED:
-                    fmt::print(this->out, "let token_{}: token.t = {}\n", token, id);
-                    break;
-                case Terminal::Type::START_OF_INPUT:
-                    fmt::print(this->out, "let special_token_soi: token.t = {}\n", id);
-                    break;
-                case Terminal::Type::END_OF_INPUT:
-                    fmt::print(this->out, "let special_token_eoi: token.t = {}\n", id);
-                    break;
-                case Terminal::Type::EMPTY:
-                    assert(false);
-            }
         }
     }
 
@@ -245,7 +222,6 @@ namespace pareas::parser::llp {
         auto renderer = Renderer(out, g, pt);
         renderer.render_production_type();
         renderer.render_production_arities();
-        renderer.render_token_type();
         renderer.render_stack_change_table();
         renderer.render_parse_table();
     }

@@ -143,7 +143,7 @@ namespace pareas::parser {
 
         for (const auto& prod : this->productions) {
             for (const auto& sym : prod.rhs) {
-                if (sym.type != parser::Symbol::Type::USER_DEFINED_TERMINAL || !mapping.contains(sym.name))
+                if (sym.type != parser::Symbol::Type::USER_DEFINED_TERMINAL || mapping.contains(sym.name))
                     continue;
 
                 error = true;

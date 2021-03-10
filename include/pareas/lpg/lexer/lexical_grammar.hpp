@@ -5,14 +5,14 @@
 #include "pareas/lpg/token_mapping.hpp"
 #include "pareas/lpg/lexer/regex.hpp"
 
-#include <string_view>
+#include <string>
 #include <vector>
 #include <cstddef>
 
 namespace pareas::lexer {
     struct Token {
         SourceLocation loc;
-        std::string_view name;
+        std::string name;
         UniqueRegexNode regex;
     };
 

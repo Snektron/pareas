@@ -50,7 +50,7 @@ namespace pareas::futhark {
     template <FutharkRepresentable T>
     Array<T>::Array(std::vector<uint64_t>&& shape, const T& value):
         dims(std::move(shape)) {
-        assert(shape.size() > 0 && shape.size() <= 255);
+        assert(this->dims.size() > 0 && this->dims.size() <= 255);
         size_t total_size = 1;
         for (auto axis_dim : this->dims) {
             total_size *= axis_dim;

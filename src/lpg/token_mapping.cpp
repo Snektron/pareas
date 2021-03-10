@@ -1,7 +1,7 @@
 #include "pareas/lpg/token_mapping.hpp"
 #include "pareas/lpg/render_util.hpp"
 
-#include <fmt/format.h>
+#include <fmt/ostream.h>
 
 #include <string_view>
 #include <vector>
@@ -20,7 +20,7 @@ namespace pareas {
     }
 
     void TokenMapping::render_futhark(std::ostream& out) const {
-        fmt::print("module token = u{}\n", this->backing_type_bits());
+        fmt::print(out, "module token = u{}\n", this->backing_type_bits());
 
         // Render the tokens nice and ordered.
         auto tokens_ordered = std::vector<std::string_view>(this->token_ids.size());
@@ -29,10 +29,10 @@ namespace pareas {
         }
 
         for (size_t id = 0; id < tokens_ordered.size(); ++id) {
-            fmt::print("let token_{}: token.it = {}\n", tokens_ordered[id], id);
+            fmt::print(out, "let token_{}: token.it = {}\n", tokens_ordered[id], id);
         }
 
-        fmt::print("let num_tokens: i64 = {}\n", tokens_ordered.size());
+        fmt::print(out, "let num_tokens: i64 = {}\n", tokens_ordered.size());
     }
 
     size_t TokenMapping::token_id(const std::string& token_name) const {

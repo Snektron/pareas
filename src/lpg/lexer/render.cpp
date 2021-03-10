@@ -8,11 +8,11 @@ namespace pareas::lexer {
         tm(tm), lexer(lexer) {
     }
 
-    void LexerRenderer::render_code(std::ostream& out) const {
+    void LexerRenderer::render_futhark(std::ostream& out) const {
         fmt::print(out, "let identity_state: u{} = {}\n", ENCODED_TRANSITION_BITS, this->lexer->identity_state_index);
     }
 
-    void LexerRenderer::render_initial_state_dataset(std::ostream& out) const {
+    void LexerRenderer::render_initial_state_data(std::ostream& out) const {
         uint64_t dim = this->lexer->initial_states.size();
         auto data = futhark::Array<EncodedTransition>({dim});
 
@@ -24,7 +24,7 @@ namespace pareas::lexer {
         data.write(out);
     }
 
-    void LexerRenderer::render_merge_table_dataset(std::ostream& out) const {
+    void LexerRenderer::render_merge_table_data(std::ostream& out) const {
         const auto& merge_table = this->lexer->merge_table;
 
         uint64_t dim = merge_table.states();
@@ -40,19 +40,19 @@ namespace pareas::lexer {
         data.write(out);
     }
 
-    void LexerRenderer::render_final_state_dataset(std::ostream& out) const {
+    void LexerRenderer::render_final_state_data(std::ostream& out) const {
         switch (this->tm->backing_type_bits()) {
             case 8:
-                this->render_final_state_dataset_with_type<uint8_t>(out);
+                this->render_final_state_data_with_type<uint8_t>(out);
                 return;
             case 16:
-                this->render_final_state_dataset_with_type<uint16_t>(out);
+                this->render_final_state_data_with_type<uint16_t>(out);
                 return;
             case 32:
-                this->render_final_state_dataset_with_type<uint32_t>(out);
+                this->render_final_state_data_with_type<uint32_t>(out);
                 return;
             case 64:
-                this->render_final_state_dataset_with_type<uint64_t>(out);
+                this->render_final_state_data_with_type<uint64_t>(out);
                 return;
             default:
                 assert(false);
@@ -60,7 +60,7 @@ namespace pareas::lexer {
     }
 
     template <typename T>
-    void LexerRenderer::render_final_state_dataset_with_type(std::ostream& out) const {
+    void LexerRenderer::render_final_state_data_with_type(std::ostream& out) const {
         uint64_t dim = this->lexer->final_states.size();
         auto data = futhark::Array<T>({dim});
 
