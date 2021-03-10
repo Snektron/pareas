@@ -1,19 +1,23 @@
 #ifndef _PAREAS_LPG_TOKEN_MAPPING_HPP
 #define _PAREAS_LPG_TOKEN_MAPPING_HPP
 
-#include <string_view>
+#include <string>
 #include <unordered_map>
+#include <iosfwd>
 #include <cstddef>
 
 namespace pareas {
-    using TokenIdMap = std::unordered_map<std::string_view, size_t>;
+    using TokenIdMap = std::unordered_map<std::string, size_t>;
 
     class TokenMapping {
-        std::unordered_map<std::string_view, size_t> token_ids;
+        std::unordered_map<std::string, size_t> token_ids;
 
     public:
         explicit TokenMapping(TokenIdMap&& token_ids);
-        bool contains(std::string_view token_name) const;
+        bool contains(const std::string& token_name) const;
+        size_t backing_type_bits() const;
+        void render_futhark(std::ostream& out) const;
+        size_t token_id(const std::string& token_name) const;
     };
 }
 

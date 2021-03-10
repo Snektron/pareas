@@ -241,7 +241,7 @@ namespace {
 }
 
 namespace pareas::parser::llp {
-    void render_parser(std::ostream& out, const Grammar& g, const ParsingTable& pt) {
+    void render_parser(std::ostream& out, const TokenMapping& tm, const Grammar& g, const ParsingTable& pt) {
         auto renderer = Renderer(out, g, pt);
         renderer.render_production_type();
         renderer.render_production_arities();

@@ -139,31 +139,31 @@ int main_(int argc, const char* argv[]) {
     auto lexer_parser = pareas::lexer::LexerParser(&parser);
     auto grammar = lexer_parser.parse();
     auto parallel_lexer = pareas::lexer::ParallelLexer(&grammar);
-    auto renderer = pareas::lexer::LexerRenderer(&grammar, &parallel_lexer);
+    // auto renderer = pareas::lexer::LexerRenderer(&grammar, &parallel_lexer);
 
-    if (auto out = open_output(opts.code_output_path)) {
-        renderer.render_code(out.value());
-    } else {
-        return EXIT_FAILURE;
-    }
+    // if (auto out = open_output(opts.code_output_path)) {
+    //     renderer.render_code(out.value());
+    // } else {
+    //     return EXIT_FAILURE;
+    // }
 
-    if (auto out = open_output(opts.initial_state_output_path)) {
-        renderer.render_initial_state_dataset(out.value());
-    } else {
-        return EXIT_FAILURE;
-    }
+    // if (auto out = open_output(opts.initial_state_output_path)) {
+    //     renderer.render_initial_state_dataset(out.value());
+    // } else {
+    //     return EXIT_FAILURE;
+    // }
 
-    if (auto out = open_output(opts.merge_table_output_path)) {
-        renderer.render_merge_table_dataset(out.value());
-    } else {
-        return EXIT_FAILURE;
-    }
+    // if (auto out = open_output(opts.merge_table_output_path)) {
+    //     renderer.render_merge_table_dataset(out.value());
+    // } else {
+    //     return EXIT_FAILURE;
+    // }
 
-    if (auto out = open_output(opts.final_state_output_path)) {
-        renderer.render_final_state_dataset(out.value());
-    } else {
-        return EXIT_FAILURE;
-    }
+    // if (auto out = open_output(opts.final_state_output_path)) {
+    //     renderer.render_final_state_dataset(out.value());
+    // } else {
+    //     return EXIT_FAILURE;
+    // }
 
     return EXIT_SUCCESS;
 }

@@ -11,7 +11,7 @@ namespace pareas::lexer {
     TokenMapping LexicalGrammar::build_token_mapping() const {
         auto token_ids = TokenIdMap();
         for (const auto& token : this->tokens) {
-            token_ids.insert({token.name, this->token_id(&token)});
+            token_ids.insert({std::string(token.name), this->token_id(&token)});
         }
         return TokenMapping(std::move(token_ids));
     }
