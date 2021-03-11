@@ -259,21 +259,23 @@ int main(int argc, const char* argv[]) {
     tm.value().render_futhark(futhark_out.value());
 
     if (lexer.has_value()) {
-        auto lexer_renderer = pareas::lexer::Renderer(&tm.value(), &lexer->parallel_lexer);
+        auto renderer = pareas::lexer::Renderer(&tm.value(), &lexer->parallel_lexer);
 
         auto data_out = open_output(opts.output, ".lexer.in");
         if (!data_out.has_value())
             return EXIT_FAILURE;
 
-        lexer_renderer.render_futhark(futhark_out.value());
+        renderer.render_futhark(futhark_out.value());
 
-        lexer_renderer.render_initial_state_data(data_out.value());
-        lexer_renderer.render_merge_table_data(data_out.value());
-        lexer_renderer.render_final_state_data(data_out.value());
+        renderer.render_initial_state_data(data_out.value());
+        renderer.render_merge_table_data(data_out.value());
+        renderer.render_final_state_data(data_out.value());
     }
 
     if (parser.has_value()) {
-        pareas::parser::llp::render_parser(futhark_out.value(), tm.value(), parser->grammar, parser->llp_table);
+        auto renderer = pareas::parser::llp::Renderer(&tm.value(), &parser->grammar, &parser->llp_table);
+
+        renderer.render_futhark(futhark_out.value());
     }
 
     return EXIT_SUCCESS;

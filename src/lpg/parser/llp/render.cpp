@@ -13,8 +13,22 @@
 #include <cassert>
 
 namespace {
+    using namespace pareas;
     using namespace pareas::parser;
     using namespace pareas::parser::llp;
+
+    size_t terminal_id(const TokenMapping* tm, const Terminal& terminal) {
+        switch (terminal.type) {
+            case Terminal::Type::USER_DEFINED:
+                return tm->token_id(terminal.name);
+            case Terminal::Type::START_OF_INPUT:
+                return tm->num_tokens();
+            case Terminal::Type::END_OF_INPUT:
+                return tm->num_tokens() + 1;
+            case Terminal::Type::EMPTY:
+                assert(false);
+        }
+    }
 
     struct String {
         int32_t offset;
@@ -33,7 +47,7 @@ namespace {
             std::ostream& out,
             const std::string& base_name,
             const std::string& table_type,
-            const std::unordered_map<Terminal, size_t, Terminal::Hash>& token_mapping
+            const TokenMapping* tm
         );
     };
 
@@ -55,7 +69,7 @@ namespace {
         std::ostream& out,
         const std::string& base_name,
         const std::string& table_type,
-        const std::unordered_map<Terminal, size_t, Terminal::Hash>& token_mapping
+        const TokenMapping* tm
     ) {
         // Multiply by 2 to account for the sign bit
         size_t offset_bits = pareas::int_bit_width(2 * this->superstring.size());
@@ -70,15 +84,15 @@ namespace {
         }
         fmt::print(out, "] :> [{}_table_size]{}\n", base_name, table_type);
 
-        size_t n_tokens = token_mapping.size();
+        size_t n_tokens = tm->num_tokens() + 2;
         auto stringrefs = std::vector<std::vector<String>>(
             n_tokens,
             std::vector<String>(n_tokens, {-1, -1})
         );
 
         for (const auto& [ap, string] : this->strings) {
-            auto i = token_mapping.at(ap.x);
-            auto j = token_mapping.at(ap.y);
+            auto i = terminal_id(tm, ap.x);
+            auto j = terminal_id(tm, ap.y);
             stringrefs[i][j] = string;
         }
 
@@ -102,40 +116,27 @@ namespace {
             fmt::print(out, "]");
         }
 
-        fmt::print(out, "\n] :> [num_tokens][num_tokens](i{0}, i{0})\n", offset_bits);
+        fmt::print(out, "\n] :> [num_tokens + 2][num_tokens + 2](i{0}, i{0})\n", offset_bits);
     }
+}
 
-    struct Renderer {
-        std::ostream& out;
-        const Grammar& g;
-        const ParsingTable& pt;
-        std::unordered_map<Terminal, size_t, Terminal::Hash> token_mapping;
-        std::unordered_map<Symbol, size_t, Symbol::Hash> symbol_mapping;
+namespace pareas::parser::llp {
+    Renderer::Renderer(const TokenMapping* tm, const Grammar* g, const ParsingTable* pt):
+        tm(tm), g(g), pt(pt) {
 
-        Renderer(std::ostream& out, const Grammar& g, const ParsingTable& pt);
-        size_t bracket_id(const Symbol& sym, bool left) const;
-        void render_production_type();
-        void render_stack_change_table();
-        void render_parse_table();
-        void render_production_arities();
-    };
-
-    Renderer::Renderer(std::ostream& out, const Grammar& g, const ParsingTable& pt):
-        out(out), g(g), pt(pt) {
-
-        for (const auto& [ap, entry] : pt.table) {
+        for (const auto& [ap, entry] : this->pt->table) {
             for (const auto& sym : entry.initial_stack)
                 this->symbol_mapping.insert({sym, this->symbol_mapping.size()});
             for (const auto& sym : entry.final_stack)
                 this->symbol_mapping.insert({sym, this->symbol_mapping.size()});
         }
+    }
 
-        for (const auto& prod : g.productions) {
-            for (const auto& sym : prod.rhs) {
-                if (sym.is_terminal())
-                    this->token_mapping.insert({sym.as_terminal(), this->token_mapping.size()});
-            }
-        }
+    void Renderer::render_futhark(std::ostream& out) const {
+        this->render_productions(out);
+        this->render_production_arities(out);
+        this->render_stack_change_table(out);
+        this->render_parse_table(out);
     }
 
     size_t Renderer::bracket_id(const Symbol& sym, bool left) const {
@@ -147,54 +148,58 @@ namespace {
         return left ? id * 2 + 1 : id * 2;
     }
 
-    void Renderer::render_production_type() {
-        auto n = this->g.productions.size();
+    void Renderer::render_productions(std::ostream& out) const {
+        auto n = this->g->productions.size();
         auto bits = pareas::int_bit_width(n);
-        fmt::print(this->out, "module production = u{}\n", bits);
-        fmt::print(this->out, "let num_productions: i64 = {}\n", n);
+        fmt::print(out, "module production = u{}\n", bits);
+        fmt::print(out, "let num_productions: i64 = {}\n", n);
 
         // Tags are already guaranteed to be unique, so we don't need to do any kind
         // of deduplication here. As added bonus, the ID of a production is now only
         // dependent on the order in which the productions are defined.
         for (size_t i = 0; i < n; ++i) {
-            const auto& prod = this->g.productions[i];
-            fmt::print(this->out, "let production_{}: production.t = {}\n", prod.tag, i);
+            const auto& prod = this->g->productions[i];
+            fmt::print(out, "let production_{}: production.t = {}\n", prod.tag, i);
         }
     }
 
-    void Renderer::render_stack_change_table() {
-        auto insert_rbr = [&](std::vector<size_t>& result, const ParsingTable::Entry& entry) {
-            auto syms = entry.initial_stack;
-            for (auto it = syms.rbegin(); it != syms.rend(); ++it) {
-                result.push_back(this->bracket_id(*it, false));
-            }
-        };
+    void Renderer::render_production_arities(std::ostream& out) const {
+        // Production id's are assigned according to their index in the
+        // productions vector, so we can just push_back the arities.
+        auto arities = std::vector<size_t>();
+        for (const auto& prod : this->g->productions) {
+            arities.push_back(prod.arity());
+        }
 
-        auto insert_lbr = [&](std::vector<size_t>& result, const ParsingTable::Entry& entry) {
-            auto syms = entry.final_stack;
-            for (auto it = syms.begin(); it != syms.end(); ++it) {
-                result.push_back(this->bracket_id(*it, true));
-            }
-        };
+        fmt::print(out, "let production_arity = [{}] :> [num_productions]i32\n", fmt::join(arities, ", "));
+    }
 
+    void Renderer::render_stack_change_table(std::ostream& out) const {
         auto strtab = StringTable<size_t>(
-            this->pt,
+            *this->pt,
             [&](const ParsingTable::Entry& entry) {
-                auto string = std::vector<size_t>();
-                insert_rbr(string, entry);
-                insert_lbr(string, entry);
-                return string;
+                auto result = std::vector<size_t>();
+
+                for (auto it = entry.initial_stack.rbegin(); it != entry.initial_stack.rend(); ++it) {
+                    result.push_back(this->bracket_id(*it, false));
+                }
+
+                for (auto it = entry.final_stack.begin(); it != entry.final_stack.end(); ++it) {
+                    result.push_back(this->bracket_id(*it, true));
+                }
+
+                return result;
             }
         );
 
         size_t bracket_bits = pareas::int_bit_width(2 * this->symbol_mapping.size());
-        fmt::print(this->out, "module bracket = u{}\n", bracket_bits);
-        strtab.render(this->out, "stack_change", fmt::format("u{}", bracket_bits), this->token_mapping);
+        fmt::print(out, "module bracket = u{}\n", bracket_bits);
+        strtab.render(out, "stack_change", fmt::format("u{}", bracket_bits), this->tm);
     }
 
-    void Renderer::render_parse_table() {
+    void Renderer::render_parse_table(std::ostream& out) const {
            auto strtab = StringTable<std::string>(
-            this->pt,
+            *this->pt,
             [&](const ParsingTable::Entry& entry) {
                 auto result = std::vector<std::string>();
                 for (const auto* prod : entry.productions)
@@ -202,27 +207,6 @@ namespace {
                 return result;
             }
         );
-        strtab.render(this->out, "parse", "production.t", this->token_mapping);
-    }
-
-    void Renderer::render_production_arities() {
-        // Production id's are assigned according to their index in the
-        // productions vector, so we can just push_back the arities.
-        auto arities = std::vector<size_t>();
-        for (const auto& prod : this->g.productions) {
-            arities.push_back(prod.arity());
-        }
-
-        fmt::print(out, "let production_arity = [{}] :> [num_productions]i32\n", fmt::join(arities, ", "));
-    }
-}
-
-namespace pareas::parser::llp {
-    void render_parser(std::ostream& out, const TokenMapping& tm, const Grammar& g, const ParsingTable& pt) {
-        auto renderer = Renderer(out, g, pt);
-        renderer.render_production_type();
-        renderer.render_production_arities();
-        renderer.render_stack_change_table();
-        renderer.render_parse_table();
+        strtab.render(out, "parse", "production.t", this->tm);
     }
 }

@@ -4,10 +4,29 @@
 #include "pareas/lpg/token_mapping.hpp"
 #include "pareas/lpg/parser/grammar.hpp"
 #include "pareas/lpg/parser/llp/parsing_table.hpp"
+
 #include <iosfwd>
+#include <unordered_map>
 
 namespace pareas::parser::llp {
-    void render_parser(std::ostream& out, const TokenMapping& tm, const Grammar& g, const ParsingTable& pt);
+    class Renderer {
+        const TokenMapping* tm;
+        const Grammar* g;
+        const ParsingTable* pt;
+
+        std::unordered_map<Symbol, size_t, Symbol::Hash> symbol_mapping;
+
+    public:
+        Renderer(const TokenMapping* tm, const Grammar* g, const ParsingTable* pt);
+        void render_futhark(std::ostream& out) const;
+
+    private:
+        size_t bracket_id(const Symbol& sym, bool left) const;
+        void render_productions(std::ostream& out) const;
+        void render_production_arities(std::ostream& out) const;
+        void render_stack_change_table(std::ostream& out) const;
+        void render_parse_table(std::ostream& out) const;
+    };
 }
 
 #endif

@@ -38,4 +38,8 @@ namespace pareas {
     size_t TokenMapping::token_id(const std::string& token_name) const {
         return this->token_ids.at(token_name);
     }
+
+    size_t TokenMapping::num_tokens() const {
+        return this->token_ids.size();
+    }
 }

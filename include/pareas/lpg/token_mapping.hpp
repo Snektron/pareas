@@ -18,6 +18,7 @@ namespace pareas {
         size_t backing_type_bits() const;
         void render_futhark(std::ostream& out) const;
         size_t token_id(const std::string& token_name) const;
+        size_t num_tokens() const;
     };
 }
 
