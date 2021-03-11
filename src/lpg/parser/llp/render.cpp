@@ -17,6 +17,8 @@ namespace {
     using namespace pareas::parser;
     using namespace pareas::parser::llp;
 
+    constexpr const static size_t NUM_EXTRA_TOKENS = 2; // start of index and end of index.
+
     size_t terminal_id(const TokenMapping* tm, const Terminal& terminal) {
         switch (terminal.type) {
             case Terminal::Type::USER_DEFINED:
@@ -84,7 +86,7 @@ namespace {
         }
         fmt::print(out, "] :> [{}_table_size]{}\n", base_name, table_type);
 
-        size_t n_tokens = tm->num_tokens() + 2;
+        size_t n_tokens = tm->num_tokens() + NUM_EXTRA_TOKENS;
         auto stringrefs = std::vector<std::vector<String>>(
             n_tokens,
             std::vector<String>(n_tokens, {-1, -1})
@@ -116,7 +118,7 @@ namespace {
             fmt::print(out, "]");
         }
 
-        fmt::print(out, "\n] :> [num_tokens + 2][num_tokens + 2](i{0}, i{0})\n", offset_bits);
+        fmt::print(out, "\n] :> [num_tokens + {0}][num_tokens + {0}](i{1}, i{1})\n", NUM_EXTRA_TOKENS, offset_bits);
     }
 }
 
@@ -133,6 +135,9 @@ namespace pareas::parser::llp {
     }
 
     void Renderer::render_futhark(std::ostream& out) const {
+        fmt::print(out, "let start_of_input_index: i64 = {}\n", terminal_id(this->tm, Terminal::START_OF_INPUT));
+        fmt::print(out, "let end_of_input_index: i64 = {}\n", terminal_id(this->tm, Terminal::END_OF_INPUT));
+
         this->render_productions(out);
         this->render_production_arities(out);
         this->render_stack_change_table(out);
