@@ -29,7 +29,7 @@ namespace pareas {
         }
 
         for (size_t id = 0; id < tokens_ordered.size(); ++id) {
-            fmt::print(out, "let token_{}: token.it = {}\n", tokens_ordered[id], id);
+            fmt::print(out, "let token_{}: token.t = {}\n", tokens_ordered[id], id);
         }
 
         fmt::print(out, "let num_tokens: i64 = {}\n", tokens_ordered.size());

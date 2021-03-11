@@ -118,7 +118,7 @@ namespace {
             fmt::print(out, "]");
         }
 
-        fmt::print(out, "\n] :> [num_tokens + {0}][num_tokens + {0}](i{1}, i{1})\n", NUM_EXTRA_TOKENS, offset_bits);
+        fmt::print(out, "\n] :> [num_table_tokens][num_table_tokens](i{0}, i{0})\n", offset_bits);
     }
 }
 
@@ -135,6 +135,7 @@ namespace pareas::parser::llp {
     }
 
     void Renderer::render_futhark(std::ostream& out) const {
+        fmt::print(out, "let num_table_tokens: i64 = {}\n", this->tm->num_tokens() + NUM_EXTRA_TOKENS);
         fmt::print(out, "let start_of_input_index: i64 = {}\n", terminal_id(this->tm, Terminal::START_OF_INPUT));
         fmt::print(out, "let end_of_input_index: i64 = {}\n", terminal_id(this->tm, Terminal::END_OF_INPUT));
 

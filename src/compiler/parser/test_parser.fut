@@ -6,8 +6,6 @@ let main [n] (raw_input: [n]u8) =
     let input: [n]test_grammar.token.t =
         map
             (\b -> match b
-                case '(' -> test_grammar.special_token_soi
-                case ')' -> test_grammar.special_token_eoi
                 case '+' -> test_grammar.token_plus
                 case 'a' -> test_grammar.token_a
                 case '[' -> test_grammar.token_lbracket
