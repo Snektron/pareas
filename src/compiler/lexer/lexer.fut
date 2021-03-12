@@ -31,7 +31,7 @@ let lex [n] [m] 'token (input: [n]u8) (table: lex_table [m] token): []token =
     let merge (a: state) (b: state) =
         let a = a & !produces_token_mask
         let b = b & !produces_token_mask
-        in table.merge_table[state.to_i64 b, state.to_i64 a]
+        in table.merge_table[state.to_i64 a, state.to_i64 b]
     let states =
         input
         |> map (\x -> table.initial_state[u8.to_i64 x])

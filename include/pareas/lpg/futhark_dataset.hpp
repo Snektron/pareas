@@ -19,13 +19,13 @@ namespace pareas::futhark {
     struct FutharkTraits;
 
     template <typename T>
-    concept FutharkRepresentable = requires {
+    concept FutharkPrimitive = requires {
         { FutharkTraits<T>::type_string } -> std::convertible_to<TypeString>;
     };
 
     using Index = std::span<const uint64_t>;
 
-    template <FutharkRepresentable T>
+    template <FutharkPrimitive T>
     class Array {
         std::vector<uint64_t> dims;
         std::vector<T> items;
@@ -47,7 +47,7 @@ namespace pareas::futhark {
         size_t offset(Index index) const;
     };
 
-    template <FutharkRepresentable T>
+    template <FutharkPrimitive T>
     Array<T>::Array(std::vector<uint64_t>&& shape, const T& value):
         dims(std::move(shape)) {
         assert(this->dims.size() > 0 && this->dims.size() <= 255);
@@ -58,7 +58,7 @@ namespace pareas::futhark {
         this->items.resize(total_size, value);
     }
 
-    template <FutharkRepresentable T>
+    template <FutharkPrimitive T>
     void Array<T>::write(std::ostream& out) const {
         auto type_string = FutharkTraits<T>::type_string;
         uint8_t rank = this->dims.size();
@@ -71,27 +71,27 @@ namespace pareas::futhark {
         out.write(reinterpret_cast<const char*>(this->items.data()), this->items.size() * sizeof(T));
     }
 
-    template <FutharkRepresentable T>
+    template <FutharkPrimitive T>
     T& Array<T>::at(Index index) {
         return this->items[this->offset(index)];
     }
 
-    template <FutharkRepresentable T>
+    template <FutharkPrimitive T>
     const T& Array<T>::at(Index index) const {
         return this->items[this->offset(index)];
     }
 
-    template <FutharkRepresentable T>
+    template <FutharkPrimitive T>
     T* Array<T>::data() {
         return this->items.data();
     }
 
-    template <FutharkRepresentable T>
+    template <FutharkPrimitive T>
     const T* Array<T>::data() const {
         return this->items.data();
     }
 
-    template <FutharkRepresentable T>
+    template <FutharkPrimitive T>
     size_t Array<T>::offset(Index index) const {
         assert(index.size() == this->dims.size());
         size_t offset = 0;
