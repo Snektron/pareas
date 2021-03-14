@@ -17,6 +17,7 @@
 #include "codegen/symtab.hpp"
 
 const size_t MAX_NODES = 32;
+const size_t MAX_VARS = 32;
 
 struct Options {
     const char* input_path;
@@ -227,11 +228,13 @@ int main(int argc, const char* argv[]) {
     try {
         std::ifstream input(argv[1]);
         Lexer lexer(input);
-        SymbolTable symtab;
+        SymbolTable symtab(MAX_VARS);
         Parser parser(lexer, symtab);
 
         std::unique_ptr<ASTNode> node(parser.parse());
         std::cout << *node << std::endl;
+
+        std::cout << symtab << std::endl;
 
         node->resolveType();
         std::cout << *node << std::endl;
@@ -258,6 +261,17 @@ int main(int argc, const char* argv[]) {
         int err = futhark_entry_make_tree(context.get(), &gpu_tree, depth_tree.maxDepth(), node_types.get(), resulting_types.get(),
                                             parents.get(), depth.get(), child_idx.get(), node_data.get());
 
+        auto symtab_types = UniqueFPtr<futhark_u8_1d, futhark_free_u8_1d>(context.get(),
+                            futhark_new_u8_1d(context.get(), symtab.getDataTypes(), symtab.maxVars()));
+        auto symtab_global = UniqueFPtr<futhark_bool_1d, futhark_free_bool_1d>(context.get(),
+                            futhark_new_bool_1d(context.get(), symtab.getGlobals(), symtab.maxVars()));
+        auto symtab_offsets = UniqueFPtr<futhark_u32_1d, futhark_free_u32_1d>(context.get(),
+                            futhark_new_u32_1d(context.get(), symtab.getOffsets(), symtab.maxVars()));
+
+        UniqueFPtr<futhark_opaque_Symtab, futhark_free_opaque_Symtab> gpu_symtab(context.get());
+        if(!err)
+            err = futhark_entry_make_symtab(context.get(), &gpu_symtab, symtab_types.get(), symtab_global.get(), symtab_offsets.get());
+
         auto instr_offsets = UniqueFPtr<futhark_i64_1d, futhark_free_i64_1d>(context.get(),
                             futhark_new_i64_1d(context.get(), depth_tree.getInstrOffsets(), depth_tree.maxNodes()));
 
@@ -266,7 +280,8 @@ int main(int argc, const char* argv[]) {
         UniqueFPtr<futhark_i64_1d, futhark_free_i64_1d> rs1_fut(context.get());
         UniqueFPtr<futhark_i64_1d, futhark_free_i64_1d> rs2_fut(context.get());
         if(!err)
-            err = futhark_entry_main(context.get(), &instr_fut, &rd_fut, &rs1_fut, &rs2_fut, gpu_tree.get(), instr_offsets.get());
+            err = futhark_entry_main(context.get(), &instr_fut, &rd_fut, &rs1_fut, &rs2_fut, gpu_tree.get(), gpu_symtab.get(),
+                            instr_offsets.get(), depth_tree.getInstrCount());
         if (!err)
             err = futhark_context_sync(context.get());
 

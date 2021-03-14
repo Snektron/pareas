@@ -34,6 +34,19 @@ void Parser::expect(TokenType token_type) {
     }
 }
 
+ASTNode* Parser::parseAssign() {
+    std::unique_ptr<ASTNode> lop(this->parseAdd());
+
+    Token lookahead = this->lexer.lookahead();
+    if(lookahead.type == TokenType::ASSIGN) {
+        this->lexer.lex();
+
+        std::unique_ptr<ASTNode> rop(this->parseAssign());
+        return new ASTNode(NodeType::ASSIGN_EXPR, {lop.release(), rop.release()});
+    }
+    return lop.release();
+}
+
 ASTNode* Parser::parseAdd() {
     std::unique_ptr<ASTNode> lop(this->parseMul());
 
@@ -123,8 +136,8 @@ ASTNode* Parser::parseAtom() {
                 return new ASTNode(NodeType::DECL_EXPR, symbol_type, symbol_id);
             }
             else {
-                Symbol* symbol = this->symtab.resolveSymbol(id);
-                return new ASTNode(NodeType::ID_EXPR, symbol->type, symbol->id);
+                Symbol symbol = this->symtab.resolveSymbol(id);
+                return new ASTNode(NodeType::ID_EXPR, symbol.type, symbol.id);
             }
         }
         case TokenType::INTEGER:
@@ -135,7 +148,7 @@ ASTNode* Parser::parseAtom() {
 }
 
 ASTNode* Parser::parseExpression() {
-    return this->parseAdd();
+    return this->parseAssign();
 }
 
 ASTNode* Parser::parseExpressionStatement() {

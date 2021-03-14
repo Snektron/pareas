@@ -45,15 +45,6 @@ const char* NODE_NAMES[] = {
     "identifier expression"
 };
 
-const char* TYPE_NAMES[] = {
-    "invalid",
-    "void",
-    "int",
-    "float",
-    "int_ref",
-    "float_ref"
-};
-
 ASTNode::ASTNode(NodeType type) : type(type) {}
 ASTNode::ASTNode(NodeType type, const std::vector<ASTNode*>& children) : type(type), children(children) {}
 ASTNode::ASTNode(NodeType type, DataType return_type, uint32_t integer) : type(type), return_type(return_type), integer(integer) {}
@@ -69,10 +60,12 @@ void ASTNode::print(std::ostream& os, size_t level) const {
         os << "    ";
 
     os << NODE_NAMES[static_cast<size_t>(this->type)] << " (";
-    os << TYPE_NAMES[static_cast<size_t>(this->return_type)];
+    os << this->return_type;
 
     switch(this->type) {
         case NodeType::LIT_EXPR:
+        case NodeType::ID_EXPR:
+        case NodeType::DECL_EXPR:
             os << ", " << this->integer;
             break;
         default:
@@ -106,12 +99,22 @@ void ASTNode::resolveType() {
         this->print(std::cout);
         throw ParseException("Mismatched type on child ", child, " of node ",
                                 NODE_NAMES[static_cast<size_t>(this->type)], ", got ",
-                                TYPE_NAMES[static_cast<size_t>(this->children[child]->return_type)]);
+                                this->children[child]->return_type);
     };
 
     auto assert_same = [&](size_t child1, size_t child2) {
         if(this->children[child1]->return_type != this->children[child2]->return_type)
             throw ParseException("Mismatched types for children ", child1, " and ", child2);
+    };
+
+    auto assert_not_type = [&](size_t child1, DataType datatype) {
+        if(this->children[child1]->return_type == datatype)
+            throw ParseException("Invalid type for child ", child1, ": ", datatype);
+    };
+
+    auto assert_ref_of = [&](size_t child1, size_t child2) {
+        if(this->children[child1]->return_type != reference_of(this->children[child2]->return_type))
+            throw ParseException("Mismatched reference type for children ", child1, " and ", child2);
     };
 
     switch(this->type) {
@@ -164,6 +167,13 @@ void ASTNode::resolveType() {
             break;
         case NodeType::CAST_EXPR:
             assert_type(0, {DataType::INT, DataType::FLOAT});
+            assert_not_type(0, this->return_type);
+            break;
+        case NodeType::ASSIGN_EXPR:
+            assert_type(0, {DataType::INT_REF, DataType::FLOAT_REF});
+            assert_type(1, {DataType::INT, DataType::FLOAT});
+            assert_ref_of(0, 1);
+            this->return_type = this->children[0]->return_type;
             break;
         case NodeType::LIT_EXPR:
         case NodeType::ID_EXPR:

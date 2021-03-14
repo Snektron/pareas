@@ -20,6 +20,7 @@ class DepthTree {
         size_t max_nodes;
         size_t filled_nodes;
         size_t max_depth;
+        size_t instr_count = 0;
 
         void construct(ASTNode*);
         void setElement(size_t, ASTNode*, size_t, size_t, size_t);
@@ -56,6 +57,9 @@ class DepthTree {
         }
         inline size_t maxDepth() const {
             return this->max_depth;
+        }
+        inline size_t getInstrCount() const {
+            return this->instr_count;
         }
 };
 

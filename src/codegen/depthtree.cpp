@@ -75,6 +75,7 @@ void DepthTree::construct(ASTNode* node) {
 
     size_t offset = 0;
     this->markOffset(node, idx_map, offset);
+    this->instr_count = offset;
 
     this->filled_nodes = i;
 }
@@ -121,14 +122,14 @@ void DepthTree::markOffset(ASTNode* node, const std::unordered_map<ASTNode*, siz
         case NodeType::BITNOT_EXPR:
         case NodeType::LNOT_EXPR:
         case NodeType::NEG_EXPR:
-        case NodeType::ASSIGN_EXPR:
         case NodeType::DEREF_EXPR:
-            this->instr_offsets[node_idx] = offset++;
-            break;
-        case NodeType::LIT_EXPR:
         case NodeType::CAST_EXPR:
         case NodeType::DECL_EXPR:
         case NodeType::ID_EXPR:
+            this->instr_offsets[node_idx] = offset++;
+            break;
+        case NodeType::LIT_EXPR:
+        case NodeType::ASSIGN_EXPR:
             this->instr_offsets[node_idx] = offset;
             offset += 2;
             break;

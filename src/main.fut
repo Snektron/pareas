@@ -92,5 +92,5 @@ entry make_tree (max_depth: u32) (node_types: [MAX_NODES]u8) (data_types: [MAX_N
 let split_instr (instr: Instr) =
     (instr.instr, instr.rd, instr.rs1, instr.rs2)
 
-entry main (tree: Tree[MAX_NODES]) (instr_offset: [MAX_NODES]i64) =
-    compile_tree tree instr_offset |> map split_instr |> unzip4
+entry main (tree: Tree[MAX_NODES]) (symtab: Symtab[MAX_VARS]) (instr_offset: [MAX_NODES]i64) (max_instrs: i64) =
+    compile_tree tree symtab instr_offset max_instrs |> map split_instr |> unzip4
