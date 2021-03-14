@@ -209,8 +209,8 @@ let compile_tree [tree_size] [max_vars] (tree: Tree[tree_size]) (symtab: Symtab[
     let initial_registers = replicate (tree_size * PARENT_IDX_PER_NODE) 0i64
     let initial_instr = replicate max_instrs EMPTY_INSTR in
     let (instr_result, _) =
-        loop (data, registers) = (initial_instr, initial_registers) for i < i64.u32 tree.max_depth do
-            let j = (i64.u32 tree.max_depth)-i-1
+        loop (data, registers) = (initial_instr, initial_registers) for i < i64.u32 tree.max_depth+1 do
+            let j = (i64.u32 tree.max_depth)-i
             let start = depth_starts[j]
             let end = if j == i64.u32 tree.max_depth then tree_size else depth_starts[j + 1]
             let (idx, parent_idx, instrs) =
