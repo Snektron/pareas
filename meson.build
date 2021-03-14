@@ -51,16 +51,27 @@ lpg_sources = [
     'src/lpg/parser/llp/test_parser.cpp',
 ]
 
-executable(
+pareas_lpg = executable(
     'pareas-lpg',
     lpg_sources,
     dependencies: fmt_dep,
     include_directories: inc,
 )
 
-dependencies = [fmt_dep]
+# Generated sources
+run_target(
+    'gen',
+    command: [
+        pareas_lpg,
+        '--lexer',  files('src/compiler/lexer/pareas.lex'),
+        '--parser', files('src/compiler/parser/pareas.g'),
+        '-o', 'gen/pareas_grammar'
+    ]
+)
 
 # Compiler
+dependencies = [fmt_dep]
+
 # Build futhark library
 futhark = find_program('futhark')
 futhark_backend = get_option('futhark-backend')

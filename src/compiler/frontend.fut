@@ -1,8 +1,7 @@
-import "parser"
-module lexer = import "../lexer/lexer"
-
-module grammar = import "better_grammar"
-module better_parser = parser grammar
+import "parser/parser"
+module lexer = import "lexer/lexer"
+module grammar = import "../../gen/pareas_grammar"
+module pareas_parser = parser grammar
 
 let main [n] [m]
     (input: [n]u8)
@@ -16,9 +15,9 @@ let main [n] [m]
             final_state
             grammar.identity_state
     let tokens =
-        lexer.lex input lt -- TODO: Check for errors
+        lexer.lex input lt -- TODO: Check for erro3rs
     |> filter (!= grammar.token_whitespace)
-    in if !(better_parser.check tokens) then -1 else
-    let parse = better_parser.parse tokens
-    let parents = better_parser.build_parent_vector parse
+    in if !(pareas_parser.check tokens) then -1 else
+    let parse = pareas_parser.parse tokens
+    let parents = pareas_parser.build_parent_vector parse
     in last parents
