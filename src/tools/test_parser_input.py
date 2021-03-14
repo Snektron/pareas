@@ -21,9 +21,7 @@ def gen(depth):
         gen(depth + 1)
         data.append(ord(']'))
 
-data.append(ord('('))
 gen(0)
-data.append(ord(')'))
 
 print(f'Input size: {len(data)} elements', file=sys.stderr)
 
