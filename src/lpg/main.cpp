@@ -32,6 +32,7 @@ namespace {
         const char* parser_src;
         const char* lexer_src;
         const char* output;
+        bool verbose_lexer;
         bool verbose_grammar;
         bool verbose_sets;
         bool verbose_psls;
@@ -48,12 +49,13 @@ namespace {
             "--parser <grammar.llpg>     Generate a parser from <grammar.llpg>.\n"
             "--lexer <lexer.lex>         Generate a lexer from <lexer.lex>.\n"
             "-o --output <path>          Basename of generated output files.\n"
+            "--verbose-lexer             Dump sizes of lexer tables.\n"
             "--verbose-grammar           Dump parsed grammar to stderr.\n"
             "--verbose-sets              Dump first/last/follow/before sets to stderr.\n"
             "--verbose-psls              Dump PSLS as CSV to stderr.\n"
             "--verbose-ll                Dump LL table as CSV to stderr.\n"
             "--verbose-llp               Dump LLP table as CSV to stderr.\n"
-            "-h --help                   Show this message and exit."
+            "-h --help                   Show this message and exit.\n"
             "\n"
             "Either or both of --parser and --lexer are required, as well as --output.\n",
             progname
@@ -65,6 +67,7 @@ namespace {
             .parser_src = nullptr,
             .lexer_src = nullptr,
             .output = nullptr,
+            .verbose_lexer = false,
             .verbose_grammar = false,
             .verbose_sets = false,
             .verbose_psls = false,
@@ -88,6 +91,8 @@ namespace {
             } else if (arg == "-o" || arg == "--output") {
                 ptr = &opts.output;
                 argname = "path";
+            } else if (arg == "--verbose-lexer") {
+                opts.verbose_lexer = true;
             } else if (arg == "--verbose-grammar") {
                 opts.verbose_grammar = true;
             } else if (arg == "--verbose-sets") {
@@ -171,6 +176,10 @@ namespace {
             auto lexer_parser = lexer::LexerParser(&parser);
             auto g = lexer_parser.parse();
             auto parallel_lexer = lexer::ParallelLexer(&g);
+
+            if (opts.verbose_lexer) {
+                parallel_lexer.dump_sizes(std::cout);
+            }
 
             return {{std::move(g), std::move(parallel_lexer)}};
         } catch (const std::runtime_error& e) {

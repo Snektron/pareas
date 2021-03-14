@@ -1,29 +1,50 @@
+# Control
+fn = /fn/
+if = /if/
+else = /else/
+while = /while/
+return = /return/
+
+# Operators
+plus = /\+/
+minus = /-/
+star = /\*/
+slash = /\//
+percent = /%/
+and = /&/
+pipe = /|/
+hat = /^/
+lt_lt = /<</
+gt_gt = />>/
+gt_gt_gt = />>>/
+and_and = /&&/
+pipe_pipe = /||/
+eq_eq = /=/
+neq = /!=/
+gt = />/
+gte = />=/
+lt = /</
+lte = /<=/
+exclam = /!/
+tilde = /~/
+semi = /;/
+
+# Types
 float = /float/
 int = /int/
-struct = /struct/
-unsigned = /unsigned/
-else = /else/
-for = /for/
 void = /void/
-if = /if/
-return = /return/
-static = /static/
-while = /while/
-fn = /fn/
+
+# Parenthesis
 rparen = /\)/
 lparen = /\(/
 rbracket = /\]/
 lbracket = /\[/
 rbrace = /}/
 lbrace = /{/
-plus = /\+/
-minus = /-/
-slash = /\//
-star = /\*/
-equals = /=/
-lt = /</
-semi = /;/
+
+# Other
 id = /[a-zA-Z_][a-zA-Z0-9_]*/
-number = /[0-9]+/
+float_literal = /[0-9]+.[0-9]+/
+int_literal = /[0-9]+/
 whitespace = /[ \t\r\n]+/
 comment = /\/\/[^\n]*\n/

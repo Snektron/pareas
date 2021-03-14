@@ -2,7 +2,7 @@
 #include "pareas/lpg/lexer/fsa.hpp"
 #include "pareas/lpg/hash_util.hpp"
 
-#include <fmt/format.h>
+#include <fmt/ostream.h>
 
 #include <algorithm>
 #include <unordered_map>
@@ -188,5 +188,11 @@ namespace pareas::lexer {
         for (const auto& [ps, i] : seen) {
             this->final_states[i] = dfa[ps.transitions[START].result_state].token;
         }
+    }
+
+    void ParallelLexer::dump_sizes(std::ostream& out) const {
+        fmt::print(out, "Initial states table: {} element\n", this->initial_states.size());
+        fmt::print(out, "Merge table: {}² elements = {} elements\n", this->merge_table.states(), this->merge_table.states() * this->merge_table.states());
+        fmt::print(out, "Final states table: {} elements\n", this->final_states.size());
     }
 };

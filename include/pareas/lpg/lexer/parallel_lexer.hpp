@@ -8,6 +8,7 @@
 #include <memory>
 #include <vector>
 #include <limits>
+#include <iosfwd>
 #include <cstdint>
 
 namespace pareas::lexer {
@@ -62,6 +63,8 @@ namespace pareas::lexer {
         StateIndex identity_state_index;
 
         explicit ParallelLexer(const LexicalGrammar* g);
+
+        void dump_sizes(std::ostream& out) const;
     };
 }
 

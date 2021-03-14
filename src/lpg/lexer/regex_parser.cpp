@@ -75,11 +75,13 @@ namespace pareas::lexer {
         auto child = this->maybe_atom();
         auto loc = this->parser->loc();
 
-        bool star = this->parser->eat('*');
-        bool plus = this->parser->eat('+');
+        bool star = this->parser->test('*');
+        bool plus = this->parser->test('+');
 
         if (!star && !plus)
             return child;
+
+        this->parser->consume();
 
         if (!child) {
             this->parser->er->error(loc, "Stray repeat is not allowed to be applied to nothing");
