@@ -1,6 +1,5 @@
-import "string_packing"
 import "bracket_matching"
-import "../util"
+module string = import "../string"
 module bt = import "binary_tree"
 
 module type grammar = {
@@ -49,7 +48,7 @@ module parser (g: grammar) = {
         -- Early return if there is an error
         in if !bracket_refs_valid then false else
         -- Extract the stack changes from the grammar
-        pack_nonempty_strings
+        string.extract_nonempty
             g.stack_change_table
             (map g.stack_change_offset.to_i64 offsets)
             (map g.stack_change_offset.to_i64 lens)
@@ -68,7 +67,7 @@ module parser (g: grammar) = {
                 let y = if i == n then g.end_of_input_index else g.token.to_i64 input[i]
                 in copy g.parse_refs[x, y])
             |> unzip
-        in pack_strings
+        in string.extract
             g.parse_table
             (map g.parse_offset.to_i64 offsets)
             (map g.parse_offset.to_i64 lens)

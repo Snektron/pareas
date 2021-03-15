@@ -1,7 +1,7 @@
 -- | Extract strings defined by an array of offsets and an array of lengths from text,
 -- and pack the results into a new array. Note that this version requires all lengths to be
 -- nonzero.
-let pack_nonempty_strings 't [n] (text: []t) (offsets: [n]i64) (lens: [n]i64): *[]t =
+let extract_nonempty 't [n] (text: []t) (offsets: [n]i64) (lens: [n]i64): *[]t =
     -- Create an array of indices which will be used to index text
     -- Each string consisting of (offset, len) will be gathered by constructing
     -- runs of indices.
@@ -33,7 +33,7 @@ let pack_nonempty_strings 't [n] (text: []t) (offsets: [n]i64) (lens: [n]i64): *
 -- | Extract strings defined by an array of offsets and an array of lengths from text,
 -- and pack the results into a new array. For this version, the lengths may be zero, but is
 -- possibly less efficient.
-let pack_strings 't [n] (text: []t) (offsets: [n]i64) (lens: [n]i64): *[]t =
+let extract 't [n] (text: []t) (offsets: [n]i64) (lens: [n]i64): *[]t =
     -- This function works similar to pack_nonempty_strings, except that the scatter is
     -- performed using a reduce_by_index
     let dest = replicate (reduce (+) 0 lens) 1
