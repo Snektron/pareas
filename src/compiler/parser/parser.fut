@@ -1,4 +1,5 @@
 import "bracket_matching"
+import "../util"
 module string = import "../string"
 module bt = import "binary_tree"
 
@@ -85,10 +86,7 @@ module parser (g: grammar) = {
             -- its children (number of children). Thus, final stack change is #children - 1.
             |> map (+ -1)
             -- Calculate the depth
-            |> scan (+) 0
-            -- The depth is inclusive, shift it over to make them exclusive
-            |> rotate (-1)
-            |> map2 (\i x -> if i == 0 then 0i32 else x) (iota n)
+            |> exclusive_scan (+) 0
             -- We are going to find the parent of each node using a previous-smaller-or-equal
             -- scan, which requires a binary tree. Build the binary tree.
             |> bt.construct i32.min i32.highest
