@@ -9,19 +9,27 @@ let in_windows_of_pairs [n] 't (xs: [n]t): [](t, t) =
     let m = n - 1
     in zip (xs[:m] :> [m]t) (xs[1:] :> [m]t)
 
--- | Calculate the number of bits required to store a certain value
+-- | Calculate the number of bits required to store a certai n value
 -- Returns `i32.num_bits` for negative numbers, and returns 0 for 0.
 let bit_width (x: i32): i32 = i32.num_bits - (i32.clz x)
 
 -- | Shift all the elements in xs to the right, and shift x into the
 -- left. The right value is discarded.
-let shift [n] 't (x: t) (xs: [n]t): [n]t =
+let shift_right [n] 't (x: t) (xs: [n]t): [n]t =
     xs
     |> rotate (-1)
     |> zip (iota n)
     |> map (\(i, y) -> if i == 0 then x else y)
 
+-- | Shift all the elements in xs to the left, and shift x into
+-- the empty spot on the right. The left value is discarded.
+let shift_left [n] 't (x: t) (xs: [n]t): [n]t =
+    xs
+    |> rotate (1)
+    |> zip (iota n)
+    |> map (\(i, y) -> if i == n - 1 then x else  y)
+
 -- | Perform an exclusive scan. The initial value of the returned array will be ne.
 let exclusive_scan [n] 't (op: t -> t -> t) (ne: t) (as: [n]t): [n]t =
     scan op ne as
-    |> shift ne
+    |> shift_right ne

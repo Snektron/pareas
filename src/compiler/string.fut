@@ -19,7 +19,7 @@ let extract_nonempty 't [n] (text: []t) (offsets: [n]i64) (lens: [n]i64): *[]t =
     let scatter_diffs =
         map2 (+) offsets lens
         |> map (+ -1)
-        |> shift 0
+        |> shift_right 0
         |> map2 (-) offsets
     -- Compute the final array of indices
     let gather_indices =
@@ -39,7 +39,7 @@ let extract 't [n] (text: []t) (offsets: [n]i64) (lens: [n]i64): *[]t =
     let scatter_diffs =
         map2 (+) offsets lens
         |> map (+ -1)
-        |> shift 0
+        |> shift_right 0
         |> map2 (-) offsets
         -- Subtract one to account for the ones in the existing array
         |> map (+ -1)
