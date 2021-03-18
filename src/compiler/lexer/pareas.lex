@@ -6,20 +6,21 @@ while = /while/
 return = /return/
 
 # Operators
+eq = /=/
 plus = /\+/
 minus = /-/
 star = /\*/
 slash = /\//
 percent = /%/
 and = /&/
-pipe = /|/
+pipe = /\|/
 hat = /^/
 lt_lt = /<</
 gt_gt = />>/
 gt_gt_gt = />>>/
 and_and = /&&/
-pipe_pipe = /||/
-eq_eq = /=/
+pipe_pipe = /\|\|/
+eq_eq = /==/
 neq = /!=/
 gt = />/
 gte = />=/

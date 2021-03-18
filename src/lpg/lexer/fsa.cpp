@@ -233,7 +233,7 @@ namespace pareas::lexer {
                     continue;
 
                 // Look up where this edge goes from the start state
-                // careful though, was `src` might _be_ the start state
+                // careful though, as `src` might _be_ the start state
                 // in this case, we should add an edge to itself.
                 if (src == START) {
                     this->add_transition(src, src, sym, true);
