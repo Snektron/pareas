@@ -73,10 +73,6 @@ namespace {
         const std::string& table_type,
         const TokenMapping* tm
     ) {
-        // Multiply by 2 to account for the sign bit
-        size_t offset_bits = pareas::int_bit_width(2 * this->superstring.size());
-
-        fmt::print(out, "module {}_offset = i{}\n", base_name, offset_bits);
         fmt::print(out, "let {}_table_size: i64 = {}\n", base_name, this->superstring.size());
         fmt::print(out, "let {}_table = [", base_name);
 
@@ -118,7 +114,7 @@ namespace {
             fmt::print(out, "]");
         }
 
-        fmt::print(out, "\n] :> [num_table_tokens][num_table_tokens](i{0}, i{0})\n", offset_bits);
+        fmt::print(out, "\n] :> [num_table_tokens][num_table_tokens](i{0}, i{0})\n", Renderer::TABLE_OFFSET_BITS);
     }
 }
 

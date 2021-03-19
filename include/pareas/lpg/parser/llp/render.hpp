@@ -7,6 +7,7 @@
 
 #include <iosfwd>
 #include <unordered_map>
+#include <cstddef>
 
 namespace pareas::parser::llp {
     class Renderer {
@@ -17,6 +18,8 @@ namespace pareas::parser::llp {
         std::unordered_map<Symbol, size_t, Symbol::Hash> symbol_mapping;
 
     public:
+        constexpr const static size_t TABLE_OFFSET_BITS = 32;
+
         Renderer(const TokenMapping* tm, const Grammar* g, const ParsingTable* pt);
         void render_futhark(std::ostream& out) const;
 
