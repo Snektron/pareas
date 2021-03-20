@@ -108,9 +108,6 @@ namespace pareas::lexer {
     }
 
     ParallelLexer::ParallelLexer(const LexicalGrammar* g) {
-        auto max_sym = std::numeric_limits<FiniteStateAutomaton::Symbol>::max();
-        auto num_syms = max_sym + 1;
-
         auto nfa = FiniteStateAutomaton();
         nfa.build_lexer(g);
         auto dfa = nfa.to_dfa(g);
@@ -132,7 +129,7 @@ namespace pareas::lexer {
         // Insert the initial states, we need to insert one for every character.
         // States indices of the DFA are mapped to the initial parallel states indices.
         {
-            auto initial_states = std::vector<ParallelState>(num_syms, ParallelState(dfa.num_states()));
+            auto initial_states = std::vector<ParallelState>(FiniteStateAutomaton::MAX_SYM + 1, ParallelState(dfa.num_states()));
             for (size_t src = 0; src < dfa.num_states(); ++src) {
                 for (const auto [sym, dst, produces_lexeme] : dfa[src].transitions) {
                     assert(sym.has_value()); // Not a DFA

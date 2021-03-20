@@ -18,4 +18,21 @@ namespace pareas::lexer {
             tm.insert(lexeme.as_token());
         }
     }
+
+    void LexicalGrammar::validate(ErrorReporter& er) const {
+        // Empty tokens will mess up the lexer, so check here that there are none.
+        // Checking here will allow us to catch all of them at once.
+        bool error = false;
+
+        for (const auto& lexeme : this->lexemes) {
+            if (!lexeme.regex->matches_empty())
+                continue;
+
+            er.error(lexeme.loc, "Lexeme matches the empty string");
+            error = true;
+        }
+
+        if (error)
+            throw LexemeMatchesEmptyError();
+    }
 }

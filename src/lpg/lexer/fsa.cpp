@@ -221,7 +221,7 @@ namespace pareas::lexer {
             // For all characters that aren't in an outgoing edge of the final state, add
             // a new edge by looking up where it goes from the start node.
 
-            auto outgoing = std::bitset<std::numeric_limits<Symbol>::max() + 1>();
+            auto outgoing = std::bitset<MAX_SYM + 1>();
             for (auto& t : state.transitions) {
                 assert(t.maybe_sym.has_value()); // Not a DFA.
                 assert(!outgoing.test(t.maybe_sym.value())); // Not a DFA.

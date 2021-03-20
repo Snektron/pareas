@@ -174,7 +174,10 @@ namespace {
             auto er = ErrorReporter(input, std::clog);
             auto parser = Parser(&er, input);
             auto lexer_parser = lexer::LexerParser(&parser);
+
             auto g = lexer_parser.parse();
+            g.validate(er);
+
             auto parallel_lexer = lexer::ParallelLexer(&g);
 
             if (opts.verbose_lexer) {
@@ -195,7 +198,7 @@ namespace {
         parser::llp::ParsingTable llp_table;
     };
 
-    std::optional<ParserGeneration> generate_parser(const Options& opts, TokenMapping& tm) {
+    std::optional<ParserGeneration> generate_parser(const Options& opts, TokenMapping& tm, bool derive_tokens) {
         std::string input;
         if (auto maybe_input = read_input(opts.parser_src)) {
             input = std::move(maybe_input.value());
@@ -232,7 +235,7 @@ namespace {
 
             // If also generating a lexer, first check whether all the tokens currently in the
             // token mapping also appear in the parse grammar.
-            if (opts.lexer_src) {
+            if (!derive_tokens) {
                 g.link_tokens(er, tm);
             }
 
@@ -261,7 +264,7 @@ int main(int argc, const char* argv[]) {
     auto tm = TokenMapping();
 
     auto lexer = opts.lexer_src ? generate_lexer(opts, tm) : std::nullopt;
-    auto parser = opts.parser_src ? generate_parser(opts, tm) : std::nullopt;
+    auto parser = opts.parser_src ? generate_parser(opts, tm, !lexer.has_value()) : std::nullopt;
 
     // Only do this check here so we can report errors for both parser and lexer construction.
     if ((opts.lexer_src && !lexer.has_value()) || (opts.parser_src && !parser.has_value()))

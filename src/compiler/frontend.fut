@@ -16,8 +16,9 @@ let main [n] [m]
             grammar.identity_state
     let tokens =
         lexer.lex input lt -- TODO: Check for errors
-        |> filter (!= grammar.token_whitespace)
-    in if !(pareas_parser.check tokens) then -1 else
-    let parse = pareas_parser.parse tokens
-    let parents = pareas_parser.build_parent_vector parse
-    in last parents
+    in tokens
+    --     |> filter (!= grammar.token_whitespace)
+    -- in if !(pareas_parser.check tokens) then -1 else
+    -- let parse = pareas_parser.parse tokens
+    -- let parents = pareas_parser.build_parent_vector parse
+    -- in last parents

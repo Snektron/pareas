@@ -4,6 +4,7 @@
 #include <vector>
 #include <iosfwd>
 #include <optional>
+#include <limits>
 #include <cstddef>
 #include <cstdint>
 
@@ -14,6 +15,8 @@ namespace pareas::lexer {
     struct FiniteStateAutomaton {
         using Symbol = uint8_t;
         using StateIndex = size_t;
+
+        static constexpr const size_t MAX_SYM = std::numeric_limits<Symbol>::max();
 
         // An explicit reject state is added here to aid mapping FSA states to
         // parallel states during construction of the parallel lexer.
