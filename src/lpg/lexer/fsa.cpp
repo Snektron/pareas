@@ -98,17 +98,17 @@ namespace pareas::lexer {
     StateIndex FiniteStateAutomaton::add_state() {
         StateIndex index = this->num_states();
         this->states.push_back({
-            .token = nullptr,
+            .lexeme = nullptr,
             .transitions = {}
         });
         return index;
     }
 
-    void FiniteStateAutomaton::add_transition(StateIndex src, StateIndex dst, std::optional<uint8_t> sym, bool produces_token) {
+    void FiniteStateAutomaton::add_transition(StateIndex src, StateIndex dst, std::optional<uint8_t> sym, bool produces_lexeme) {
         assert(src < this->num_states());
         assert(dst < this->num_states());
 
-        this->states[src].transitions.push_back({sym, dst, produces_token});
+        this->states[src].transitions.push_back({sym, dst, produces_lexeme});
     }
 
     void FiniteStateAutomaton::add_epsilon_transition(StateIndex src, StateIndex dst) {
@@ -131,16 +131,16 @@ namespace pareas::lexer {
         fmt::print(os, "    start -> state{};\n", START);
 
         for (size_t src = 0; src < this->num_states(); ++src) {
-            const auto& [token, transitions] = this->states[src];
+            const auto& [lexeme, transitions] = this->states[src];
             fmt::print(
                 "    state{} [shape=\"{}\", label=\"{}\"];\n",
                 src,
-                token ? "doublecircle" : "circle",
-                token ? token->name : ""
+                lexeme ? "doublecircle" : "circle",
+                lexeme ? lexeme->name : ""
             );
 
-            for (const auto& [maybe_sym, dst, produces_token] : transitions) {
-                auto style = produces_token ? ", color=blue" : "";
+            for (const auto& [maybe_sym, dst, produces_lexeme] : transitions) {
+                auto style = produces_lexeme ? ", color=blue" : "";
 
                 if (maybe_sym.has_value()) {
                     fmt::print("    state{} -> state{} [label=\"{:q}\"{}];\n", src, dst, EscapeFormatter{maybe_sym.value()}, style);
@@ -199,12 +199,12 @@ namespace pareas::lexer {
             for (auto nfa_index : ss.states) {
                 const auto& nfa_state = this->states[nfa_index];
 
-                if (nfa_state.token && dfa_state.token) {
-                    if (g->token_id(nfa_state.token) < g->token_id(dfa_state.token)) {
-                        dfa_state.token = nfa_state.token;
+                if (nfa_state.lexeme && dfa_state.lexeme) {
+                    if (g->lexeme_id(nfa_state.lexeme) < g->lexeme_id(dfa_state.lexeme)) {
+                        dfa_state.lexeme = nfa_state.lexeme;
                     }
-                } else if (nfa_state.token) {
-                    dfa_state.token = nfa_state.token;
+                } else if (nfa_state.lexeme) {
+                    dfa_state.lexeme = nfa_state.lexeme;
                 }
             }
         }
@@ -215,7 +215,7 @@ namespace pareas::lexer {
     void FiniteStateAutomaton::add_lexer_loop() {
         for (size_t src = 0; src < this->num_states(); ++src) {
             auto& state = this->states[src];
-            if (!state.token)
+            if (!state.lexeme)
                 continue;
 
             // For all characters that aren't in an outgoing edge of the final state, add
@@ -255,11 +255,11 @@ namespace pareas::lexer {
     }
 
     void FiniteStateAutomaton::build_lexer(const LexicalGrammar* g) {
-        for (const auto& token : g->tokens) {
+        for (const auto& lexeme : g->lexemes) {
             auto regex_start = this->add_state();
             this->add_epsilon_transition(START, regex_start);
-            auto regex_end = token.regex->compile(*this, regex_start);
-            this->states[regex_end].token = &token;
+            auto regex_end = lexeme.regex->compile(*this, regex_start);
+            this->states[regex_end].lexeme = &lexeme;
         }
     }
 }

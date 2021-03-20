@@ -8,7 +8,7 @@
 #include <cstdint>
 
 namespace pareas::lexer {
-    struct Token;
+    struct Lexeme;
     struct LexicalGrammar;
 
     struct FiniteStateAutomaton {
@@ -26,11 +26,11 @@ namespace pareas::lexer {
         struct Transition {
             std::optional<uint8_t> maybe_sym;
             StateIndex dst;
-            bool produces_token;
+            bool produces_lexeme;
         };
 
         struct State {
-            const Token* token;
+            const Lexeme* lexeme;
             std::vector<Transition> transitions;
         };
 
@@ -42,7 +42,7 @@ namespace pareas::lexer {
 
         StateIndex add_state();
 
-        void add_transition(StateIndex src, StateIndex dst, std::optional<uint8_t> sym, bool produces_token = false);
+        void add_transition(StateIndex src, StateIndex dst, std::optional<uint8_t> sym, bool produces_lexeme = false);
         void add_epsilon_transition(StateIndex src, StateIndex dst);
 
         State& operator[](StateIndex state);

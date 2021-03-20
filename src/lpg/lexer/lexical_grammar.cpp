@@ -3,15 +3,15 @@
 #include <cassert>
 
 namespace pareas::lexer {
-    size_t LexicalGrammar::token_id(const Token* token) const {
-        assert(token >= this->tokens.data() && token < &this->tokens.data()[this->tokens.size()]);
-        return token - this->tokens.data();
+    size_t LexicalGrammar::lexeme_id(const Lexeme* lexeme) const {
+        assert(lexeme >= this->lexemes.data() && lexeme < &this->lexemes.data()[this->lexemes.size()]);
+        return lexeme - this->lexemes.data();
     }
 
     TokenMapping LexicalGrammar::build_token_mapping() const {
         auto token_ids = TokenIdMap();
-        for (const auto& token : this->tokens) {
-            token_ids.insert({std::string(token.name), this->token_id(&token)});
+        for (const auto& lexeme : this->lexemes) {
+            token_ids.insert({std::string(lexeme.name), this->lexeme_id(&lexeme)});
         }
         return TokenMapping(std::move(token_ids));
     }

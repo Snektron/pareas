@@ -11,7 +11,7 @@ namespace pareas::lexer {
         bool error = false;
         this->parser->eat_delim();
         while (auto _ = this->parser->peek()) {
-            if (!this->token_decl()) {
+            if (!this->lexeme_decl()) {
                 error = true;
                 this->parser->skip_until('\n');
             }
@@ -21,20 +21,20 @@ namespace pareas::lexer {
         if (error)
             throw LexerParseError();
 
-        return {std::move(this->tokens)};
+        return {std::move(this->lexemes)};
     }
 
-    bool LexerParser::token_decl() {
+    bool LexerParser::lexeme_decl() {
         auto loc = this->parser->loc();
-        auto token_name = this->parser->word();
+        auto lexeme_name = this->parser->word();
 
-        if (token_name.size() == 0)
+        if (lexeme_name.size() == 0)
             return false;
 
-        auto [it, inserted] = this->token_definitions.insert({token_name, loc});
+        auto [it, inserted] = this->lexeme_definitions.insert({lexeme_name, loc});
         bool duplicate = false;
         if (!inserted) {
-            this->parser->er->error(loc, "Duplicate token definition");
+            this->parser->er->error(loc, "Duplicate lexeme definition");
             this->parser->er->note(it->second, "First defined here");
             duplicate = true;
         }
@@ -61,7 +61,7 @@ namespace pareas::lexer {
         if (duplicate)
             return false;
 
-        this->tokens.push_back({loc, std::string(token_name), std::move(root)});
+        this->lexemes.push_back({loc, std::string(lexeme_name), std::move(root)});
 
         return this->parser->expect('\n');
     }

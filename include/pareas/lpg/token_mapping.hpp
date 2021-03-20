@@ -7,6 +7,28 @@
 #include <cstddef>
 
 namespace pareas {
+    // struct Token {
+    //     enum class Type {
+    //         USER_DEFINED,
+    //         INVALID,
+    //         START_OF_INPUT,
+    //         END_OF_INPUT
+    //     };
+
+    //     static const Token INVALID;
+    //     static const Token START_OF_INPUT;
+    //     static const Token END_OF_INPUT;
+
+    //     Type type;
+    //     std::string name;
+
+    //     struct Hash {
+    //         size_t operator()(const Token& token) const;
+    //     };
+    // };
+
+    // bool operator==(const Token& lhs, const Token& rhs);
+
     using TokenIdMap = std::unordered_map<std::string, size_t>;
 
     class TokenMapping {

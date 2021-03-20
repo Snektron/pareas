@@ -44,7 +44,7 @@ namespace {
             rhs.transitions.begin(),
             rhs.transitions.end(),
             [](const auto& lhs, const auto& rhs) {
-                return lhs.result_state == rhs.result_state && lhs.produces_token == rhs.produces_token;
+                return lhs.result_state == rhs.result_state && lhs.produces_lexeme == rhs.produces_lexeme;
             }
         );
     }
@@ -53,7 +53,7 @@ namespace {
         size_t hash = 0;
         for (auto state : ps.transitions) {
             hash = hash_combine(hash, state.result_state);
-            hash = hash_combine(hash, state.produces_token);
+            hash = hash_combine(hash, state.produces_lexeme);
         }
         return hash;
     }
@@ -61,7 +61,7 @@ namespace {
 
 namespace pareas::lexer {
     ParallelLexer::Transition::Transition():
-        result_state(REJECT), produces_token(false) {}
+        result_state(REJECT), produces_lexeme(false) {}
 
     ParallelLexer::MergeTable::MergeTable():
         num_states(0), capacity(0), merge_table(nullptr) {}
@@ -134,17 +134,17 @@ namespace pareas::lexer {
         {
             auto initial_states = std::vector<ParallelState>(num_syms, ParallelState(dfa.num_states()));
             for (size_t src = 0; src < dfa.num_states(); ++src) {
-                for (const auto [sym, dst, produces_token] : dfa[src].transitions) {
+                for (const auto [sym, dst, produces_lexeme] : dfa[src].transitions) {
                     assert(sym.has_value()); // Not a DFA
                     initial_states[sym.value()].transitions[src].result_state = dst;
-                    initial_states[sym.value()].transitions[src].produces_token = produces_token;
+                    initial_states[sym.value()].transitions[src].produces_lexeme = produces_lexeme;
                 }
             }
 
             this->initial_states.resize(initial_states.size());
             for (int sym = 0; sym < initial_states.size(); ++sym) {
                 auto& state = initial_states[sym];
-                this->initial_states[sym].produces_token = state.transitions[START].produces_token;
+                this->initial_states[sym].produces_lexeme = state.transitions[START].produces_lexeme;
                 this->initial_states[sym].result_state = enqueue(std::move(state));
             }
         }
@@ -168,17 +168,17 @@ namespace pareas::lexer {
                 second.merge(first);
 
                 {
-                    bool ij_produces_token = copy.transitions[START].produces_token;
+                    bool ij_produces_lexeme = copy.transitions[START].produces_lexeme;
                     auto ij = enqueue(std::move(copy));
                     this->merge_table(i, j).result_state = ij;
-                    this->merge_table(i, j).produces_token = ij_produces_token;
+                    this->merge_table(i, j).produces_lexeme = ij_produces_lexeme;
                 }
 
                 {
-                    bool ji_produces_token = second.transitions[START].produces_token;
+                    bool ji_produces_lexeme = second.transitions[START].produces_lexeme;
                     auto ji = enqueue(std::move(second));
                     this->merge_table(j, i).result_state = ji;
-                    this->merge_table(j, i).produces_token = ji_produces_token;
+                    this->merge_table(j, i).produces_lexeme = ji_produces_lexeme;
                 }
             }
         }
@@ -186,7 +186,7 @@ namespace pareas::lexer {
         // Compute the final state mapping
         this->final_states.resize(seen.size(), nullptr);
         for (const auto& [ps, i] : seen) {
-            this->final_states[i] = dfa[ps.transitions[START].result_state].token;
+            this->final_states[i] = dfa[ps.transitions[START].result_state].lexeme;
         }
     }
 

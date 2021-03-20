@@ -10,16 +10,16 @@
 #include <cstddef>
 
 namespace pareas::lexer {
-    struct Token {
+    struct Lexeme {
         SourceLocation loc;
         std::string name;
         UniqueRegexNode regex;
     };
 
     struct LexicalGrammar {
-        std::vector<Token> tokens;
+        std::vector<Lexeme> lexemes;
 
-        size_t token_id(const Token* token) const;
+        size_t lexeme_id(const Lexeme* lexeme) const;
         TokenMapping build_token_mapping() const;
     };
 }

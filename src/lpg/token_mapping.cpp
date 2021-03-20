@@ -1,5 +1,6 @@
 #include "pareas/lpg/token_mapping.hpp"
 #include "pareas/lpg/render_util.hpp"
+#include "pareas/lpg/hash_util.hpp"
 
 #include <fmt/ostream.h>
 
@@ -8,6 +9,18 @@
 #include <utility>
 
 namespace pareas {
+    // const Token Token::INVALID = {Type::INVALID, "invalid"};
+    // const Token Token::START_OF_INPUT = {Type::START_OF_INPUT, "soi"};
+    // const Token Token::END_OF_INPUT = {Type::END_OF_INPUT, "eoi"};
+
+    // size_t Token::Hash::operator()(const Token& token) const {
+    //     return hash_combine(std::hash<Type>{}(token.type), std::hash<std::string>{}(token.name));
+    // };
+
+    // bool operator==(const Token& rhs, const Token& lhs) const {
+    //     return rhs.token == lhs.token && rhs.name == rhs.token;
+    // }
+
     TokenMapping::TokenMapping(TokenIdMap&& token_ids):
         token_ids(std::move(token_ids)) {}
 

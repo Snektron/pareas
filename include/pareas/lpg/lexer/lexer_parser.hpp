@@ -20,15 +20,15 @@ namespace pareas::lexer {
     class LexerParser {
         Parser* parser;
 
-        std::vector<Token> tokens;
-        std::unordered_map<std::string_view, SourceLocation> token_definitions;
+        std::vector<Lexeme> lexemes;
+        std::unordered_map<std::string_view, SourceLocation> lexeme_definitions;
 
     public:
         LexerParser(Parser* parser);
         LexicalGrammar parse();
 
     private:
-        bool token_decl();
+        bool lexeme_decl();
     };
 }
 

@@ -65,11 +65,11 @@ namespace pareas::lexer {
         auto data = futhark::Array<T>({dim});
 
         for (uint64_t i = 0; i < dim; ++i) {
-            const auto* token = this->lexer->final_states[i];
-            if (!token) {
+            const auto* lexeme = this->lexer->final_states[i];
+            if (!lexeme) {
                 data.at(futhark::Index(&i, 1)) = 0;
             } else {
-                data.at(futhark::Index(&i, 1)) = this->tm->token_id(std::string(token->name));
+                data.at(futhark::Index(&i, 1)) = this->tm->token_id(std::string(lexeme->name));
             }
         }
 
@@ -78,6 +78,6 @@ namespace pareas::lexer {
 
     auto Renderer::encode(const ParallelLexer::Transition& t) const -> EncodedTransition {
         assert(t.result_state < PRODUCES_TOKEN_MASK);
-        return t.result_state | (t.produces_token ? PRODUCES_TOKEN_MASK : 0);
+        return t.result_state | (t.produces_lexeme ? PRODUCES_TOKEN_MASK : 0);
     }
 }

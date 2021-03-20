@@ -23,7 +23,7 @@ namespace pareas::lexer {
 
         struct Transition {
             StateIndex result_state;
-            bool produces_token;
+            bool produces_lexeme;
 
             Transition();
         };
@@ -57,8 +57,8 @@ namespace pareas::lexer {
         // TODO: State to new state table
         MergeTable merge_table;
 
-        // ParallelState to token they might produce
-        std::vector<const Token*> final_states;
+        // ParallelState to lexeme they might produce
+        std::vector<const Lexeme*> final_states;
 
         StateIndex identity_state_index;
 
