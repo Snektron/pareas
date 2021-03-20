@@ -67,9 +67,9 @@ namespace pareas::lexer {
         for (uint64_t i = 0; i < dim; ++i) {
             const auto* lexeme = this->lexer->final_states[i];
             if (!lexeme) {
-                data.at(futhark::Index(&i, 1)) = 0;
+                data.at(futhark::Index(&i, 1)) = this->tm->token_id(Token::INVALID);
             } else {
-                data.at(futhark::Index(&i, 1)) = this->tm->token_id(std::string(lexeme->name));
+                data.at(futhark::Index(&i, 1)) = this->tm->token_id(lexeme->as_token());
             }
         }
 

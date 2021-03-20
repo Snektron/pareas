@@ -10,6 +10,7 @@ project(
 
 add_project_arguments(
     ['-Wno-unused-parameter'],
+    ['-fno-math-errno'],
     language: ['c', 'cpp'],
 )
 

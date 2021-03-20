@@ -14,6 +14,19 @@ namespace pareas::parser {
     const Terminal Terminal::START_OF_INPUT = {Type::START_OF_INPUT, "⊢"};
     const Terminal Terminal::END_OF_INPUT = {Type::END_OF_INPUT, "⊣"};
 
+    Token Terminal::as_token() const {
+        switch (this->type) {
+            case Type::USER_DEFINED:
+                return {Token::Type::USER_DEFINED, this->name};
+            case Type::START_OF_INPUT:
+                return Token::START_OF_INPUT;
+            case Type::END_OF_INPUT:
+                return Token::END_OF_INPUT;
+            case Type::EMPTY:
+                assert(false);
+        }
+    }
+
     bool Terminal::is_empty() const {
         return this->type == Type::EMPTY;
     }
@@ -124,26 +137,27 @@ namespace pareas::parser {
         return &this->productions[START_INDEX];
     }
 
-    TokenMapping Grammar::build_token_mapping() const {
-        auto token_ids = TokenIdMap();
+    void Grammar::add_tokens(TokenMapping& tm) const {
+        tm.insert(Token::START_OF_INPUT);
+        tm.insert(Token::END_OF_INPUT);
+
         for (const auto& prod : this->productions) {
             for (const auto& sym : prod.rhs) {
                 if (sym.type != parser::Symbol::Type::USER_DEFINED_TERMINAL)
                     continue;
 
-                token_ids.insert({sym.name, token_ids.size()});
+                tm.insert(sym.as_terminal().as_token());
             }
         }
-
-        return TokenMapping(std::move(token_ids));
     }
+
 
     void Grammar::link_tokens(ErrorReporter& er, const TokenMapping& mapping) const {
         bool error = false;
 
         for (const auto& prod : this->productions) {
             for (const auto& sym : prod.rhs) {
-                if (sym.type != parser::Symbol::Type::USER_DEFINED_TERMINAL || mapping.contains(sym.name))
+                if (sym.type != parser::Symbol::Type::USER_DEFINED_TERMINAL || mapping.contains(sym.as_terminal().as_token()))
                     continue;
 
                 error = true;

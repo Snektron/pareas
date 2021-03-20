@@ -7,39 +7,41 @@
 #include <cstddef>
 
 namespace pareas {
-    // struct Token {
-    //     enum class Type {
-    //         USER_DEFINED,
-    //         INVALID,
-    //         START_OF_INPUT,
-    //         END_OF_INPUT
-    //     };
+    struct Token {
+        enum class Type {
+            USER_DEFINED,
+            INVALID,
+            START_OF_INPUT,
+            END_OF_INPUT
+        };
 
-    //     static const Token INVALID;
-    //     static const Token START_OF_INPUT;
-    //     static const Token END_OF_INPUT;
+        static const Token INVALID;
+        static const Token START_OF_INPUT;
+        static const Token END_OF_INPUT;
 
-    //     Type type;
-    //     std::string name;
+        Type type;
+        std::string name;
 
-    //     struct Hash {
-    //         size_t operator()(const Token& token) const;
-    //     };
-    // };
+        struct Hash {
+            size_t operator()(const Token& token) const;
+        };
+    };
 
-    // bool operator==(const Token& lhs, const Token& rhs);
+    bool operator==(const Token& lhs, const Token& rhs);
 
-    using TokenIdMap = std::unordered_map<std::string, size_t>;
+    // Just use the standard ostream overload to print a (Futhark) token identifier.
+    std::ostream& operator<<(std::ostream& os, const Token& token);
 
     class TokenMapping {
-        std::unordered_map<std::string, size_t> token_ids;
+        std::unordered_map<Token, size_t, Token::Hash> tokens;
 
     public:
-        explicit TokenMapping(TokenIdMap&& token_ids);
-        bool contains(const std::string& token_name) const;
+        TokenMapping() = default;
+        void insert(const Token& token);
+        bool contains(const Token& token) const;
         size_t backing_type_bits() const;
         void render_futhark(std::ostream& out) const;
-        size_t token_id(const std::string& token_name) const;
+        size_t token_id(const Token& token) const;
         size_t num_tokens() const;
     };
 }

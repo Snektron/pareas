@@ -54,7 +54,7 @@ namespace pareas::lexer {
         // if the start state is accepting.
         std::vector<Transition> initial_states;
 
-        // TODO: State to new state table
+        // State pair to new state table
         MergeTable merge_table;
 
         // ParallelState to lexeme they might produce

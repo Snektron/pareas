@@ -35,6 +35,8 @@ namespace pareas::parser {
         Type type;
         std::string name;
 
+        Token as_token() const;
+
         bool is_empty() const;
         bool operator==(const Terminal& other) const;
 
@@ -97,7 +99,7 @@ namespace pareas::parser {
         void dump(std::ostream& os) const;
         void validate(ErrorReporter& er) const;
         const Production* start() const;
-        TokenMapping build_token_mapping() const;
+        void add_tokens(TokenMapping& tm) const;
         void link_tokens(ErrorReporter& er, const TokenMapping& mapping) const;
 
     private:

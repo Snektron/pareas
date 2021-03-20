@@ -11,20 +11,18 @@ module type grammar = {
     val production_arity: [num_productions]i32
 
     module token: integral
+    val special_token_soi: token.t
+    val special_token_eoi: token.t
     val num_tokens: i64
-
-    val num_table_tokens: i64
-    val start_of_input_index: i64
-    val end_of_input_index: i64
 
     module bracket: integral
     val stack_change_table_size: i64
     val stack_change_table: [stack_change_table_size]bracket.t
-    val stack_change_refs: [num_table_tokens][num_table_tokens](i32, i32)
+    val stack_change_refs: [num_tokens][num_tokens](i32, i32)
 
     val parse_table_size: i64
     val parse_table: [parse_table_size]production.t
-    val parse_refs: [num_table_tokens][num_table_tokens](i32, i32)
+    val parse_refs: [num_tokens][num_tokens](i32, i32)
 }
 
 module parser (g: grammar) = {
@@ -40,9 +38,9 @@ module parser (g: grammar) = {
         let (offsets, lens) =
             iota (n + 1)
             |> map (\i ->
-                let x = if i == 0 then g.start_of_input_index else g.token.to_i64 input[i - 1]
-                let y = if i == n then g.end_of_input_index else g.token.to_i64 input[i]
-                in copy g.stack_change_refs[x, y])
+                let x = if i == 0 then g.special_token_soi else input[i - 1]
+                let y = if i == n then g.special_token_eoi else input[i]
+                in copy g.stack_change_refs[g.token.to_i64 x, g.token.to_i64 y])
             |> unzip
         -- Check whether all the values are valid (not -1)
         let bracket_refs_valid = offsets |> all (>= 0)
@@ -64,9 +62,9 @@ module parser (g: grammar) = {
         let (offsets, lens) =
             iota (n + 1)
             |> map (\i ->
-                let x = if i == 0 then g.start_of_input_index else g.token.to_i64 input[i - 1]
-                let y = if i == n then g.end_of_input_index else g.token.to_i64 input[i]
-                in copy g.parse_refs[x, y])
+                let x = if i == 0 then g.special_token_soi else input[i - 1]
+                let y = if i == n then g.special_token_eoi else input[i]
+                in copy g.parse_refs[g.token.to_i64 x, g.token.to_i64 y])
             |> unzip
         in string.extract
             g.parse_table

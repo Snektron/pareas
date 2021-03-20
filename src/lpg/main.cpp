@@ -162,7 +162,7 @@ namespace {
         lexer::ParallelLexer parallel_lexer;
     };
 
-    std::optional<LexerGeneration> generate_lexer(const Options& opts) {
+    std::optional<LexerGeneration> generate_lexer(const Options& opts, TokenMapping& tm) {
         std::string input;
         if (auto maybe_input = read_input(opts.lexer_src)) {
             input = std::move(maybe_input.value());
@@ -181,6 +181,8 @@ namespace {
                 parallel_lexer.dump_sizes(std::cout);
             }
 
+            g.add_tokens(tm);
+
             return {{std::move(g), std::move(parallel_lexer)}};
         } catch (const std::runtime_error& e) {
             fmt::print(std::cerr, "Failed to generate lexer: {}\n", e.what());
@@ -193,7 +195,7 @@ namespace {
         parser::llp::ParsingTable llp_table;
     };
 
-    std::optional<ParserGeneration> generate_parser(const Options& opts, std::optional<TokenMapping>& tm) {
+    std::optional<ParserGeneration> generate_parser(const Options& opts, TokenMapping& tm) {
         std::string input;
         if (auto maybe_input = read_input(opts.parser_src)) {
             input = std::move(maybe_input.value());
@@ -228,11 +230,16 @@ namespace {
             if (opts.verbose_llp)
                 llp_table.dump_csv(std::clog);
 
-            if (tm.has_value()) {
-                g.link_tokens(er, tm.value());
-            } else {
-                tm = g.build_token_mapping();
+            // If also generating a lexer, first check whether all the tokens currently in the
+            // token mapping also appear in the parse grammar.
+            if (opts.lexer_src) {
+                g.link_tokens(er, tm);
             }
+
+            // Now add the required special start- and end-of-index tokens.
+            // TODO: This can be improved by just adding the required tokens and not
+            // iterating over the entire grammar again.
+            g.add_tokens(tm);
 
             return {{std::move(g), std::move(llp_table)}};
         } catch (const std::runtime_error& e) {
@@ -251,24 +258,23 @@ int main(int argc, const char* argv[]) {
         print_usage(argv[0]);
     }
 
-    auto lexer = opts.lexer_src ? generate_lexer(opts) : std::nullopt;
-    auto tm = lexer.has_value() ? std::optional<TokenMapping>(lexer->grammar.build_token_mapping()) : std::nullopt;
+    auto tm = TokenMapping();
+
+    auto lexer = opts.lexer_src ? generate_lexer(opts, tm) : std::nullopt;
     auto parser = opts.parser_src ? generate_parser(opts, tm) : std::nullopt;
 
     // Only do this check here so we can report errors for both parser and lexer construction.
     if ((opts.lexer_src && !lexer.has_value()) || (opts.parser_src && !parser.has_value()))
         return EXIT_FAILURE;
 
-    assert(tm.has_value());
-
     auto futhark_out = open_output(opts.output, ".fut");
     if (!futhark_out.has_value())
         return EXIT_FAILURE;
 
-    tm.value().render_futhark(futhark_out.value());
+    tm.render_futhark(futhark_out.value());
 
     if (lexer.has_value()) {
-        auto renderer = pareas::lexer::Renderer(&tm.value(), &lexer->parallel_lexer);
+        auto renderer = pareas::lexer::Renderer(&tm, &lexer->parallel_lexer);
 
         auto data_out = open_output(opts.output, ".lexer.in");
         if (!data_out.has_value())
@@ -282,7 +288,7 @@ int main(int argc, const char* argv[]) {
     }
 
     if (parser.has_value()) {
-        auto renderer = pareas::parser::llp::Renderer(&tm.value(), &parser->grammar, &parser->llp_table);
+        auto renderer = pareas::parser::llp::Renderer(&tm, &parser->grammar, &parser->llp_table);
 
         renderer.render_futhark(futhark_out.value());
     }

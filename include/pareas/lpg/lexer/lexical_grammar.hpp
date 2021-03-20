@@ -14,13 +14,16 @@ namespace pareas::lexer {
         SourceLocation loc;
         std::string name;
         UniqueRegexNode regex;
+
+        Token as_token() const;
     };
 
     struct LexicalGrammar {
         std::vector<Lexeme> lexemes;
 
         size_t lexeme_id(const Lexeme* lexeme) const;
-        TokenMapping build_token_mapping() const;
+
+        void add_tokens(TokenMapping& tm) const;
     };
 }
 
