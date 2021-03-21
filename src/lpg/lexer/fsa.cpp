@@ -242,13 +242,20 @@ namespace pareas::lexer {
 
                 // Try to add the transition to the state after the start state.
                 // If no such transition exists, the dfa would end up in a reject state
-                // after this symbol. Just ignore it if so.
+                // after this symbol. In order to correctly generate the invalid token, add
+                // an explicit arc to the reject state, which produces a token.
+                bool reject = true;
                 for (const auto t : this->states[START].transitions) {
                     assert(t.maybe_sym.has_value());
                     if (t.maybe_sym.value() == sym) {
                         this->add_transition(src, t.dst, sym, true);
+                        reject = false;
                         break;
                     }
+                }
+
+                if (reject) {
+                    this->add_transition(src, REJECT, sym, true);
                 }
             }
         }

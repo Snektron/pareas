@@ -14,11 +14,11 @@ let main [n] [m]
             merge_table
             final_state
             grammar.identity_state
-    let tokens =
+    let (tokens, _, _) =
         lexer.lex input lt -- TODO: Check for errors
-    in tokens
-    --     |> filter (!= grammar.token_whitespace)
-    -- in if !(pareas_parser.check tokens) then -1 else
-    -- let parse = pareas_parser.parse tokens
-    -- let parents = pareas_parser.build_parent_vector parse
-    -- in last parents
+        |> filter (\(t, _, _) -> t != grammar.token_whitespace)
+        |> unzip3
+    in if !(pareas_parser.check tokens) then -1 else
+    let parse = pareas_parser.parse tokens
+    let parents = pareas_parser.build_parent_vector parse
+    in last parents
