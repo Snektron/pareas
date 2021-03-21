@@ -31,6 +31,7 @@ let mk_lex_table [n] 'token
     }
 
 -- | Lex the input according to the lexer defined by lex_table.
+-- This function returns an array of (token, start-offset, length).
 let lex [n] [m] 'token (input: [n]u8) (table: lex_table [m] token): [](token, i32, i32) =
     let merge (a: state) (b: state) =
         let a = a & !produces_token_mask
