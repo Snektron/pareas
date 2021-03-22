@@ -32,7 +32,6 @@ let node_instr(node_type: NodeType) (data_type: DataType) (instr_offset: i64) : 
     -- Control flow
     case (#if_stat, _, _) ->            0b0000000_00000_00000_000_00000_1110011 -- TODO
     case (#if_else_stat, _, _) ->       0b0000000_00000_00000_000_00000_1110011 -- TODO
-    case (#else_aux, _, _) ->           0b0000000_00000_00000_000_00000_1110011 -- TODO
     case (#while_stat, _, _) ->         0b0000000_00000_00000_000_00000_1110011 -- TODO
 
     -- Binary integer arithmetic
@@ -111,6 +110,12 @@ let node_instr(node_type: NodeType) (data_type: DataType) (instr_offset: i64) : 
 
 let has_instr (node_type: NodeType) (instr_offset: i64) : bool =
     match(node_type, instr_offset)
+        case (#invalid, 0) -> false
+        case (#statement_list, 0) -> false
+        case (#empty_stat, 0) -> false
+        case (#func_decl, 0) -> false
+        case (#expr_stat, 0) -> false
+        
         case (#lit_expr, 1) -> true
         case (#assign_expr, 1) -> true
         case (_, 0) -> true
@@ -194,7 +199,7 @@ let compile_node [tree_size] [max_vars] (tree: Tree[tree_size]) (symtab: Symtab[
     let node = tree.nodes[node_index] in
     let node_instr = instr_offset[node_index] in
         [
-            get_node_instr node node_instr node_index registers symtab 0,
+            if has_instr node.node_type 0 then get_node_instr node node_instr node_index registers symtab 0 else (-1, -1, EMPTY_INSTR),
             if has_instr node.node_type 1 then get_node_instr node (node_instr+1) node_index registers symtab 1 else (-1, -1, EMPTY_INSTR)
         ]
 

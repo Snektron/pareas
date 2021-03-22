@@ -16,7 +16,6 @@ enum class NodeType {
     EXPR_STAT,
     IF_STAT,
     IF_ELSE_STAT,
-    ELSE_AUX,
     WHILE_STAT,
     FUNC_CALL_EXPR,
     FUNC_CALL_ARG,

@@ -9,7 +9,6 @@ type NodeType =
     #expr_stat |
     #if_stat |
     #if_else_stat |
-    #else_aux |
     #while_stat |
     #func_call_expr |
     #func_call_arg |

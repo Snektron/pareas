@@ -272,8 +272,9 @@ int main(int argc, const char* argv[]) {
         if(!err)
             err = futhark_entry_make_symtab(context.get(), &gpu_symtab, symtab_types.get(), symtab_global.get(), symtab_offsets.get());
 
-        auto instr_offsets = UniqueFPtr<futhark_i64_1d, futhark_free_i64_1d>(context.get(),
-                            futhark_new_i64_1d(context.get(), depth_tree.getInstrOffsets(), depth_tree.maxNodes()));
+        UniqueFPtr<futhark_u32_1d, futhark_free_u32_1d> instr_offsets(context.get());
+        if(!err)
+            err = futhark_entry_make_instr_counts(context.get(), &instr_offsets, gpu_tree.get());
 
         UniqueFPtr<futhark_u32_1d, futhark_free_u32_1d> instr_fut(context.get());
         UniqueFPtr<futhark_i64_1d, futhark_free_i64_1d> rd_fut(context.get());
@@ -290,6 +291,14 @@ int main(int argc, const char* argv[]) {
             std::cerr << "Futhark error: " << (err ? err.get() : "(no diagnostic)") << std::endl;
             return EXIT_FAILURE;
         }
+
+        size_t num_instr_counts = *futhark_shape_u32_1d(context.get(), instr_offsets.get());
+
+        std::unique_ptr<uint32_t[]> instr_offset_buffer(new uint32_t[num_instr_counts]);
+        if(!err)
+            err = futhark_values_u32_1d(context.get(), instr_offsets.get(), instr_offset_buffer.get());
+
+
 
         size_t num_values = *futhark_shape_u32_1d(context.get(), instr_fut.get());
 
@@ -310,9 +319,17 @@ int main(int argc, const char* argv[]) {
             std::cerr << "Futhark error: " << (err ? err.get() : "(no diagnostic)") << std::endl;
             return EXIT_FAILURE;
         }
+
+        std::cout << "Instruction offsets:" << std::endl;
+        for(size_t i = 0; i < num_instr_counts; ++i) {
+            std::cout << i << ": " << instr_offset_buffer[i] << std::endl;
+        }
+
+        std::cout << std::endl << "Instructions:" << std::endl;        
         for(size_t i = 0; i < num_values; ++i) {
             std::cout << i << "\t= " << std::bitset<32>(instr[i]) << " " << rd[i] << " " << rs1[i] << " " << rs2[i] << std::endl;
         }
+
 
         if (opts.profile) {
             auto report = MallocPtr<char>(futhark_context_report(context.get()));

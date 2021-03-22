@@ -19,6 +19,7 @@ dependencies = []
 futhark_sources = [
     'src/datatypes.fut',
     'src/instr.fut',
+    'src/instr_count.fut',
     'src/lisp.fut',
     'src/symtab.fut',
     'src/tree.fut'

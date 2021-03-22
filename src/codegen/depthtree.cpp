@@ -6,6 +6,7 @@
 #include <tuple>
 #include <cstring>
 #include <iostream>
+#include <stack>
 
 DepthTree::DepthTree(size_t max_nodes, ASTNode* node) : max_nodes(max_nodes), max_depth(0) {
     this->node_types = new uint8_t[max_nodes];
@@ -50,27 +51,38 @@ void DepthTree::setElement(size_t idx, ASTNode* node, size_t parent, size_t dept
 }
 
 void DepthTree::construct(ASTNode* node) {
-    std::queue<std::tuple<ASTNode*, size_t, size_t, size_t>> search_queue;
-    search_queue.push(std::tuple<ASTNode*, size_t, size_t, size_t>(node, std::numeric_limits<size_t>::max(), 0, std::numeric_limits<size_t>::max()));
+    std::stack<std::tuple<ASTNode*, size_t, size_t, size_t>> dfs_stack;
+    dfs_stack.push(std::tuple<ASTNode*, size_t, size_t, size_t>(node, std::numeric_limits<size_t>::max(), 0, std::numeric_limits<size_t>::max()));
 
     std::unordered_map<ASTNode*, size_t> idx_map;
 
     size_t i = 0;
-    while(!search_queue.empty()) {
-        auto [n, parent, depth, child_idx] = search_queue.front();
-        search_queue.pop();
-
-        idx_map[n] = i;
-
-        this->setElement(i, n, parent, depth, child_idx);
+    while(!dfs_stack.empty()) {
+        auto [n, parent, depth, child_idx] = dfs_stack.top();
 
         const std::vector<ASTNode*>& children = n->getChildren();
+        
+        bool found = true;
         for(size_t j = 0; j < children.size(); ++j) {
-            ASTNode* c = children[j];
-            search_queue.push(std::tuple<ASTNode*, size_t, size_t, size_t>(c, i, depth + 1, j));
+            if(idx_map.count(children[j]) == 0) {
+                found = false;
+                break;
+            }
         }
 
-        ++i;
+        if(!found) {
+            for(size_t j = children.size(); j > 0; --j) {
+                ASTNode* c = children[j-1];
+                dfs_stack.push(std::tuple<ASTNode*, size_t, size_t, size_t>(c, i, depth + 1, j-1));
+            }
+        }
+        else {
+            idx_map[n] = i;
+
+            this->setElement(i, n, parent, depth, child_idx);
+            ++i;
+            dfs_stack.pop();
+        }
     }
 
     size_t offset = 0;
@@ -95,7 +107,6 @@ void DepthTree::markOffset(ASTNode* node, const std::unordered_map<ASTNode*, siz
         case NodeType::EXPR_STAT:
         case NodeType::IF_STAT:
         case NodeType::IF_ELSE_STAT:
-        case NodeType::ELSE_AUX:
         case NodeType::WHILE_STAT:
         case NodeType::FUNC_CALL_EXPR:
         case NodeType::FUNC_CALL_ARG:
@@ -107,6 +118,7 @@ void DepthTree::markOffset(ASTNode* node, const std::unordered_map<ASTNode*, siz
         case NodeType::GREAT_EXPR:
         case NodeType::LESSEQ_EXPR:
         case NodeType::GREATEQ_EXPR:
+            this->instr_offsets[node_idx] = offset;
             break;
         case NodeType::ADD_EXPR:
         case NodeType::SUB_EXPR:
