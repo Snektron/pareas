@@ -7,6 +7,7 @@ fn_decl -> 'fn' compound_stat;
 
 stat [stat_while] -> 'while' expr compound_stat;
 stat [stat_if] -> 'if' expr compound_stat;
+stat [stat_else] -> 'else' compound_stat; # LL(P) doesn't support else statements otherwise
 stat [stat_expr] -> expr 'semi';
 stat [stat_compound] -> compound_stat;
 
@@ -23,11 +24,13 @@ sum_list [sum_add] -> 'plus' prod sum_list;
 sum_list [sum_sub] -> 'minus' prod sum_list;
 sum_list [sum_end] -> ;
 
-prod -> atom prod_list;
+prod -> unary prod_list;
 
-prod_list [prod_mul] -> 'star' atom prod_list;
-prod_list [prod_div] -> 'slash' atom prod_list;
+prod_list [prod_mul] -> 'star' unary prod_list;
+prod_list [prod_div] -> 'slash' unary prod_list;
 prod_list [prod_end] -> ;
 
-atom [atom_variable] -> 'id';
+unary -> atom;
+
 atom [atom_paren] -> 'lparen' expr 'rparen';
+atom [atom_variable] -> 'id';

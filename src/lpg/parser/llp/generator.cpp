@@ -2,6 +2,7 @@
 
 #include <fmt/ostream.h>
 
+#include <iostream>
 #include <deque>
 #include <algorithm>
 #include <cassert>

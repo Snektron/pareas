@@ -46,7 +46,7 @@ namespace pareas::lexer {
         StateIndex add_state();
 
         void add_transition(StateIndex src, StateIndex dst, std::optional<uint8_t> sym, bool produces_lexeme = false);
-        void add_epsilon_transition(StateIndex src, StateIndex dst);
+        void add_epsilon_transition(StateIndex src, StateIndex dst, bool produces_lexeme = false);
 
         State& operator[](StateIndex state);
         const State& operator[](StateIndex state) const;

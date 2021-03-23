@@ -16,11 +16,12 @@ let main [n] [m]
             grammar.identity_state
     let (tokens, _, _) =
         lexer.lex input lt
-        |> filter (\(t, _, _) -> t != grammar.token_whitespace && t != grammar.token_comment)
+        --  |> filter (\(t, _, _) -> t != grammar.token_whitespace && t != grammar.token_comment)
         |> unzip3
+    in tokens
     -- As the lexer returns an `invalid` token when the input cannot be lexed, which is accepted
     -- by the parser also, pareas_parser.check will fail whenever there is a lexing error.
-    in if !(pareas_parser.check tokens) then -1 else
-    let parse = pareas_parser.parse tokens
-    let parents = pareas_parser.build_parent_vector parse
-    in last parents
+    --  in if !(pareas_parser.check tokens) then -1 else
+    --  let parse = pareas_parser.parse tokens
+    --  let parents = pareas_parser.build_parent_vector parse
+    --  in last parents

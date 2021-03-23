@@ -51,3 +51,6 @@ int_literal = /[0-9]+/
 # Ignored: These should be filtered out before parsing.
 whitespace = /[ \t\r\n]+/
 comment = /\/\/[^\n]*\n/
+
+# Hacks
+binary_minus = /-/ [rparen, id, float_literal, int_literal]

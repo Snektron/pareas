@@ -262,11 +262,23 @@ namespace pareas::lexer {
     }
 
     void FiniteStateAutomaton::build_lexer(const LexicalGrammar* g) {
+        auto end_states = std::unordered_map<const Lexeme*, StateIndex>();
+
         for (const auto& lexeme : g->lexemes) {
             auto regex_start = this->add_state();
-            this->add_epsilon_transition(START, regex_start);
             auto regex_end = lexeme.regex->compile(*this, regex_start);
             this->states[regex_end].lexeme = &lexeme;
+
+            end_states.insert({&lexeme, regex_end});
+
+            if (lexeme.preceded_by.empty()) {
+                this->add_epsilon_transition(START, regex_start);
+            } else {
+                for (const auto* prec : lexeme.preceded_by) {
+                    auto prec_end = end_states.at(prec);
+                    this->add_epsilon_transition(prec_end, regex_start);
+                }
+            }
         }
     }
 }
