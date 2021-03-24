@@ -28,6 +28,15 @@ namespace pareas::lexer {
         return end;
     }
 
+    bool SequenceNode::matches_empty() const {
+        for (const auto& child : this->children) {
+            if (!child->matches_empty())
+                return false;
+        }
+
+        return true;
+    }
+
     void AlternationNode::print(std::ostream& os) const {
         if (this->children.size() == 1) {
             this->children[0]->print(os);
@@ -61,6 +70,15 @@ namespace pareas::lexer {
         return end;
     }
 
+    bool AlternationNode::matches_empty() const {
+        for (const auto& child : this->children) {
+            if (child->matches_empty())
+                return true;
+        }
+
+        return this->children.size() > 0;
+    }
+
     void RepeatNode::print(std::ostream& os) const {
         this->child->print(os);
         fmt::print(os, this->repeat_type == RepeatType::ZERO_OR_MORE ? "*" : "+");
@@ -81,6 +99,15 @@ namespace pareas::lexer {
         return end;
     }
 
+    bool RepeatNode::matches_empty() const {
+        switch (this->repeat_type) {
+            case RepeatType::ZERO_OR_MORE:
+                return true;
+            case RepeatType::ONE_OR_MORE:
+                return this->child->matches_empty();
+        }
+    }
+
     void CharSetNode::print(std::ostream& os) const {
         fmt::print(os, "[{}", this->inverted ? "^" : "");
 
@@ -98,8 +125,7 @@ namespace pareas::lexer {
         auto end = fsa.add_state();
 
         if (this->inverted) {
-            constexpr auto max_sym = std::numeric_limits<FiniteStateAutomaton::Symbol>::max();
-            auto bits = std::bitset<max_sym + 1>();
+            auto bits = std::bitset<FiniteStateAutomaton::MAX_SYM + 1>();
 
             for (const auto [min, max] : this->ranges) {
                 for (int c = min; c <= max; ++c) {
@@ -122,6 +148,21 @@ namespace pareas::lexer {
         return end;
     }
 
+    bool CharSetNode::matches_empty() const {
+        auto bits = std::bitset<FiniteStateAutomaton::MAX_SYM + 1>();
+
+        for (const auto [min, max] : this->ranges) {
+            for (int c = min; c <= max; ++c) {
+                bits.set(c);
+            }
+        }
+
+        if (this->inverted)
+            bits.flip();
+
+        return bits.none();
+    }
+
     void CharNode::print(std::ostream& os) const {
         fmt::print(os, "{:r}", EscapeFormatter{this->c});
     }
@@ -132,9 +173,17 @@ namespace pareas::lexer {
         return end;
     }
 
+    bool CharNode::matches_empty() const {
+        return false;
+    }
+
     void EmptyNode::print(std::ostream& is) const {}
 
     auto EmptyNode::compile(FiniteStateAutomaton& fsa, StateIndex start) const -> StateIndex {
         return start;
+    }
+
+    bool EmptyNode::matches_empty() const {
+        return true;
     }
 }

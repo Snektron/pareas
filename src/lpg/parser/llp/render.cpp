@@ -17,21 +17,6 @@ namespace {
     using namespace pareas::parser;
     using namespace pareas::parser::llp;
 
-    constexpr const static size_t NUM_EXTRA_TOKENS = 2; // start of index and end of index.
-
-    size_t terminal_id(const TokenMapping* tm, const Terminal& terminal) {
-        switch (terminal.type) {
-            case Terminal::Type::USER_DEFINED:
-                return tm->token_id(terminal.name);
-            case Terminal::Type::START_OF_INPUT:
-                return tm->num_tokens();
-            case Terminal::Type::END_OF_INPUT:
-                return tm->num_tokens() + 1;
-            case Terminal::Type::EMPTY:
-                assert(false);
-        }
-    }
-
     struct String {
         int32_t offset;
         int32_t size;
@@ -73,10 +58,6 @@ namespace {
         const std::string& table_type,
         const TokenMapping* tm
     ) {
-        // Multiply by 2 to account for the sign bit
-        size_t offset_bits = pareas::int_bit_width(2 * this->superstring.size());
-
-        fmt::print(out, "module {}_offset = i{}\n", base_name, offset_bits);
         fmt::print(out, "let {}_table_size: i64 = {}\n", base_name, this->superstring.size());
         fmt::print(out, "let {}_table = [", base_name);
 
@@ -86,15 +67,15 @@ namespace {
         }
         fmt::print(out, "] :> [{}_table_size]{}\n", base_name, table_type);
 
-        size_t n_tokens = tm->num_tokens() + NUM_EXTRA_TOKENS;
+        size_t n_tokens = tm->num_tokens();
         auto stringrefs = std::vector<std::vector<String>>(
             n_tokens,
             std::vector<String>(n_tokens, {-1, -1})
         );
 
         for (const auto& [ap, string] : this->strings) {
-            auto i = terminal_id(tm, ap.x);
-            auto j = terminal_id(tm, ap.y);
+            auto i = tm->token_id(ap.x.as_token());
+            auto j = tm->token_id(ap.y.as_token());
             stringrefs[i][j] = string;
         }
 
@@ -118,7 +99,7 @@ namespace {
             fmt::print(out, "]");
         }
 
-        fmt::print(out, "\n] :> [num_table_tokens][num_table_tokens](i{0}, i{0})\n", offset_bits);
+        fmt::print(out, "\n] :> [num_tokens][num_tokens](i{0}, i{0})\n", Renderer::TABLE_OFFSET_BITS);
     }
 }
 
@@ -135,10 +116,6 @@ namespace pareas::parser::llp {
     }
 
     void Renderer::render_futhark(std::ostream& out) const {
-        fmt::print(out, "let num_table_tokens: i64 = {}\n", this->tm->num_tokens() + NUM_EXTRA_TOKENS);
-        fmt::print(out, "let start_of_input_index: i64 = {}\n", terminal_id(this->tm, Terminal::START_OF_INPUT));
-        fmt::print(out, "let end_of_input_index: i64 = {}\n", terminal_id(this->tm, Terminal::END_OF_INPUT));
-
         this->render_productions(out);
         this->render_production_arities(out);
         this->render_stack_change_table(out);

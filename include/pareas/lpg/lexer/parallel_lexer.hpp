@@ -8,6 +8,7 @@
 #include <memory>
 #include <vector>
 #include <limits>
+#include <iosfwd>
 #include <cstdint>
 
 namespace pareas::lexer {
@@ -22,7 +23,7 @@ namespace pareas::lexer {
 
         struct Transition {
             StateIndex result_state;
-            bool produces_token;
+            bool produces_lexeme;
 
             Transition();
         };
@@ -53,15 +54,17 @@ namespace pareas::lexer {
         // if the start state is accepting.
         std::vector<Transition> initial_states;
 
-        // TODO: State to new state table
+        // State pair to new state table
         MergeTable merge_table;
 
-        // ParallelState to token they might produce
-        std::vector<const Token*> final_states;
+        // ParallelState to lexeme they might produce
+        std::vector<const Lexeme*> final_states;
 
         StateIndex identity_state_index;
 
         explicit ParallelLexer(const LexicalGrammar* g);
+
+        void dump_sizes(std::ostream& out) const;
     };
 }
 

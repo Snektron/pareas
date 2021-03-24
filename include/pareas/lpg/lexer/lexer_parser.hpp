@@ -7,6 +7,7 @@
 #include "pareas/lpg/lexer/regex.hpp"
 
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 #include <stdexcept>
 #include <string_view>
@@ -18,17 +19,24 @@ namespace pareas::lexer {
     };
 
     class LexerParser {
+        struct LexemeDefinition {
+            size_t index;
+            std::unordered_set<std::string_view> preceded_by;
+        };
+
         Parser* parser;
 
-        std::vector<Token> tokens;
-        std::unordered_map<std::string_view, SourceLocation> token_definitions;
+        std::vector<Lexeme> lexemes;
+        std::unordered_map<std::string_view, LexemeDefinition> lexeme_definitions;
 
     public:
         LexerParser(Parser* parser);
         LexicalGrammar parse();
 
     private:
-        bool token_decl();
+        bool lexeme_decl();
+        bool precede_list(std::unordered_set<std::string_view>& preceded_by);
+        bool insert_precedes();
     };
 }
 

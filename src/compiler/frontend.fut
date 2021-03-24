@@ -14,10 +14,14 @@ let main [n] [m]
             merge_table
             final_state
             grammar.identity_state
-    let tokens =
-        lexer.lex input lt -- TODO: Check for erro3rs
-    |> filter (!= grammar.token_whitespace)
-    in if !(pareas_parser.check tokens) then -1 else
-    let parse = pareas_parser.parse tokens
-    let parents = pareas_parser.build_parent_vector parse
-    in last parents
+    let (tokens, _, _) =
+        lexer.lex input lt
+        --  |> filter (\(t, _, _) -> t != grammar.token_whitespace && t != grammar.token_comment)
+        |> unzip3
+    in tokens
+    -- As the lexer returns an `invalid` token when the input cannot be lexed, which is accepted
+    -- by the parser also, pareas_parser.check will fail whenever there is a lexing error.
+    --  in if !(pareas_parser.check tokens) then -1 else
+    --  let parse = pareas_parser.parse tokens
+    --  let parents = pareas_parser.build_parent_vector parse
+    --  in last parents

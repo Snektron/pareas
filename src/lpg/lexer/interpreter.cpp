@@ -14,7 +14,7 @@ namespace pareas::lexer {
         for (auto c : input) {
             auto state = this->lexer->initial_states[c];
             states.push_back(state.result_state);
-            if (state.produces_token) {
+            if (state.produces_lexeme) {
                 auto t = this->lexer->final_states[ParallelLexer::START];
                 fmt::print("{}\n", t ? t->name : "(internal error)");
             }
@@ -24,7 +24,7 @@ namespace pareas::lexer {
             auto prev = states[i - 1];
             auto state = this->lexer->merge_table(states[i - 1], states[i]);
             states[i] = state.result_state;
-            if (state.produces_token) {
+            if (state.produces_lexeme) {
                 auto t = this->lexer->final_states[prev];
                 fmt::print("{}\n", t ? t->name : "(internal error)");
             }

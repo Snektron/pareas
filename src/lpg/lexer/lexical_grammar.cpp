@@ -3,16 +3,36 @@
 #include <cassert>
 
 namespace pareas::lexer {
-    size_t LexicalGrammar::token_id(const Token* token) const {
-        assert(token >= this->tokens.data() && token < &this->tokens.data()[this->tokens.size()]);
-        return token - this->tokens.data();
+    Token Lexeme::as_token() const {
+        return {Token::Type::USER_DEFINED, this->name};
     }
 
-    TokenMapping LexicalGrammar::build_token_mapping() const {
-        auto token_ids = TokenIdMap();
-        for (const auto& token : this->tokens) {
-            token_ids.insert({std::string(token.name), this->token_id(&token)});
+    size_t LexicalGrammar::lexeme_id(const Lexeme* lexeme) const {
+        assert(lexeme >= this->lexemes.data() && lexeme < &this->lexemes.data()[this->lexemes.size()]);
+        return lexeme - this->lexemes.data();
+    }
+
+    void LexicalGrammar::add_tokens(TokenMapping& tm) const {
+        tm.insert(Token::INVALID);
+        for (const auto& lexeme : this->lexemes) {
+            tm.insert(lexeme.as_token());
         }
-        return TokenMapping(std::move(token_ids));
+    }
+
+    void LexicalGrammar::validate(ErrorReporter& er) const {
+        // Empty tokens will mess up the lexer, so check here that there are none.
+        // Checking here will allow us to catch all of them at once.
+        bool error = false;
+
+        for (const auto& lexeme : this->lexemes) {
+            if (!lexeme.regex->matches_empty())
+                continue;
+
+            er.error(lexeme.loc, "Lexeme matches the empty string");
+            error = true;
+        }
+
+        if (error)
+            throw LexemeMatchesEmptyError();
     }
 }

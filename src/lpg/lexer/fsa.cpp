@@ -98,21 +98,31 @@ namespace pareas::lexer {
     StateIndex FiniteStateAutomaton::add_state() {
         StateIndex index = this->num_states();
         this->states.push_back({
-            .token = nullptr,
+            .lexeme = nullptr,
             .transitions = {}
         });
         return index;
     }
 
-    void FiniteStateAutomaton::add_transition(StateIndex src, StateIndex dst, std::optional<uint8_t> sym, bool produces_token) {
+    void FiniteStateAutomaton::add_transition(StateIndex src, StateIndex dst, std::optional<uint8_t> sym, bool produces_lexeme) {
         assert(src < this->num_states());
         assert(dst < this->num_states());
 
-        this->states[src].transitions.push_back({sym, dst, produces_token});
+        this->states[src].transitions.push_back({sym, dst, produces_lexeme});
     }
 
-    void FiniteStateAutomaton::add_epsilon_transition(StateIndex src, StateIndex dst) {
-        this->add_transition(src, dst, std::nullopt);
+    void FiniteStateAutomaton::add_epsilon_transition(StateIndex src, StateIndex dst, bool produces_lexeme) {
+        this->add_transition(src, dst, std::nullopt, produces_lexeme);
+    }
+
+    std::optional<StateIndex> FiniteStateAutomaton::find_first_transition_dst(StateIndex src, std::optional<uint8_t> sym) const {
+        for (const auto t : this->states[src].transitions) {
+            if (t.maybe_sym == sym) {
+                return t.dst;
+            }
+        }
+
+        return std::nullopt;
     }
 
     auto FiniteStateAutomaton::operator[](StateIndex state) -> State& {
@@ -131,16 +141,16 @@ namespace pareas::lexer {
         fmt::print(os, "    start -> state{};\n", START);
 
         for (size_t src = 0; src < this->num_states(); ++src) {
-            const auto& [token, transitions] = this->states[src];
+            const auto& [lexeme, transitions] = this->states[src];
             fmt::print(
                 "    state{} [shape=\"{}\", label=\"{}\"];\n",
                 src,
-                token ? "doublecircle" : "circle",
-                token ? token->name : ""
+                lexeme ? "doublecircle" : "circle",
+                lexeme ? lexeme->name : ""
             );
 
-            for (const auto& [maybe_sym, dst, produces_token] : transitions) {
-                auto style = produces_token ? ", color=blue" : "";
+            for (const auto& [maybe_sym, dst, produces_lexeme] : transitions) {
+                auto style = produces_lexeme ? ", color=blue" : "";
 
                 if (maybe_sym.has_value()) {
                     fmt::print("    state{} -> state{} [label=\"{:q}\"{}];\n", src, dst, EscapeFormatter{maybe_sym.value()}, style);
@@ -153,8 +163,7 @@ namespace pareas::lexer {
         fmt::print(os, "}}\n");
     }
 
-    FiniteStateAutomaton FiniteStateAutomaton::to_dfa(const LexicalGrammar* g) const {
-        auto dfa = FiniteStateAutomaton();
+    void FiniteStateAutomaton::to_dfa(const LexicalGrammar* g, FiniteStateAutomaton& dfa, StateIndex nfa_start, StateIndex dfa_start) const {
         auto seen = std::unordered_map<StateSet, StateIndex, StateSet::Hash>();
         auto queue = std::deque<StateSet>();
 
@@ -170,11 +179,11 @@ namespace pareas::lexer {
         };
 
         {
-            auto start_ss = StateSet{{START}};
+            auto start_ss = StateSet{{nfa_start}};
             // Move over all epsilon-transitions
             closure(*this, start_ss);
 
-            seen.insert({start_ss, START});
+            seen.insert({start_ss, dfa_start});
             queue.push_back(start_ss);
         }
 
@@ -199,29 +208,27 @@ namespace pareas::lexer {
             for (auto nfa_index : ss.states) {
                 const auto& nfa_state = this->states[nfa_index];
 
-                if (nfa_state.token && dfa_state.token) {
-                    if (g->token_id(nfa_state.token) < g->token_id(dfa_state.token)) {
-                        dfa_state.token = nfa_state.token;
+                if (nfa_state.lexeme && dfa_state.lexeme) {
+                    if (g->lexeme_id(nfa_state.lexeme) < g->lexeme_id(dfa_state.lexeme)) {
+                        dfa_state.lexeme = nfa_state.lexeme;
                     }
-                } else if (nfa_state.token) {
-                    dfa_state.token = nfa_state.token;
+                } else if (nfa_state.lexeme) {
+                    dfa_state.lexeme = nfa_state.lexeme;
                 }
             }
         }
-
-        return dfa;
     }
 
     void FiniteStateAutomaton::add_lexer_loop() {
         for (size_t src = 0; src < this->num_states(); ++src) {
             auto& state = this->states[src];
-            if (!state.token)
+            if (!state.lexeme)
                 continue;
 
             // For all characters that aren't in an outgoing edge of the final state, add
             // a new edge by looking up where it goes from the start node.
 
-            auto outgoing = std::bitset<std::numeric_limits<Symbol>::max() + 1>();
+            auto outgoing = std::bitset<MAX_SYM + 1>();
             for (auto& t : state.transitions) {
                 assert(t.maybe_sym.has_value()); // Not a DFA.
                 assert(!outgoing.test(t.maybe_sym.value())); // Not a DFA.
@@ -233,7 +240,7 @@ namespace pareas::lexer {
                     continue;
 
                 // Look up where this edge goes from the start state
-                // careful though, was `src` might _be_ the start state
+                // careful though, as `src` might _be_ the start state
                 // in this case, we should add an edge to itself.
                 if (src == START) {
                     this->add_transition(src, src, sym, true);
@@ -242,24 +249,151 @@ namespace pareas::lexer {
 
                 // Try to add the transition to the state after the start state.
                 // If no such transition exists, the dfa would end up in a reject state
-                // after this symbol. Just ignore it if so.
+                // after this symbol. In order to correctly generate the invalid token, add
+                // an explicit arc to the reject state, which produces a token.
+                bool reject = true;
                 for (const auto t : this->states[START].transitions) {
                     assert(t.maybe_sym.has_value());
                     if (t.maybe_sym.value() == sym) {
                         this->add_transition(src, t.dst, sym, true);
+                        reject = false;
                         break;
                     }
+                }
+
+                if (reject) {
+                    this->add_transition(src, REJECT, sym, true);
                 }
             }
         }
     }
 
     void FiniteStateAutomaton::build_lexer(const LexicalGrammar* g) {
-        for (const auto& token : g->tokens) {
+        auto end_states = std::unordered_map<const Lexeme*, StateIndex>();
+
+        for (const auto& lexeme : g->lexemes) {
             auto regex_start = this->add_state();
-            this->add_epsilon_transition(START, regex_start);
-            auto regex_end = token.regex->compile(*this, regex_start);
-            this->states[regex_end].token = &token;
+            auto regex_end = lexeme.regex->compile(*this, regex_start);
+            this->states[regex_end].lexeme = &lexeme;
+
+            end_states.insert({&lexeme, regex_end});
+
+            if (lexeme.preceded_by.empty()) {
+                this->add_epsilon_transition(START, regex_start);
+            } else {
+                for (const auto* prec : lexeme.preceded_by) {
+                    auto prec_end = end_states.at(prec);
+                    this->add_epsilon_transition(prec_end, regex_start, true);
+                }
+            }
         }
+    }
+
+    FiniteStateAutomaton FiniteStateAutomaton::build_lexer_dfa(const LexicalGrammar* g) {
+        auto nfa = FiniteStateAutomaton();
+
+        auto succ_nfa_roots = std::unordered_map<const Lexeme*, StateIndex>();
+        for (const auto& lexeme : g->lexemes) {
+            auto regex_start = nfa.add_state();
+            auto regex_end = lexeme.regex->compile(nfa, regex_start);
+            nfa.states[regex_end].lexeme = &lexeme;
+
+            if (lexeme.preceded_by.empty()) {
+                // If there is no list of lexemes this lexeme should be preceded by, it is connected
+                // to the start state.
+                nfa.add_epsilon_transition(START, regex_start);
+                continue;
+            }
+
+            // Otherwise, add a new root for each of the 'preceeded by' tokens for this lexeme.
+            // We are going to add it to each of them separately to avoid conflicts with
+            // lexical grammars like:
+            //
+            // a = /a/
+            // b = /b/
+            // c = /c/
+            // d = /d/ [a, b]
+            // e = /e/ [b, c]
+
+            for (const auto* prec : lexeme.preceded_by) {
+                auto it = succ_nfa_roots.find(prec);
+                if (it == succ_nfa_roots.end()) {
+                    it = succ_nfa_roots.insert({prec, nfa.add_state()}).first;
+                }
+
+                auto root = it->second;
+                nfa.add_epsilon_transition(root, regex_start);
+            }
+        }
+
+        // Convert the NFA into a DFA, for each root (including start).
+        auto dfa = FiniteStateAutomaton();
+
+        // First do the nfa start state. This should attach to the DFA's start state.
+        nfa.to_dfa(g, dfa, START, START);
+
+        // Handle each of the successor roots.
+        auto succ_dfa_roots = std::unordered_map<const Lexeme*, StateIndex>();
+        for (const auto [lexeme, nfa_root] : succ_nfa_roots) {
+            auto dfa_root = dfa.add_state();
+            succ_dfa_roots.insert({lexeme, dfa_root});
+
+            nfa.to_dfa(g, dfa, nfa_root, dfa_root);
+        }
+
+        // Now its time to add the lexer loop. For each symbol of each final state that does
+        // not already have an outgoing transition, add a new transition by looking up where
+        // it goes from the start state. If the lexeme in this final state appears in succ_dfa_roots,
+        // look up where it goes from there instead.
+
+        for (size_t src = 0; src < dfa.num_states(); ++src) {
+            auto& state = dfa.states[src];
+            if (!state.lexeme)
+                continue;
+
+            // Empty tokens are not allowed, as this could require the lexer to generate two tokens on a transition.
+            // It should be filtered out using LexicalGrammar::validate.
+            assert(src != START);
+
+            auto outgoing = std::bitset<MAX_SYM + 1>();
+            for (auto& t : state.transitions) {
+                assert(t.maybe_sym.has_value()); // Not a DFA.
+                assert(!outgoing.test(t.maybe_sym.value())); // Not a DFA.
+                outgoing.set(t.maybe_sym.value());
+            }
+
+            for (size_t sym = 0; sym < outgoing.size(); ++sym) {
+                if (outgoing.test(sym))
+                    continue;
+
+                // Add a successor edge if required.
+                auto it = succ_dfa_roots.find(state.lexeme);
+                if (it != succ_dfa_roots.end()) {
+                    // Look up where it goes from the successor root.
+                    auto root = it->second;
+                    auto maybe_dst = dfa.find_first_transition_dst(root, sym);
+                    if (maybe_dst.has_value()) {
+                        dfa.add_transition(src, maybe_dst.value(), sym, true);
+                        continue;
+                    }
+                }
+
+                // If there was no successor edge, try the start node.
+
+                auto maybe_dst = dfa.find_first_transition_dst(START, sym);
+                if (maybe_dst.has_value()) {
+                    dfa.add_transition(src, maybe_dst.value(), sym, true);
+                    continue;
+                }
+
+                // If neither such transition exists, the dfa would end up in a reject state
+                // after this symbol. In order to correctly generate the invalid token, add
+                // an explicit arc to the reject state, which produces a token.
+
+                dfa.add_transition(src, REJECT, sym, true);
+            }
+        }
+
+        return dfa;
     }
 }
