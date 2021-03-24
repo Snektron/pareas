@@ -19,6 +19,7 @@ namespace pareas::lexer {
         SourceLocation loc;
         std::string name;
         UniqueRegexNode regex;
+        std::vector<const Lexeme*> preceded_by; // Should be unique
 
         Token as_token() const;
     };
