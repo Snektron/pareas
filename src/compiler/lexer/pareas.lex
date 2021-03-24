@@ -31,8 +31,8 @@ gt = />/
 gte = />=/
 lt = /</
 lte = /<=/
-exclam = /!/
-tilde = /~/
+exclam = /!/ #
+tilde = /~/ #
 semi = /;/
 
 # The parser cannot differ between unary and binary minus, as it accepts a subset of LL.
