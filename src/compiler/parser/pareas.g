@@ -21,7 +21,7 @@ expr -> sum;
 sum -> prod sum_list;
 
 sum_list [sum_add] -> 'plus' prod sum_list;
-sum_list [sum_sub] -> 'minus' prod sum_list;
+sum_list [sum_sub] -> 'binary_minus' prod sum_list;
 sum_list [sum_end] -> ;
 
 prod -> unary prod_list;
@@ -30,7 +30,9 @@ prod_list [prod_mul] -> 'star' unary prod_list;
 prod_list [prod_div] -> 'slash' unary prod_list;
 prod_list [prod_end] -> ;
 
-unary -> atom;
+unary [unary_neg] -> 'unary_minus' unary;
+unary [unary_bitflip] -> 'tilde' unary;
+unary [unary_atom] -> atom;
 
 atom [atom_paren] -> 'lparen' expr 'rparen';
 atom [atom_variable] -> 'id';

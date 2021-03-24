@@ -108,10 +108,13 @@ namespace pareas::lexer {
     }
 
     ParallelLexer::ParallelLexer(const LexicalGrammar* g) {
-        auto nfa = FiniteStateAutomaton();
-        nfa.build_lexer(g);
-        auto dfa = nfa.to_dfa(g);
-        dfa.add_lexer_loop();
+        // auto nfa = FiniteStateAutomaton();
+        // nfa.build_lexer(g);
+        // auto dfa = FiniteStateAutomaton();
+        // nfa.to_dfa(g, dfa, START, START);
+        // dfa.add_lexer_loop();
+
+        auto dfa = FiniteStateAutomaton::build_lexer_dfa(g);
 
         auto seen = std::unordered_map<ParallelState, StateIndex, ParallelState::Hash>();
         auto states = std::vector<ParallelState>();
