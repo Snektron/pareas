@@ -57,10 +57,6 @@ namespace pareas::lexer {
 
         void to_dfa(const LexicalGrammar* g, FiniteStateAutomaton& dfa, StateIndex nfa_start, StateIndex dfa_start) const;
 
-        void add_lexer_loop();
-
-        void build_lexer(const LexicalGrammar* g);
-
         static FiniteStateAutomaton build_lexer_dfa(const LexicalGrammar* g);
     };
 }

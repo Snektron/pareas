@@ -1,4 +1,8 @@
-#include <futhark-generated.h>
+#include "futhark-generated.h"
+
+#include <fmt/format.h>
+#include <fmt/ostream.h>
+
 #include <iostream>
 #include <string_view>
 #include <memory>
@@ -6,9 +10,6 @@
 #include <cstdlib>
 #include <cstdint>
 #include <cstring>
-
-#include <fmt/format.h>
-#include <fmt/ostream.h>
 
 struct Options {
     const char* input_path;
@@ -35,7 +36,8 @@ void print_usage(const char* progname) {
         "-d --debug                  Enable Futhark debug logging.\n"
     #if defined(FUTHARK_BACKEND_multicore)
         "Available backend options:\n"
-        "-t --threads <amount>      Set the maximum number of threads that may be used.\n"
+        "-t --threads <amount>       Set the maximum number of threads that may be used\n"
+        "                            (default: amount of cores).\n"
     #elif defined(FUTHARK_BACKEND_opencl) || defined(FUTHARK_BACKEND_cuda)
         "Available backend options:\n"
         "--device <name>             Select the device that kernels are executed on. Any\n"

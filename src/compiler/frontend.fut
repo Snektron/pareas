@@ -6,8 +6,6 @@ module pareas_parser = parser g
 type production = g.production.t
 
 let list_end_productions = [
-    g.production_program_end,
-    g.production_stat_list_end,
     g.production_logical_or_end,
     g.production_logical_and_end,
     g.production_rela_end,
@@ -22,11 +20,11 @@ let list_end_productions = [
 --   / \
 --  A   sum_add
 --     / \
---    C   sum_add
+--    B   sum_add
 --       / \
---      D   sum_end
+--      C   sum_end
 -- We are going to remove the ends by transforming the lists into
---    sum
+--    sum_add
 --   / \
 --  A   sum_add
 --     / \

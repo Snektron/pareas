@@ -108,12 +108,6 @@ namespace pareas::lexer {
     }
 
     ParallelLexer::ParallelLexer(const LexicalGrammar* g) {
-        // auto nfa = FiniteStateAutomaton();
-        // nfa.build_lexer(g);
-        // auto dfa = FiniteStateAutomaton();
-        // nfa.to_dfa(g, dfa, START, START);
-        // dfa.add_lexer_loop();
-
         auto dfa = FiniteStateAutomaton::build_lexer_dfa(g);
 
         auto seen = std::unordered_map<ParallelState, StateIndex, ParallelState::Hash>();
@@ -142,7 +136,7 @@ namespace pareas::lexer {
             }
 
             this->initial_states.resize(initial_states.size());
-            for (int sym = 0; sym < initial_states.size(); ++sym) {
+            for (size_t sym = 0; sym < initial_states.size(); ++sym) {
                 auto& state = initial_states[sym];
                 this->initial_states[sym].produces_lexeme = state.transitions[START].produces_lexeme;
                 this->initial_states[sym].result_state = enqueue(std::move(state));
