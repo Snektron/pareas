@@ -44,8 +44,21 @@ let node_type_counts (t: NodeType) : u32 =
 let node_counts (n: Node) =
     node_type_counts n.node_type
 
+let instr_count_fix (node: Node) (instr_offset: u32) =
+    if node.node_type == #invalid then
+        0xFFFFFFFF
+    else
+        instr_offset
+
 let instr_count [max_nodes] (tree: Tree[max_nodes]) =
     map node_counts tree.nodes |>
         scan (+) 0 |>
         rotate (-1) |>
-        map2 (\i x -> if i == 0 then 0 else x) (iota max_nodes)
+        map2 (\i x -> if i == 0 then 0 else x) (iota max_nodes) |>
+        map2 instr_count_fix tree.nodes
+
+let get_function_table [max_nodes] (tree: Tree[max_nodes]) (instr_count: [max_nodes]u32) =
+    iota max_nodes |>
+        filter (\i -> tree.nodes[i].node_type == #func_decl) |>
+        map (\i -> (tree.nodes[i].node_data, instr_count[i])) |>
+        unzip2

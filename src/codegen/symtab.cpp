@@ -26,6 +26,15 @@ uint32_t SymbolTable::declareSymbol(const std::string& name, DataType type, bool
     return id;
 }
 
+uint32_t SymbolTable::declareFunction(const std::string& name, DataType type) {
+    if(this->func_id_map.count(name) > 0)
+        throw ParseException("Redeclaration of function ", name);
+    uint32_t id = this->func_id_map.size();
+    this->func_id_map[name] = id;
+
+    return id;
+}
+
 Symbol SymbolTable::resolveSymbol(const std::string& name) const {
     if(this->id_map.count(name) == 0)
         throw ParseException("Use of undeclared symbol ", name);

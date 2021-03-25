@@ -1,3 +1,9 @@
-a <- int = 2;
-b <- int = 3;
-c <- int = a * b;
+function a() <- int {
+    a <- int = 2;
+    b <- int = 3;
+    c <- int = a * b;
+}
+
+function b() <- float {
+    d <- int = 3;
+}

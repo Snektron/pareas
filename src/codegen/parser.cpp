@@ -190,6 +190,58 @@ ASTNode* Parser::parseStatementList() {
     return new ASTNode(NodeType::STATEMENT_LIST, node_list);
 }
 
+ASTNode* Parser::parseFunction() {
+    this->expect(TokenType::FUNCTION);
+
+    Token id = this->lexer.lex();
+    if(id.type != TokenType::ID)
+        throw ParseException("Parsing failed, unexpected token ", id, ", expecting identifier");
+
+    this->expect(TokenType::OPEN_PAR);
+    this->expect(TokenType::CLOSE_PAR);
+    this->expect(TokenType::DECL);
+
+    DataType return_type;
+    Token type = this->lexer.lex();
+    switch(type.type) {
+        case TokenType::INT:
+            return_type = DataType::INT;
+            break;
+        case TokenType::FLOAT:
+            return_type = DataType::FLOAT;
+            break;
+        default:
+            throw ParseException("Parsing failed, unexpected token ", id, ", expecting typename");
+    }
+
+    uint32_t symbol_id = this->symtab.declareFunction(id.str, return_type);
+    this->symtab.newFunction();
+
+    this->expect(TokenType::OPEN_CB);
+    std::unique_ptr<ASTNode> function_body(this->parseStatementList());
+    this->expect(TokenType::CLOSE_CB);
+
+    return new ASTNode(NodeType::FUNC_DECL, return_type, symbol_id, {function_body.release()});
+}
+
+ASTNode* Parser::parseFunctionList() {
+    Token id = this->lexer.lookahead();
+    std::vector<std::unique_ptr<ASTNode>> nodes;
+    while(id.type == TokenType::FUNCTION) {
+        nodes.emplace_back(this->parseFunction());
+        id = this->lexer.lookahead();
+    }
+
+    std::vector<ASTNode*> result;
+    for(size_t i = 0; i < nodes.size(); ++i)
+        result.push_back(nodes[i].release());
+
+    return new ASTNode(NodeType::STATEMENT_LIST, result);
+}
+
 ASTNode* Parser::parse() {
-    return this->parseStatementList();
+    std::unique_ptr<ASTNode> result(this->parseFunctionList());
+
+    this->expect(TokenType::END_OF_FILE);
+    return result.release();
 }

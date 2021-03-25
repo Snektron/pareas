@@ -92,6 +92,9 @@ entry make_tree (max_depth: u32) (node_types: [MAX_NODES]u8) (data_types: [MAX_N
 entry make_instr_counts (tree: Tree[MAX_NODES]) =
     instr_count tree
 
+entry make_function_table (tree: Tree[MAX_NODES]) (instr_offset: [MAX_NODES]u32) =
+    get_function_table tree instr_offset
+
 let split_instr (instr: Instr) =
     (instr.instr, instr.rd, instr.rs1, instr.rs2)
 

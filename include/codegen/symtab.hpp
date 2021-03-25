@@ -21,6 +21,7 @@ class SymbolTable {
         size_t max_vars;
 
         std::unordered_map<std::string, uint32_t> id_map;
+        std::unordered_map<std::string, uint32_t> func_id_map;
 
         uint8_t* data_types;
         bool* globals;
@@ -30,6 +31,7 @@ class SymbolTable {
         ~SymbolTable();
 
         uint32_t declareSymbol(const std::string&, DataType, bool = false);
+        uint32_t declareFunction(const std::string&, DataType);
         Symbol resolveSymbol(const std::string&) const;
 
         void newFunction();

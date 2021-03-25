@@ -56,6 +56,18 @@ sources = [
     'src/main.cpp'
 ]
 
+# Test executable
+test_sources = [
+    'src/test/coderenderer.cpp',
+    'src/test/idcreaterenderstate.cpp',
+    'src/test/indentrenderstate.cpp',
+    'src/test/noderenderstate.cpp',
+    'src/test/repeatrenderstate.cpp',
+    'src/test/scoperenderstate.cpp',
+    'src/test/textrenderstate.cpp',
+    'src/test/testgen.cpp'
+]
+
 executable(
     'pareas',
     [sources, futhark_generated],
@@ -63,4 +75,12 @@ executable(
     build_by_default: true,
     dependencies: dependencies,
     include_directories: [include_directories('src'), include_directories('include')],
+)
+
+executable(
+    'pareas-testgen',
+    test_sources,
+    install: true,
+    build_by_default: true,
+    include_directories: [include_directories('src'), include_directories('include')]
 )

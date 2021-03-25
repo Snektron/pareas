@@ -61,6 +61,7 @@ class ASTNode {
         ASTNode(NodeType, const std::vector<ASTNode*>&);
         ASTNode(NodeType, DataType, const std::vector<ASTNode*>&);
         ASTNode(NodeType, DataType, uint32_t);
+        ASTNode(NodeType, DataType, uint32_t, const std::vector<ASTNode*>&);
         ~ASTNode();
 
         inline NodeType getType() const {

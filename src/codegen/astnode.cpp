@@ -11,7 +11,6 @@ const char* NODE_NAMES[] = {
     "expression statement",
     "if statement",
     "if-else statement",
-    "else auxiliary",
     "while statement",
     "function call expression",
     "function call argument",
@@ -49,6 +48,7 @@ ASTNode::ASTNode(NodeType type) : type(type) {}
 ASTNode::ASTNode(NodeType type, const std::vector<ASTNode*>& children) : type(type), children(children) {}
 ASTNode::ASTNode(NodeType type, DataType return_type, uint32_t integer) : type(type), return_type(return_type), integer(integer) {}
 ASTNode::ASTNode(NodeType type, DataType return_type, const std::vector<ASTNode*>& children) : type(type), return_type(return_type), children(children) {}
+ASTNode::ASTNode(NodeType type, DataType return_type, uint32_t integer, const std::vector<ASTNode*>& children) : type(type), return_type(return_type), children(children), integer(integer) {}
 
 ASTNode::~ASTNode() {
     for(size_t i = 0; i < this->children.size(); ++i)
@@ -63,6 +63,7 @@ void ASTNode::print(std::ostream& os, size_t level) const {
     os << this->return_type;
 
     switch(this->type) {
+        case NodeType::FUNC_DECL:
         case NodeType::LIT_EXPR:
         case NodeType::ID_EXPR:
         case NodeType::DECL_EXPR:

@@ -91,6 +91,8 @@ Token Lexer::next_id() {
         return Token(TokenType::INT);
     else if(s == "float")
         return Token(TokenType::FLOAT);
+    else if(s == "function")
+        return Token(TokenType::FUNCTION);
     else
         return Token(TokenType::ID, s);
 }

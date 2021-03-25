@@ -39,6 +39,7 @@ const char* TOKEN_NAMES[] = {
     "while",
     "int",
     "float",
+    "function",
 
     "integer",
     "identifier"

@@ -22,6 +22,8 @@ class Parser {
         ASTNode* parseExpression();
         ASTNode* parseExpressionStatement();
         ASTNode* parseStatementList();
+        ASTNode* parseFunction();
+        ASTNode* parseFunctionList();
     public:
         Parser(Lexer&, SymbolTable&);
 

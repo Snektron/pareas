@@ -42,6 +42,7 @@ enum class TokenType {
     WHILE,
     INT,
     FLOAT,
+    FUNCTION,
 
     INTEGER,
     ID
