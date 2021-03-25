@@ -5,6 +5,9 @@ program [program_end] -> ;
 
 fn_decl -> 'fn' compound_stat;
 
+type -> 'id';
+
+# Statements
 stat [stat_while] -> 'while' expr compound_stat;
 stat [stat_if] -> 'if' expr compound_stat;
 stat [stat_else] -> 'else' compound_stat; # LL(P) doesn't support else statements otherwise
@@ -16,6 +19,7 @@ compound_stat -> 'lbrace' stat_list 'rbrace';
 stat_list -> stat stat_list;
 stat_list [stat_list_end] -> ;
 
+# Expressions
 expr -> logical_or;
 
 logical_or -> rela logical_or_list;
@@ -36,6 +40,7 @@ rela_list [rela_gt] -> 'gt' bitwise rela_list;
 rela_list [rela_gte] -> 'gte' bitwise rela_list;
 rela_list [rela_lt] -> 'lt' bitwise rela_list;
 rela_list [rela_lte] -> 'lte' bitwise rela_list;
+rela_list [rela_end] -> ;
 
 bitwise -> shift bitwise_list;
 
