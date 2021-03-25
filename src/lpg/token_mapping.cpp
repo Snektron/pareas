@@ -64,34 +64,11 @@ namespace pareas {
         fmt::print(out, "let num_tokens: i64 = {}\n", this->num_tokens());
     }
 
-    void TokenMapping::render_cpp_header(std::ostream& out) const {
-        fmt::print(out, "    enum class Token : uint{}_t {{\n", this->backing_type_bits());
+    void TokenMapping::render_cpp(std::ostream& hpp_out, std::ostream& cpp_out) const {
+        fmt::print(hpp_out, "    enum class Token : uint{}_t {{\n", this->backing_type_bits());
 
-        // Render the tokens nice and ordered.
-        auto tokens_ordered = std::vector<const Token*>(this->num_tokens());
-        for (const auto& [token, id] : this->tokens)
-            tokens_ordered[id] = &token;
-
-        for (size_t id = 0; id < tokens_ordered.size(); ++id) {
-            auto name = tokens_ordered[id]->name;
-            std::transform(name.begin(), name.end(), name.begin(), ::toupper);
-
-            fmt::print(
-                out,
-                "        {}{} = {},\n",
-                tokens_ordered[id]->type == Token::Type::USER_DEFINED ? "" : "SPECIAL_",
-                name,
-                id
-            );
-        }
-
-        fmt::print(out, "    }};\n");
-        fmt::print(out, "    const char* token_name(Token t);\n");
-    }
-
-    void TokenMapping::render_cpp_source(std::ostream& out) const {
         fmt::print(
-            out,
+            cpp_out,
             "const char* token_name(Token t) {{\n"
             "    switch (t) {{\n"
         );
@@ -106,7 +83,15 @@ namespace pareas {
             std::transform(name.begin(), name.end(), name.begin(), ::toupper);
 
             fmt::print(
-                out,
+                hpp_out,
+                "        {}{} = {},\n",
+                tokens_ordered[id]->type == Token::Type::USER_DEFINED ? "" : "SPECIAL_",
+                name,
+                id
+            );
+
+            fmt::print(
+                cpp_out,
                 "        case Token::{}{}: return \"{}\";\n",
                 tokens_ordered[id]->type == Token::Type::USER_DEFINED ? "" : "SPECIAL_",
                 name,
@@ -115,6 +100,9 @@ namespace pareas {
             );
         }
 
-        fmt::print(out, "    }}\n}}\n");
+        fmt::print(hpp_out, "    }};\n");
+        fmt::print(hpp_out, "    const char* token_name(Token t);\n");
+
+        fmt::print(cpp_out, "    }}\n}}\n");
     }
 }

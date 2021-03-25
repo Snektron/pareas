@@ -280,13 +280,13 @@ int main(int argc, char* argv[]) {
     if (!futhark_out)
         return EXIT_FAILURE;
 
-    auto cpp_header_out = std::ofstream();
-    if (opts.cpp && !(cpp_header_out = open_output(opts.output, ".hpp"))) {
+    auto hpp_out = std::ofstream();
+    if (opts.cpp && !(hpp_out = open_output(opts.output, ".hpp"))) {
         return EXIT_FAILURE;
     }
 
-    auto cpp_source_out = std::ofstream();
-    if (opts.cpp && !(cpp_source_out = open_output(opts.output, ".cpp"))) {
+    auto cpp_out = std::ofstream();
+    if (opts.cpp && !(cpp_out = open_output(opts.output, ".cpp"))) {
         return EXIT_FAILURE;
     }
 
@@ -297,7 +297,7 @@ int main(int argc, char* argv[]) {
         std::transform(namespace_upper.begin(), namespace_upper.end(), namespace_upper.begin(), ::toupper);
 
         fmt::print(
-            cpp_header_out,
+            hpp_out,
             "#ifndef _{0}_HPP\n"
             "#define _{0}_HPP\n"
             "\n"
@@ -308,8 +308,7 @@ int main(int argc, char* argv[]) {
             opts.cpp
         );
 
-        tm.render_cpp_header(cpp_header_out);
-        tm.render_cpp_source(cpp_source_out);
+        tm.render_cpp(hpp_out, cpp_out);
     }
 
     if (lexer.has_value()) {
@@ -332,13 +331,12 @@ int main(int argc, char* argv[]) {
         renderer.render_futhark(futhark_out);
 
         if (opts.cpp) {
-            renderer.render_cpp_header(cpp_header_out);
-            renderer.render_cpp_source(cpp_source_out);
+            renderer.render_cpp(hpp_out, cpp_out);
         }
     }
 
     if (opts.cpp) {
-        fmt::print(cpp_header_out, "}}\n#endif\n");
+        fmt::print(hpp_out, "}}\n#endif\n");
     }
 
     return EXIT_SUCCESS;

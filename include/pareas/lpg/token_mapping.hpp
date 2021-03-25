@@ -41,8 +41,7 @@ namespace pareas {
         size_t num_tokens() const;
 
         void render_futhark(std::ostream& out) const;
-        void render_cpp_header(std::ostream& out) const;
-        void render_cpp_source(std::ostream& out) const;
+        void render_cpp(std::ostream& hpp_out, std::ostream& cpp_out) const;
     };
 }
 

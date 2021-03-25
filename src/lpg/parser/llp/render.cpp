@@ -122,37 +122,28 @@ namespace pareas::parser::llp {
         this->render_parse_table(out);
     }
 
-    void Renderer::render_cpp_header(std::ostream& out) const {
+    void Renderer::render_cpp(std::ostream& hpp_out, std::ostream& cpp_out) const {
         auto n = this->g->productions.size();
         auto bits = pareas::int_bit_width(n);
 
-        fmt::print(out, "    enum class Production : uint{}_t {{\n", bits);
+        fmt::print(hpp_out, "    enum class Production : uint{}_t {{\n", bits);
+        fmt::print(
+            cpp_out,
+            "const char* production_name(Production p) {{\n"
+            "    switch (p) {{\n"
+        );
 
         for (size_t i = 0; i < n; ++i) {
             const auto& prod = this->g->productions[i];
             auto tag = prod.tag;
             std::transform(tag.begin(), tag.end(), tag.begin(), ::toupper);
-            fmt::print(out, "        {} = {}\n", tag, i);
+            fmt::print(hpp_out, "        {} = {}\n", tag, i);
+            fmt::print(cpp_out, "        case {}: return \"{}\";\n", tag, prod.tag);
         }
 
-        fmt::print(out, "    }};\n");
-        fmt::print(out, "    const char* production_name(Production p);\n");
-    }
-
-    void Renderer::render_cpp_source(std::ostream& out) const {
-        fmt::print(
-            out,
-            "const char* production_name(Production p) {{\n"
-            "    switch (p) {{\n"
-        );
-
-        for (const auto& prod : this->g->productions) {
-            auto tag = prod.tag;
-            std::transform(tag.begin(), tag.end(), tag.begin(), ::toupper);
-            fmt::print(out, "        case {}: return \"{}\";\n", tag, prod.tag);
-        }
-
-        fmt::print(out, "    }}\n}}\n");
+        fmt::print(hpp_out, "    }};\n");
+        fmt::print(hpp_out, "    const char* production_name(Production p);\n");
+        fmt::print(cpp_out, "    }}\n}}\n");
     }
 
     size_t Renderer::bracket_id(const Symbol& sym, bool left) const {

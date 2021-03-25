@@ -22,8 +22,7 @@ namespace pareas::parser::llp {
 
         Renderer(const TokenMapping* tm, const Grammar* g, const ParsingTable* pt);
         void render_futhark(std::ostream& out) const;
-        void render_cpp_header(std::ostream& out) const;
-        void render_cpp_source(std::ostream& out) const;
+        void render_cpp(std::ostream& hpp_out, std::ostream& cpp_out) const;
 
     private:
         size_t bracket_id(const Symbol& sym, bool left) const;
