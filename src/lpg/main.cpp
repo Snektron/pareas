@@ -32,6 +32,7 @@ namespace {
         const char* parser_src;
         const char* lexer_src;
         const char* output;
+        const char* cpp;
         bool verbose_lexer;
         bool verbose_grammar;
         bool verbose_sets;
@@ -49,6 +50,8 @@ namespace {
             "--parser <grammar.llpg>     Generate a parser from <grammar.llpg>.\n"
             "--lexer <lexer.lex>         Generate a lexer from <lexer.lex>.\n"
             "-o --output <path>          Basename of generated output files.\n"
+            "--cpp <namespace>           Also emit c++ definitions for tokens and\n"
+            "                            productions, which will be placed in <namespace>.\n"
             "--verbose-lexer             Dump sizes of lexer tables.\n"
             "--verbose-grammar           Dump parsed grammar to stderr.\n"
             "--verbose-sets              Dump first/last/follow/before sets to stderr.\n"
@@ -62,11 +65,12 @@ namespace {
         );
     }
 
-    bool parse_options(Options& opts, int argc, const char* argv[]) {
+    bool parse_options(Options& opts, int argc, char* argv[]) {
         opts = {
             .parser_src = nullptr,
             .lexer_src = nullptr,
             .output = nullptr,
+            .cpp = nullptr,
             .verbose_lexer = false,
             .verbose_grammar = false,
             .verbose_sets = false,
@@ -91,6 +95,9 @@ namespace {
             } else if (arg == "-o" || arg == "--output") {
                 ptr = &opts.output;
                 argname = "path";
+            } else if (arg == "--cpp") {
+                ptr = &opts.cpp;
+                argname = "namespace";
             } else if (arg == "--verbose-lexer") {
                 opts.verbose_lexer = true;
             } else if (arg == "--verbose-grammar") {
@@ -145,14 +152,13 @@ namespace {
         return std::string(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
     }
 
-    std::optional<std::ofstream> open_output(const char* basename, const char* ext) {
+    std::ofstream open_output(const char* basename, const char* ext) {
         auto filename = std::string(basename);
         filename.append(ext);
 
         auto out = std::ofstream(filename, std::ios::binary);
         if (!out) {
             fmt::print(std::cerr, "Error: Failed to create output file '{}'\n", filename);
-            return std::nullopt;
         }
         return out;
     }
@@ -252,7 +258,7 @@ namespace {
     }
 }
 
-int main(int argc, const char* argv[]) {
+int main(int argc, char* argv[]) {
     Options opts;
     if (!parse_options(opts, argc, argv)) {
         fmt::print(std::cerr, "See '{} --help' for usage\n", argv[0]);
@@ -271,29 +277,68 @@ int main(int argc, const char* argv[]) {
         return EXIT_FAILURE;
 
     auto futhark_out = open_output(opts.output, ".fut");
-    if (!futhark_out.has_value())
+    if (!futhark_out)
         return EXIT_FAILURE;
 
-    tm.render_futhark(futhark_out.value());
+    auto cpp_header_out = std::ofstream();
+    if (opts.cpp && !(cpp_header_out = open_output(opts.output, ".hpp"))) {
+        return EXIT_FAILURE;
+    }
+
+    auto cpp_source_out = std::ofstream();
+    if (opts.cpp && !(cpp_source_out = open_output(opts.output, ".cpp"))) {
+        return EXIT_FAILURE;
+    }
+
+    tm.render_futhark(futhark_out);
+
+    if (opts.cpp) {
+        auto namespace_upper = std::string(opts.cpp);
+        std::transform(namespace_upper.begin(), namespace_upper.end(), namespace_upper.begin(), ::toupper);
+
+        fmt::print(
+            cpp_header_out,
+            "#ifndef _{0}_HPP\n"
+            "#define _{0}_HPP\n"
+            "\n"
+            "#include <cstdint>\n"
+            "\n"
+            "namespace {1} {{\n",
+            namespace_upper,
+            opts.cpp
+        );
+
+        tm.render_cpp_header(cpp_header_out);
+        tm.render_cpp_source(cpp_source_out);
+    }
 
     if (lexer.has_value()) {
         auto renderer = pareas::lexer::Renderer(&tm, &lexer->parallel_lexer);
 
         auto data_out = open_output(opts.output, ".lexer.in");
-        if (!data_out.has_value())
+        if (!data_out)
             return EXIT_FAILURE;
 
-        renderer.render_futhark(futhark_out.value());
+        renderer.render_futhark(futhark_out);
 
-        renderer.render_initial_state_data(data_out.value());
-        renderer.render_merge_table_data(data_out.value());
-        renderer.render_final_state_data(data_out.value());
+        renderer.render_initial_state_data(data_out);
+        renderer.render_merge_table_data(data_out);
+        renderer.render_final_state_data(data_out);
     }
 
     if (parser.has_value()) {
         auto renderer = pareas::parser::llp::Renderer(&tm, &parser->grammar, &parser->llp_table);
 
-        renderer.render_futhark(futhark_out.value());
+        renderer.render_futhark(futhark_out);
+
+        if (opts.cpp) {
+            renderer.render_cpp_header(cpp_header_out);
+            renderer.render_cpp_source(cpp_source_out);
+        }
+    }
+
+    if (opts.cpp) {
+        fmt::print(cpp_header_out, "}}\n#endif\n");
     }
 
     return EXIT_SUCCESS;

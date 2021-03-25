@@ -122,6 +122,39 @@ namespace pareas::parser::llp {
         this->render_parse_table(out);
     }
 
+    void Renderer::render_cpp_header(std::ostream& out) const {
+        auto n = this->g->productions.size();
+        auto bits = pareas::int_bit_width(n);
+
+        fmt::print(out, "    enum class Production : uint{}_t {{\n", bits);
+
+        for (size_t i = 0; i < n; ++i) {
+            const auto& prod = this->g->productions[i];
+            auto tag = prod.tag;
+            std::transform(tag.begin(), tag.end(), tag.begin(), ::toupper);
+            fmt::print(out, "        {} = {}\n", tag, i);
+        }
+
+        fmt::print(out, "    }};\n");
+        fmt::print(out, "    const char* production_name(Production p);\n");
+    }
+
+    void Renderer::render_cpp_source(std::ostream& out) const {
+        fmt::print(
+            out,
+            "const char* production_name(Production p) {{\n"
+            "    switch (p) {{\n"
+        );
+
+        for (const auto& prod : this->g->productions) {
+            auto tag = prod.tag;
+            std::transform(tag.begin(), tag.end(), tag.begin(), ::toupper);
+            fmt::print(out, "        case {}: return \"{}\";\n", tag, prod.tag);
+        }
+
+        fmt::print(out, "    }}\n}}\n");
+    }
+
     size_t Renderer::bracket_id(const Symbol& sym, bool left) const {
         auto id = this->symbol_mapping.at(sym);
 

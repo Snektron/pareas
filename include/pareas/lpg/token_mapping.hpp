@@ -29,9 +29,6 @@ namespace pareas {
 
     bool operator==(const Token& lhs, const Token& rhs);
 
-    // Just use the standard ostream overload to print a (Futhark) token identifier.
-    std::ostream& operator<<(std::ostream& os, const Token& token);
-
     class TokenMapping {
         std::unordered_map<Token, size_t, Token::Hash> tokens;
 
@@ -40,9 +37,12 @@ namespace pareas {
         void insert(const Token& token);
         bool contains(const Token& token) const;
         size_t backing_type_bits() const;
-        void render_futhark(std::ostream& out) const;
         size_t token_id(const Token& token) const;
         size_t num_tokens() const;
+
+        void render_futhark(std::ostream& out) const;
+        void render_cpp_header(std::ostream& out) const;
+        void render_cpp_source(std::ostream& out) const;
     };
 }
 

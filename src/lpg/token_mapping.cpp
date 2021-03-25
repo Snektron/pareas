@@ -4,6 +4,7 @@
 
 #include <fmt/ostream.h>
 
+#include <algorithm>
 #include <string_view>
 #include <vector>
 #include <utility>
@@ -22,20 +23,6 @@ namespace pareas {
         return rhs.type == lhs.type && rhs.name == rhs.name;
     }
 
-    std::ostream& operator<<(std::ostream& os, const Token& token) {
-        switch (token.type) {
-            case Token::Type::USER_DEFINED:
-                break;
-            case Token::Type::INVALID:
-            case Token::Type::START_OF_INPUT:
-            case Token::Type::END_OF_INPUT:
-                os << "special_";
-                break;
-        }
-
-        return os << "token_" << token.name;
-    }
-
     void TokenMapping::insert(const Token& token) {
         this->tokens.insert({token, this->num_tokens()});
     }
@@ -48,27 +35,86 @@ namespace pareas {
         return int_bit_width(this->tokens.size() - 1);
     }
 
-    void TokenMapping::render_futhark(std::ostream& out) const {
-        fmt::print(out, "module token = u{}\n", this->backing_type_bits());
-
-        // Render the tokens nice and ordered.
-        auto tokens_ordered = std::vector<const Token*>(this->num_tokens());
-        for (const auto& [token, id] : this->tokens) {
-            tokens_ordered[id] = &token;
-        }
-
-        for (size_t id = 0; id < tokens_ordered.size(); ++id) {
-            fmt::print(out, "let {}: token.t = {}\n", *tokens_ordered[id], id);
-        }
-
-        fmt::print(out, "let num_tokens: i64 = {}\n", this->num_tokens());
-    }
-
     size_t TokenMapping::token_id(const Token& token) const {
         return this->tokens.at(token);
     }
 
     size_t TokenMapping::num_tokens() const {
         return this->tokens.size();
+    }
+
+    void TokenMapping::render_futhark(std::ostream& out) const {
+        fmt::print(out, "module token = u{}\n", this->backing_type_bits());
+
+        // Render the tokens nice and ordered.
+        auto tokens_ordered = std::vector<const Token*>(this->num_tokens());
+        for (const auto& [token, id] : this->tokens)
+            tokens_ordered[id] = &token;
+
+        for (size_t id = 0; id < tokens_ordered.size(); ++id) {
+            fmt::print(
+                out,
+                tokens_ordered[id]->type == Token::Type::USER_DEFINED ? "" : "special_",
+                "let {}token_{}: token.t = {}\n",
+                tokens_ordered[id]->name,
+                id
+            );
+        }
+
+        fmt::print(out, "let num_tokens: i64 = {}\n", this->num_tokens());
+    }
+
+    void TokenMapping::render_cpp_header(std::ostream& out) const {
+        fmt::print(out, "    enum class Token : uint{}_t {{\n", this->backing_type_bits());
+
+        // Render the tokens nice and ordered.
+        auto tokens_ordered = std::vector<const Token*>(this->num_tokens());
+        for (const auto& [token, id] : this->tokens)
+            tokens_ordered[id] = &token;
+
+        for (size_t id = 0; id < tokens_ordered.size(); ++id) {
+            auto name = tokens_ordered[id]->name;
+            std::transform(name.begin(), name.end(), name.begin(), ::toupper);
+
+            fmt::print(
+                out,
+                "        {}{} = {},\n",
+                tokens_ordered[id]->type == Token::Type::USER_DEFINED ? "" : "SPECIAL_",
+                name,
+                id
+            );
+        }
+
+        fmt::print(out, "    }};\n");
+        fmt::print(out, "    const char* token_name(Token t);\n");
+    }
+
+    void TokenMapping::render_cpp_source(std::ostream& out) const {
+        fmt::print(
+            out,
+            "const char* token_name(Token t) {{\n"
+            "    switch (t) {{\n"
+        );
+
+        // Render the tokens nice and ordered.
+        auto tokens_ordered = std::vector<const Token*>(this->num_tokens());
+        for (const auto& [token, id] : this->tokens)
+            tokens_ordered[id] = &token;
+
+        for (size_t id = 0; id < tokens_ordered.size(); ++id) {
+            auto name = tokens_ordered[id]->name;
+            std::transform(name.begin(), name.end(), name.begin(), ::toupper);
+
+            fmt::print(
+                out,
+                "        case Token::{}{}: return \"{}\";\n",
+                tokens_ordered[id]->type == Token::Type::USER_DEFINED ? "" : "SPECIAL_",
+                name,
+                tokens_ordered[id]->name,
+                id
+            );
+        }
+
+        fmt::print(out, "    }}\n}}\n");
     }
 }
