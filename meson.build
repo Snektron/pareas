@@ -74,14 +74,7 @@ run_target(
 dependencies = [fmt_dep]
 
 # Build futhark library
-futhark = find_program('futhark')
 futhark_backend = get_option('futhark-backend')
-futhark_generated = custom_target(
-    'futhark',
-    input: 'src/compiler/main.fut',
-    output: ['futhark-generated.c', 'futhark-generated.h'],
-    command: [futhark, futhark_backend, '@INPUT@', '--library', '-o', 'futhark-generated']
-)
 
 if futhark_backend == 'multicore'
     dependencies += dependency('threads')
@@ -91,7 +84,63 @@ elif futhark_backend == 'cuda'
     dependencies += dependency('cuda', modules: ['cuda', 'cudart', 'nvrtc'])
 endif
 
+grammar = custom_target(
+    'grammar',
+    input: ['src/compiler/lexer/pareas.lex', 'src/compiler/parser/pareas.g'],
+    output: ['pareas_grammar.cpp', 'pareas_grammar.hpp', 'pareas_grammar.fut', 'pareas_grammar.lexer.in'],
+    command: [
+        pareas_lpg,
+        '--lexer', '@INPUT0@',
+        '--parser', '@INPUT1@',
+        '-o', 'pareas_grammar',
+        '--cpp', 'grammar',
+    ],
+)
+grammar_cpp = grammar[0]
+grammar_hpp = grammar[1]
+grammar_fut = grammar[2]
+grammar_data = grammar[3]
+
+futhark_sources = [
+    'lib/github.com/diku-dk/segmented/segmented.fut',
+    'lib/github.com/diku-dk/sorts/radix_sort.fut',
+    'src/compiler/lexer/lexer.fut',
+    'src/compiler/parser/binary_tree.fut',
+    'src/compiler/parser/bracket_matching.fut',
+    'src/compiler/parser/parser.fut',
+    'src/compiler/string.fut',
+    'src/compiler/frontend.fut',
+    'src/compiler/util.fut',
+]
+
+futhark_compile_command = [
+    find_program('src/tools/compile_futhark.py'),
+    '--futhark', find_program('futhark'),
+    '--futhark-backend', futhark_backend,
+    '--output', 'futhark_generated',
+    '--dir', '@PRIVATE_DIR@',
+    '--main', 'src/compiler/frontend.fut',
+]
+
+inputs = []
+
+foreach source : futhark_sources
+    futhark_compile_command += ['-f', '@INPUT@0@@'.format(inputs.length()), source]
+    inputs += source
+endforeach
+
+futhark_compile_command += ['-f', '@INPUT@0@@'.format(inputs.length()), 'gen/pareas_grammar.fut']
+inputs += grammar_fut
+
+futhark_generated = custom_target(
+    'futhark',
+    input: inputs,
+    output: ['futhark_generated.c', 'futhark_generated.h'],
+    command: futhark_compile_command,
+)
+
 # Final executable
+
 sources = [
     'src/compiler/main.cpp',
 ]

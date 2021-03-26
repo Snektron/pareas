@@ -54,8 +54,8 @@ namespace pareas {
         for (size_t id = 0; id < tokens_ordered.size(); ++id) {
             fmt::print(
                 out,
-                tokens_ordered[id]->type == Token::Type::USER_DEFINED ? "" : "special_",
                 "let {}token_{}: token.t = {}\n",
+                tokens_ordered[id]->type == Token::Type::USER_DEFINED ? "" : "special_",
                 tokens_ordered[id]->name,
                 id
             );

@@ -1,4 +1,4 @@
-#include "futhark-generated.h"
+#include "futhark_generated.h"
 
 #include <fmt/format.h>
 #include <fmt/ostream.h>
@@ -189,18 +189,18 @@ int main(int argc, const char* argv[]) {
 
     auto context = UniqueCPtr<futhark_context, futhark_context_free>(futhark_context_new(config.get()));
 
-    int64_t result;
-    int err = futhark_entry_main(context.get(), &result, 10);
-    if (!err)
-        err = futhark_context_sync(context.get());
+    // int64_t result;
+    // int err = futhark_entry_main(context.get(), &result, 10);
+    // if (!err)
+    //     err = futhark_context_sync(context.get());
 
-    if (err) {
-        auto err = MallocPtr<char>(futhark_context_get_error(context.get()));
-        fmt::print(std::cerr, "Futhark error: {}", err ? err.get() : "(no diagnostic)");
-        return EXIT_FAILURE;
-    }
+    // if (err) {
+    //     auto err = MallocPtr<char>(futhark_context_get_error(context.get()));
+    //     fmt::print(std::cerr, "Futhark error: {}", err ? err.get() : "(no diagnostic)");
+    //     return EXIT_FAILURE;
+    // }
 
-    fmt::print("Result: {}", result);
+    // fmt::print("Result: {}", result);
 
     if (opts.profile) {
         auto report = MallocPtr<char>(futhark_context_report(context.get()));

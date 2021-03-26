@@ -1,6 +1,6 @@
 import "parser/parser"
 module lexer = import "lexer/lexer"
-module g = import "../../gen/pareas_grammar"
+module g = import "../../gen/pareas_grammar" -- Generated using meson/
 module pareas_parser = parser g
 
 type production = g.production.t
@@ -73,7 +73,7 @@ let clean_up_lists [n] (tree: [n]production) (parents: [n]i32) =
             then -1 -- mark this node as 'to be removed'
             else find_new_parent node)
 
-let main [n] [m]
+entry main [n] [m]
     (input: [n]u8)
     (initial_state: [256]lexer.state)
     (merge_table: [m][m]lexer.state)
