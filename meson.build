@@ -102,7 +102,6 @@ grammar_fut = grammar[2]
 grammar_data = grammar[3]
 
 futhark_sources = [
-    'lib/github.com/diku-dk/segmented/segmented.fut',
     'lib/github.com/diku-dk/sorts/radix_sort.fut',
     'src/compiler/lexer/lexer.fut',
     'src/compiler/parser/binary_tree.fut',
