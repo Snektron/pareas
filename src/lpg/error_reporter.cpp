@@ -60,7 +60,7 @@ namespace pareas {
 
     ErrorReporter::LineInfo ErrorReporter::line(SourceLocation loc) const {
         auto end_it = std::lower_bound(this->newlines.begin(), this->newlines.end(), loc.offset);
-        auto i = std::distance(this->newlines.begin(), end_it);
+        auto i = static_cast<size_t>(std::distance(this->newlines.begin(), end_it));
 
         auto start = i == 0 ? 0 : this->newlines[i - 1] + 1;
         auto end = i == this->newlines.size() ? this->source.size() : this->newlines[i];
