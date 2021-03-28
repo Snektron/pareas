@@ -37,21 +37,28 @@ namespace pareas {
             "#define _{0}_HPP\n"
             "\n"
             "#include <cstdint>\n"
+            "#include <cstddef>\n"
             "\n"
             "namespace {1} {{\n",
             namesp_upper,
             this->namesp
         );
 
-        fmt::print(this->cpp, "#include \"{}.hpp\"\n", output.filename().c_str());
-        fmt::print(this->cpp, "namespace {} {{\n", namesp);
+        fmt::print(
+            this->cpp,
+            "#include \"{0}.hpp\"\n"
+            "extern \"C\" const uint8_t _{1}_data[];\n"
+            "namespace {1} {{\n",
+            output.filename().c_str(),
+            this->namesp
+        );
 
         auto asm_out = open_output(output, ".S");
         fmt::print(
             asm_out,
-            "    .global {0}_data\n"
+            "    .global _{0}_data\n"
             "    .align 8\n"
-            "{0}_data:\n"
+            "_{0}_data:\n"
             "    .incbin \"{1}.dat\"\n",
             namesp,
             output.filename().c_str()
@@ -63,9 +70,22 @@ namespace pareas {
         fmt::print(this->cpp, "}}\n");
     }
 
+    void Renderer::align_dat(size_t align) {
+        auto offset = this->dat_offset();
+        auto diff = offset - offset % align;
+
+        for (size_t i = 0; i < diff; ++i) {
+            this->dat.put(0);
+        }
+    }
+
     size_t Renderer::dat_offset() {
         auto p = this->dat.tellp();
         assert(p >= 0);
         return static_cast<size_t>(p);
+    }
+
+    std::string Renderer::render_offset_cast(size_t offset, std::string_view type) const {
+        return fmt::format("reinterpret_cast<const {}*>(_{}_data + {})", type, this->namesp, offset);
     }
 }

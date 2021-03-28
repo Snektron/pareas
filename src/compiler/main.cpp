@@ -1,4 +1,5 @@
 #include "futhark_generated.h"
+#include "pareas_grammar.hpp"
 
 #include <fmt/format.h>
 #include <fmt/ostream.h>
@@ -188,6 +189,8 @@ int main(int argc, const char* argv[]) {
     #endif
 
     auto context = UniqueCPtr<futhark_context, futhark_context_free>(futhark_context_new(config.get()));
+
+    fmt::print("oef: {}\n", grammar::lex_table.initial_states[0]);
 
     // int64_t result;
     // int err = futhark_entry_main(context.get(), &result, 10);

@@ -77,7 +77,7 @@ endif
 grammar = custom_target(
     'grammar',
     input: ['src/compiler/lexer/pareas.lex', 'src/compiler/parser/pareas.g'],
-    output: ['pareas_grammar.cpp', 'pareas_grammar.hpp', 'pareas_grammar.fut', 'pareas_grammar.S', 'pareas_grammar.dat'],
+    output: ['pareas_grammar.hpp', 'pareas_grammar.cpp', 'pareas_grammar.fut', 'pareas_grammar.S', 'pareas_grammar.dat'],
     command: [
         pareas_lpg,
         '--lexer', '@INPUT0@',
@@ -86,8 +86,8 @@ grammar = custom_target(
         '--namespace', 'grammar',
     ],
 )
-grammar_cpp = grammar[0]
-grammar_hpp = grammar[1]
+grammar_hpp = grammar[0]
+grammar_cpp = grammar[1]
 grammar_fut = grammar[2]
 grammar_asm = grammar[3]
 

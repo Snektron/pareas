@@ -9,6 +9,7 @@
 #include <span>
 #include <iosfwd>
 #include <cstdint>
+#include <cstddef>
 
 namespace pareas::lexer {
     class LexerRenderer {
@@ -25,12 +26,12 @@ namespace pareas::lexer {
         void render() const;
 
     private:
-        void render_initial_state_data() const;
-        void render_merge_table_data() const;
-        void render_final_state_data() const;
+        size_t render_initial_state_data() const;
+        size_t render_merge_table_data() const;
+        size_t render_final_state_data() const;
 
         template <typename T>
-        void render_final_state_data_with_type() const;
+        size_t render_final_state_data_with_type() const;
 
         EncodedTransition encode(const ParallelLexer::Transition& t) const;
     };

@@ -4,6 +4,7 @@
 #include <filesystem>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <fstream>
 
 namespace pareas {
@@ -23,7 +24,9 @@ namespace pareas {
 
         void finalize();
 
+        void align_dat(size_t align);
         size_t dat_offset();
+        std::string render_offset_cast(size_t offset, std::string_view type) const;
     };
 }
 
