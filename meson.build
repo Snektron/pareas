@@ -14,10 +14,6 @@ add_project_arguments(
     language: ['c', 'cpp'],
 )
 
-if host_machine.endian() != 'little'
-    error('Host machine endianness is required to be litte (required by futhark_dataset.hpp)')
-endif
-
 inc = include_directories('include')
 
 fmt_dep = subproject('fmt').get_variable('fmt_dep')

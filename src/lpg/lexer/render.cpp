@@ -1,7 +1,8 @@
 #include "pareas/lpg/lexer/render.hpp"
-#include "pareas/lpg/futhark_dataset.hpp"
 
 #include <fmt/ostream.h>
+
+#include <cassert>
 
 namespace pareas::lexer {
     LexerRenderer::LexerRenderer(Renderer* r, const TokenMapping* tm, const ParallelLexer* lexer):
@@ -70,7 +71,6 @@ namespace pareas::lexer {
         for (uint64_t x = 0; x < dim; ++x) {
             for (uint64_t y = 0; y < dim; ++y) {
                 auto encoded = this->encode(merge_table(x, y));
-
                 this->r->dat.write(reinterpret_cast<const char*>(&encoded), sizeof encoded);
             }
         }
@@ -79,38 +79,22 @@ namespace pareas::lexer {
     }
 
     size_t LexerRenderer::render_final_state_data() const {
-        switch (this->tm->backing_type_bits()) {
-            case 8:
-                return this->render_final_state_data_with_type<uint8_t>();
-            case 16:
-                return this->render_final_state_data_with_type<uint16_t>();
-            case 32:
-                return this->render_final_state_data_with_type<uint32_t>();
-            case 64:
-                return this->render_final_state_data_with_type<uint64_t>();
-            default:
-                assert(false);
-        }
-    }
-
-    template <typename T>
-    size_t LexerRenderer::render_final_state_data_with_type() const {
-        this->r->align_dat(sizeof(T));
+        this->r->align_dat(this->tm->backing_type_bits() / 8);
         auto offset = this->r->dat_offset();
 
         uint64_t dim = this->lexer->final_states.size();
-        auto data = futhark::Array<T>({dim});
-
         for (uint64_t i = 0; i < dim; ++i) {
             const auto* lexeme = this->lexer->final_states[i];
-            if (!lexeme) {
-                data.at(futhark::Index(&i, 1)) = this->tm->token_id(Token::INVALID);
-            } else {
-                data.at(futhark::Index(&i, 1)) = this->tm->token_id(lexeme->as_token());
+
+            uint64_t token_definition = lexeme ? this->tm->token_id(lexeme->as_token()) : this->tm->token_id(Token::INVALID);
+
+            // Write the token definition in little endian.
+            for (size_t i = 0; i < this->tm->backing_type_bits(); i += 8) {
+                uint8_t byte = (token_definition >> i) & 0xFF;
+                this->r->dat.write(reinterpret_cast<char*>(&byte), 1);
             }
         }
 
-        data.write(this->r->dat);
         return offset;
     }
 

@@ -30,9 +30,6 @@ namespace pareas::lexer {
         size_t render_merge_table_data() const;
         size_t render_final_state_data() const;
 
-        template <typename T>
-        size_t render_final_state_data_with_type() const;
-
         EncodedTransition encode(const ParallelLexer::Transition& t) const;
     };
 }
