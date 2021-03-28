@@ -138,7 +138,7 @@ namespace pareas::parser::llp {
         fmt::print(this->r->fut, "module production = u{}\n", bits);
         fmt::print(this->r->fut, "let num_productions: i64 = {}\n", n);
 
-        fmt::print(this->r->hpp, "    enum class Production : uint{}_t {{\n", bits);
+        fmt::print(this->r->hpp, "enum class Production : uint{}_t {{\n", bits);
 
         fmt::print(this->r->cpp, "const char* production_name(Production p) {{\n");
         fmt::print(this->r->cpp, "    switch (p) {{\n");
@@ -154,13 +154,13 @@ namespace pareas::parser::llp {
 
             fmt::print(this->r->fut, "let production_{}: production.t = {}\n", tag, id);
 
-            fmt::print(this->r->hpp, "        {} = {}\n", tag_upper, id);
+            fmt::print(this->r->hpp, "    {} = {},\n", tag_upper, id);
 
-            fmt::print(this->r->cpp, "        case {}: return \"{}\";\n", tag_upper, tag);
+            fmt::print(this->r->cpp, "        case Production::{}: return \"{}\";\n", tag_upper, tag);
         }
 
-        fmt::print(this->r->hpp, "    }};\n");
-        fmt::print(this->r->hpp, "    const char* production_name(Production p);\n");
+        fmt::print(this->r->hpp, "}};\n");
+        fmt::print(this->r->hpp, "const char* production_name(Production p);\n");
 
         fmt::print(this->r->cpp, "    }}\n}}\n");
     }

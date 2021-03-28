@@ -46,7 +46,7 @@ namespace pareas {
     void TokenMapping::render(Renderer& r) const {
         fmt::print(r.fut, "module token = u{}\n", this->backing_type_bits());
 
-        fmt::print(r.hpp, "    enum class Token : uint{}_t {{\n", this->backing_type_bits());
+        fmt::print(r.hpp, "enum class Token : uint{}_t {{\n", this->backing_type_bits());
 
         fmt::print(r.cpp, "const char* token_name(Token t) {{\n");
         fmt::print(r.cpp, "    switch (t) {{\n");
@@ -74,7 +74,7 @@ namespace pareas {
 
             fmt::print(
                 r.hpp,
-                "        {}{} = {},\n",
+                "    {}{} = {},\n",
                 special ? "" : "SPECIAL_",
                 name_upper,
                 id
@@ -92,8 +92,8 @@ namespace pareas {
 
         fmt::print(r.fut, "let num_tokens: i64 = {}\n", this->num_tokens());
 
-        fmt::print(r.hpp, "    }};\n");
-        fmt::print(r.hpp, "    const char* token_name(Token t);\n");
+        fmt::print(r.hpp, "}};\n");
+        fmt::print(r.hpp, "const char* token_name(Token t);\n");
 
         fmt::print(r.cpp, "    }}\n}}\n");
     }

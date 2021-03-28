@@ -1,6 +1,7 @@
 #ifndef _PAREAS_LPG_RENDERER_HPP
 #define _PAREAS_LPG_RENDERER_HPP
 
+#include <filesystem>
 #include <stdexcept>
 #include <string>
 #include <fstream>
@@ -18,8 +19,11 @@ namespace pareas {
         std::ofstream cpp;
         std::ofstream dat;
 
-        Renderer(const char* namesp, const char* output);
+        Renderer(const char* namesp, const std::filesystem::path& output);
+
         void finalize();
+
+        size_t dat_offset();
     };
 }
 

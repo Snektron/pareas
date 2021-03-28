@@ -77,7 +77,7 @@ endif
 grammar = custom_target(
     'grammar',
     input: ['src/compiler/lexer/pareas.lex', 'src/compiler/parser/pareas.g'],
-    output: ['pareas_grammar.cpp', 'pareas_grammar.hpp', 'pareas_grammar.fut', 'pareas_grammar.lexer.in'],
+    output: ['pareas_grammar.cpp', 'pareas_grammar.hpp', 'pareas_grammar.fut', 'pareas_grammar.S', 'pareas_grammar.dat'],
     command: [
         pareas_lpg,
         '--lexer', '@INPUT0@',
@@ -89,7 +89,7 @@ grammar = custom_target(
 grammar_cpp = grammar[0]
 grammar_hpp = grammar[1]
 grammar_fut = grammar[2]
-grammar_dat = grammar[3]
+grammar_asm = grammar[3]
 
 futhark_sources = [
     'lib/github.com/diku-dk/sorts/radix_sort.fut',
@@ -136,7 +136,7 @@ sources = [
 
 executable(
     'pareas',
-    [sources, futhark_generated],
+    [grammar_hpp, grammar_cpp, grammar_asm, sources, futhark_generated],
     install: true,
     build_by_default: true,
     dependencies: dependencies,

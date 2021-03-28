@@ -288,7 +288,7 @@ int main(int argc, char* argv[]) {
 
         renderer.finalize();
     } catch (const RenderError& e) {
-        fmt::print("{}\n", e.what());
+        fmt::print("Error: {}\n", e.what());
     }
 
     return EXIT_SUCCESS;
