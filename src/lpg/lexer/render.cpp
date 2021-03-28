@@ -4,15 +4,19 @@
 #include <fmt/ostream.h>
 
 namespace pareas::lexer {
-    Renderer::Renderer(const TokenMapping* tm, const ParallelLexer* lexer):
-        tm(tm), lexer(lexer) {
+    LexerRenderer::LexerRenderer(Renderer* r, const TokenMapping* tm, const ParallelLexer* lexer):
+        r(r), tm(tm), lexer(lexer) {
     }
 
-    void Renderer::render_futhark(std::ostream& out) const {
-        fmt::print(out, "let identity_state: u{} = {}\n", ENCODED_TRANSITION_BITS, this->lexer->identity_state_index);
+    void LexerRenderer::render() const {
+        fmt::print(this->r->fut, "let identity_state: u{} = {}\n", ENCODED_TRANSITION_BITS, this->lexer->identity_state_index);
+
+        this->render_initial_state_data();
+        this->render_merge_table_data();
+        this->render_final_state_data();
     }
 
-    void Renderer::render_initial_state_data(std::ostream& out) const {
+    void LexerRenderer::render_initial_state_data() const {
         uint64_t dim = this->lexer->initial_states.size();
         auto data = futhark::Array<EncodedTransition>({dim});
 
@@ -21,10 +25,10 @@ namespace pareas::lexer {
             data.at(futhark::Index(&i, 1)) = this->encode(transition);
         }
 
-        data.write(out);
+        data.write(this->r->dat);
     }
 
-    void Renderer::render_merge_table_data(std::ostream& out) const {
+    void LexerRenderer::render_merge_table_data() const {
         const auto& merge_table = this->lexer->merge_table;
 
         uint64_t dim = merge_table.states();
@@ -37,22 +41,22 @@ namespace pareas::lexer {
             }
         }
 
-        data.write(out);
+        data.write(this->r->dat);
     }
 
-    void Renderer::render_final_state_data(std::ostream& out) const {
+    void LexerRenderer::render_final_state_data() const {
         switch (this->tm->backing_type_bits()) {
             case 8:
-                this->render_final_state_data_with_type<uint8_t>(out);
+                this->render_final_state_data_with_type<uint8_t>();
                 return;
             case 16:
-                this->render_final_state_data_with_type<uint16_t>(out);
+                this->render_final_state_data_with_type<uint16_t>();
                 return;
             case 32:
-                this->render_final_state_data_with_type<uint32_t>(out);
+                this->render_final_state_data_with_type<uint32_t>();
                 return;
             case 64:
-                this->render_final_state_data_with_type<uint64_t>(out);
+                this->render_final_state_data_with_type<uint64_t>();
                 return;
             default:
                 assert(false);
@@ -60,7 +64,7 @@ namespace pareas::lexer {
     }
 
     template <typename T>
-    void Renderer::render_final_state_data_with_type(std::ostream& out) const {
+    void LexerRenderer::render_final_state_data_with_type() const {
         uint64_t dim = this->lexer->final_states.size();
         auto data = futhark::Array<T>({dim});
 
@@ -73,10 +77,10 @@ namespace pareas::lexer {
             }
         }
 
-        data.write(out);
+        data.write(this->r->dat);
     }
 
-    auto Renderer::encode(const ParallelLexer::Transition& t) const -> EncodedTransition {
+    auto LexerRenderer::encode(const ParallelLexer::Transition& t) const -> EncodedTransition {
         assert(t.result_state < PRODUCES_TOKEN_MASK);
         return t.result_state | (t.produces_lexeme ? PRODUCES_TOKEN_MASK : 0);
     }

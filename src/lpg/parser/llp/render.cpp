@@ -99,13 +99,13 @@ namespace {
             fmt::print(out, "]");
         }
 
-        fmt::print(out, "\n] :> [num_tokens][num_tokens](i{0}, i{0})\n", Renderer::TABLE_OFFSET_BITS);
+        fmt::print(out, "\n] :> [num_tokens][num_tokens](i{0}, i{0})\n", ParserRenderer::TABLE_OFFSET_BITS);
     }
 }
 
 namespace pareas::parser::llp {
-    Renderer::Renderer(const TokenMapping* tm, const Grammar* g, const ParsingTable* pt):
-        tm(tm), g(g), pt(pt) {
+    ParserRenderer::ParserRenderer(Renderer* r, const TokenMapping* tm, const Grammar* g, const ParsingTable* pt):
+        r(r), tm(tm), g(g), pt(pt) {
 
         for (const auto& [ap, entry] : this->pt->table) {
             for (const auto& sym : entry.initial_stack)
@@ -115,38 +115,14 @@ namespace pareas::parser::llp {
         }
     }
 
-    void Renderer::render_futhark(std::ostream& out) const {
-        this->render_productions(out);
-        this->render_production_arities(out);
-        this->render_stack_change_table(out);
-        this->render_parse_table(out);
+    void ParserRenderer::render() const {
+        this->render_productions();
+        this->render_production_arities();
+        this->render_stack_change_table();
+        this->render_parse_table();
     }
 
-    void Renderer::render_cpp(std::ostream& hpp_out, std::ostream& cpp_out) const {
-        auto n = this->g->productions.size();
-        auto bits = pareas::int_bit_width(n);
-
-        fmt::print(hpp_out, "    enum class Production : uint{}_t {{\n", bits);
-        fmt::print(
-            cpp_out,
-            "const char* production_name(Production p) {{\n"
-            "    switch (p) {{\n"
-        );
-
-        for (size_t i = 0; i < n; ++i) {
-            const auto& prod = this->g->productions[i];
-            auto tag = prod.tag;
-            std::transform(tag.begin(), tag.end(), tag.begin(), ::toupper);
-            fmt::print(hpp_out, "        {} = {}\n", tag, i);
-            fmt::print(cpp_out, "        case {}: return \"{}\";\n", tag, prod.tag);
-        }
-
-        fmt::print(hpp_out, "    }};\n");
-        fmt::print(hpp_out, "    const char* production_name(Production p);\n");
-        fmt::print(cpp_out, "    }}\n}}\n");
-    }
-
-    size_t Renderer::bracket_id(const Symbol& sym, bool left) const {
+    size_t ParserRenderer::bracket_id(const Symbol& sym, bool left) const {
         auto id = this->symbol_mapping.at(sym);
 
         // Left brackets get odd ID's, rightb rackets get even ID's.
@@ -155,22 +131,41 @@ namespace pareas::parser::llp {
         return left ? id * 2 + 1 : id * 2;
     }
 
-    void Renderer::render_productions(std::ostream& out) const {
+    void ParserRenderer::render_productions() const {
         auto n = this->g->productions.size();
         auto bits = pareas::int_bit_width(n);
-        fmt::print(out, "module production = u{}\n", bits);
-        fmt::print(out, "let num_productions: i64 = {}\n", n);
+
+        fmt::print(this->r->fut, "module production = u{}\n", bits);
+        fmt::print(this->r->fut, "let num_productions: i64 = {}\n", n);
+
+        fmt::print(this->r->hpp, "    enum class Production : uint{}_t {{\n", bits);
+
+        fmt::print(this->r->cpp, "const char* production_name(Production p) {{\n");
+        fmt::print(this->r->cpp, "    switch (p) {{\n");
 
         // Tags are already guaranteed to be unique, so we don't need to do any kind
         // of deduplication here. As added bonus, the ID of a production is now only
         // dependent on the order in which the productions are defined.
-        for (size_t i = 0; i < n; ++i) {
-            const auto& prod = this->g->productions[i];
-            fmt::print(out, "let production_{}: production.t = {}\n", prod.tag, i);
+        for (size_t id = 0; id < n; ++id) {
+            const auto& tag = this->g->productions[id].tag;
+
+            auto tag_upper = tag;
+            std::transform(tag_upper.begin(), tag_upper.end(), tag_upper.begin(), ::toupper);
+
+            fmt::print(this->r->fut, "let production_{}: production.t = {}\n", tag, id);
+
+            fmt::print(this->r->hpp, "        {} = {}\n", tag_upper, id);
+
+            fmt::print(this->r->cpp, "        case {}: return \"{}\";\n", tag_upper, tag);
         }
+
+        fmt::print(this->r->hpp, "    }};\n");
+        fmt::print(this->r->hpp, "    const char* production_name(Production p);\n");
+
+        fmt::print(this->r->cpp, "    }}\n}}\n");
     }
 
-    void Renderer::render_production_arities(std::ostream& out) const {
+    void ParserRenderer::render_production_arities() const {
         // Production id's are assigned according to their index in the
         // productions vector, so we can just push_back the arities.
         auto arities = std::vector<size_t>();
@@ -178,10 +173,10 @@ namespace pareas::parser::llp {
             arities.push_back(prod.arity());
         }
 
-        fmt::print(out, "let production_arity = [{}] :> [num_productions]i32\n", fmt::join(arities, ", "));
+        fmt::print(this->r->fut, "let production_arity = [{}] :> [num_productions]i32\n", fmt::join(arities, ", "));
     }
 
-    void Renderer::render_stack_change_table(std::ostream& out) const {
+    void ParserRenderer::render_stack_change_table() const {
         auto strtab = StringTable<size_t>(
             *this->pt,
             [&](const ParsingTable::Entry& entry) {
@@ -200,11 +195,11 @@ namespace pareas::parser::llp {
         );
 
         size_t bracket_bits = pareas::int_bit_width(2 * this->symbol_mapping.size());
-        fmt::print(out, "module bracket = u{}\n", bracket_bits);
-        strtab.render(out, "stack_change", fmt::format("u{}", bracket_bits), this->tm);
+        fmt::print(this->r->fut, "module bracket = u{}\n", bracket_bits);
+        strtab.render(this->r->fut, "stack_change", fmt::format("u{}", bracket_bits), this->tm);
     }
 
-    void Renderer::render_parse_table(std::ostream& out) const {
+    void ParserRenderer::render_parse_table() const {
            auto strtab = StringTable<std::string>(
             *this->pt,
             [&](const ParsingTable::Entry& entry) {
@@ -214,6 +209,6 @@ namespace pareas::parser::llp {
                 return result;
             }
         );
-        strtab.render(out, "parse", "production.t", this->tm);
+        strtab.render(this->r->fut, "parse", "production.t", this->tm);
     }
 }

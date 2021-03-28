@@ -2,6 +2,7 @@
 #include "pareas/lpg/parser.hpp"
 #include "pareas/lpg/cli_util.hpp"
 #include "pareas/lpg/token_mapping.hpp"
+#include "pareas/lpg/renderer.hpp"
 #include "pareas/lpg/parser/grammar.hpp"
 #include "pareas/lpg/parser/grammar_parser.hpp"
 #include "pareas/lpg/parser/terminal_set_functions.hpp"
@@ -32,7 +33,7 @@ namespace {
         const char* parser_src;
         const char* lexer_src;
         const char* output;
-        const char* cpp;
+        const char* namesp;
         bool verbose_lexer;
         bool verbose_grammar;
         bool verbose_sets;
@@ -50,8 +51,7 @@ namespace {
             "--parser <grammar.llpg>     Generate a parser from <grammar.llpg>.\n"
             "--lexer <lexer.lex>         Generate a lexer from <lexer.lex>.\n"
             "-o --output <path>          Basename of generated output files.\n"
-            "--cpp <namespace>           Also emit c++ definitions for tokens and\n"
-            "                            productions, which will be placed in <namespace>.\n"
+            "--namespace <namespace>     Emit c++ definitions under <namespace>\n"
             "--verbose-lexer             Dump sizes of lexer tables.\n"
             "--verbose-grammar           Dump parsed grammar to stderr.\n"
             "--verbose-sets              Dump first/last/follow/before sets to stderr.\n"
@@ -70,7 +70,7 @@ namespace {
             .parser_src = nullptr,
             .lexer_src = nullptr,
             .output = nullptr,
-            .cpp = nullptr,
+            .namesp = nullptr,
             .verbose_lexer = false,
             .verbose_grammar = false,
             .verbose_sets = false,
@@ -95,8 +95,8 @@ namespace {
             } else if (arg == "-o" || arg == "--output") {
                 ptr = &opts.output;
                 argname = "path";
-            } else if (arg == "--cpp") {
-                ptr = &opts.cpp;
+            } else if (arg == "--namespace") {
+                ptr = &opts.namesp;
                 argname = "namespace";
             } else if (arg == "--verbose-lexer") {
                 opts.verbose_lexer = true;
@@ -137,6 +137,12 @@ namespace {
 
         if (!opts.output) {
             fmt::print(std::cerr, "Error: Missing required argument --output\n");
+            return false;
+        }
+
+        if (!opts.namesp) {
+            fmt::print(std::cerr, "Error: Missing required argument --namespace\n");
+            return false;
         }
 
         return true;
@@ -150,17 +156,6 @@ namespace {
         }
 
         return std::string(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
-    }
-
-    std::ofstream open_output(const char* basename, const char* ext) {
-        auto filename = std::string(basename);
-        filename.append(ext);
-
-        auto out = std::ofstream(filename, std::ios::binary);
-        if (!out) {
-            fmt::print(std::cerr, "Error: Failed to create output file '{}'\n", filename);
-        }
-        return out;
     }
 
     struct LexerGeneration {
@@ -276,67 +271,24 @@ int main(int argc, char* argv[]) {
     if ((opts.lexer_src && !lexer.has_value()) || (opts.parser_src && !parser.has_value()))
         return EXIT_FAILURE;
 
-    auto futhark_out = open_output(opts.output, ".fut");
-    if (!futhark_out)
-        return EXIT_FAILURE;
+    try {
+        auto renderer = pareas::Renderer(opts.namesp, opts.output);
 
-    auto hpp_out = std::ofstream();
-    if (opts.cpp && !(hpp_out = open_output(opts.output, ".hpp"))) {
-        return EXIT_FAILURE;
-    }
+        tm.render(renderer);
 
-    auto cpp_out = std::ofstream();
-    if (opts.cpp && !(cpp_out = open_output(opts.output, ".cpp"))) {
-        return EXIT_FAILURE;
-    }
-
-    tm.render_futhark(futhark_out);
-
-    if (opts.cpp) {
-        auto namespace_upper = std::string(opts.cpp);
-        std::transform(namespace_upper.begin(), namespace_upper.end(), namespace_upper.begin(), ::toupper);
-
-        fmt::print(
-            hpp_out,
-            "#ifndef _{0}_HPP\n"
-            "#define _{0}_HPP\n"
-            "\n"
-            "#include <cstdint>\n"
-            "\n"
-            "namespace {1} {{\n",
-            namespace_upper,
-            opts.cpp
-        );
-
-        tm.render_cpp(hpp_out, cpp_out);
-    }
-
-    if (lexer.has_value()) {
-        auto renderer = pareas::lexer::Renderer(&tm, &lexer->parallel_lexer);
-
-        auto data_out = open_output(opts.output, ".lexer.in");
-        if (!data_out)
-            return EXIT_FAILURE;
-
-        renderer.render_futhark(futhark_out);
-
-        renderer.render_initial_state_data(data_out);
-        renderer.render_merge_table_data(data_out);
-        renderer.render_final_state_data(data_out);
-    }
-
-    if (parser.has_value()) {
-        auto renderer = pareas::parser::llp::Renderer(&tm, &parser->grammar, &parser->llp_table);
-
-        renderer.render_futhark(futhark_out);
-
-        if (opts.cpp) {
-            renderer.render_cpp(hpp_out, cpp_out);
+        if (lexer.has_value()) {
+            auto lr = pareas::lexer::LexerRenderer(&renderer, &tm, &lexer->parallel_lexer);
+            lr.render();
         }
-    }
 
-    if (opts.cpp) {
-        fmt::print(hpp_out, "}}\n#endif\n");
+        if (parser.has_value()) {
+            auto pr = pareas::parser::llp::ParserRenderer(&renderer, &tm, &parser->grammar, &parser->llp_table);
+            pr.render();
+        }
+
+        renderer.finalize();
+    } catch (const RenderError& e) {
+        fmt::print("{}\n", e.what());
     }
 
     return EXIT_SUCCESS;

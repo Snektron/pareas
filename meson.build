@@ -27,6 +27,7 @@ lpg_sources = [
     'src/lpg/error_reporter.cpp',
     'src/lpg/main.cpp',
     'src/lpg/parser.cpp',
+    'src/lpg/renderer.cpp',
     'src/lpg/token_mapping.cpp',
     'src/lpg/lexer/char_range.cpp',
     'src/lpg/lexer/fsa.cpp',
@@ -59,17 +60,6 @@ pareas_lpg = executable(
     include_directories: inc,
 )
 
-# Generated sources
-run_target(
-    'gen',
-    command: [
-        pareas_lpg,
-        '--lexer',  files('src/compiler/lexer/pareas.lex'),
-        '--parser', files('src/compiler/parser/pareas.g'),
-        '-o', 'gen/pareas_grammar'
-    ]
-)
-
 # Compiler
 dependencies = [fmt_dep]
 
@@ -93,13 +83,13 @@ grammar = custom_target(
         '--lexer', '@INPUT0@',
         '--parser', '@INPUT1@',
         '-o', 'pareas_grammar',
-        '--cpp', 'grammar',
+        '--namespace', 'grammar',
     ],
 )
 grammar_cpp = grammar[0]
 grammar_hpp = grammar[1]
 grammar_fut = grammar[2]
-grammar_data = grammar[3]
+grammar_dat = grammar[3]
 
 futhark_sources = [
     'lib/github.com/diku-dk/sorts/radix_sort.fut',

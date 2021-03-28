@@ -1,6 +1,8 @@
 #ifndef _PAREAS_LPG_TOKEN_MAPPING_HPP
 #define _PAREAS_LPG_TOKEN_MAPPING_HPP
 
+#include "pareas/lpg/renderer.hpp"
+
 #include <string>
 #include <unordered_map>
 #include <iosfwd>
@@ -40,8 +42,7 @@ namespace pareas {
         size_t token_id(const Token& token) const;
         size_t num_tokens() const;
 
-        void render_futhark(std::ostream& out) const;
-        void render_cpp(std::ostream& hpp_out, std::ostream& cpp_out) const;
+        void render(Renderer& r) const;
     };
 }
 

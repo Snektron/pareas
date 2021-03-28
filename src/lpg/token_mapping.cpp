@@ -43,8 +43,13 @@ namespace pareas {
         return this->tokens.size();
     }
 
-    void TokenMapping::render_futhark(std::ostream& out) const {
-        fmt::print(out, "module token = u{}\n", this->backing_type_bits());
+    void TokenMapping::render(Renderer& r) const {
+        fmt::print(r.fut, "module token = u{}\n", this->backing_type_bits());
+
+        fmt::print(r.hpp, "    enum class Token : uint{}_t {{\n", this->backing_type_bits());
+
+        fmt::print(r.cpp, "const char* token_name(Token t) {{\n");
+        fmt::print(r.cpp, "    switch (t) {{\n");
 
         // Render the tokens nice and ordered.
         auto tokens_ordered = std::vector<const Token*>(this->num_tokens());
@@ -52,57 +57,44 @@ namespace pareas {
             tokens_ordered[id] = &token;
 
         for (size_t id = 0; id < tokens_ordered.size(); ++id) {
+            const auto& name = tokens_ordered[id]->name;
+
+            auto name_upper = tokens_ordered[id]->name;
+            std::transform(name_upper.begin(), name_upper.end(), name_upper.begin(), ::toupper);
+
+            bool special = tokens_ordered[id]->type == Token::Type::USER_DEFINED;
+
             fmt::print(
-                out,
+                r.fut,
                 "let {}token_{}: token.t = {}\n",
-                tokens_ordered[id]->type == Token::Type::USER_DEFINED ? "" : "special_",
-                tokens_ordered[id]->name,
+                special ? "" : "special_",
+                name,
                 id
             );
-        }
-
-        fmt::print(out, "let num_tokens: i64 = {}\n", this->num_tokens());
-    }
-
-    void TokenMapping::render_cpp(std::ostream& hpp_out, std::ostream& cpp_out) const {
-        fmt::print(hpp_out, "    enum class Token : uint{}_t {{\n", this->backing_type_bits());
-
-        fmt::print(
-            cpp_out,
-            "const char* token_name(Token t) {{\n"
-            "    switch (t) {{\n"
-        );
-
-        // Render the tokens nice and ordered.
-        auto tokens_ordered = std::vector<const Token*>(this->num_tokens());
-        for (const auto& [token, id] : this->tokens)
-            tokens_ordered[id] = &token;
-
-        for (size_t id = 0; id < tokens_ordered.size(); ++id) {
-            auto name = tokens_ordered[id]->name;
-            std::transform(name.begin(), name.end(), name.begin(), ::toupper);
 
             fmt::print(
-                hpp_out,
+                r.hpp,
                 "        {}{} = {},\n",
-                tokens_ordered[id]->type == Token::Type::USER_DEFINED ? "" : "SPECIAL_",
-                name,
+                special ? "" : "SPECIAL_",
+                name_upper,
                 id
             );
 
             fmt::print(
-                cpp_out,
+                r.cpp,
                 "        case Token::{}{}: return \"{}\";\n",
-                tokens_ordered[id]->type == Token::Type::USER_DEFINED ? "" : "SPECIAL_",
+                special ? "" : "SPECIAL_",
+                name_upper,
                 name,
-                tokens_ordered[id]->name,
                 id
             );
         }
 
-        fmt::print(hpp_out, "    }};\n");
-        fmt::print(hpp_out, "    const char* token_name(Token t);\n");
+        fmt::print(r.fut, "let num_tokens: i64 = {}\n", this->num_tokens());
 
-        fmt::print(cpp_out, "    }}\n}}\n");
+        fmt::print(r.hpp, "    }};\n");
+        fmt::print(r.hpp, "    const char* token_name(Token t);\n");
+
+        fmt::print(r.cpp, "    }}\n}}\n");
     }
 }
