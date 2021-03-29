@@ -96,8 +96,8 @@ let clean_up_lists [n] (tree: [n]production) (parents: [n]i32) =
 entry main [n] [m] [k] [l]
     (input: [n]u8)
     (lt: lex_table [m])
-    (pt: parse_table [l])
-    (sct: stack_change_table [k])
+    (sct: stack_change_table [l])
+    (pt: parse_table [k])
     (arities: arity_array)
     =
     let (tokens, _, _) =

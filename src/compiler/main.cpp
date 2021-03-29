@@ -1,16 +1,20 @@
 #include "futhark_generated.h"
 #include "pareas_grammar.hpp"
 
+#include "pareas/compiler/futhark_interop.hpp"
+
 #include <fmt/format.h>
 #include <fmt/ostream.h>
 
 #include <iostream>
+#include <fstream>
 #include <string_view>
 #include <memory>
 #include <charconv>
 #include <cstdlib>
 #include <cstdint>
 #include <cstring>
+#include <cassert>
 
 struct Options {
     const char* input_path;
@@ -144,16 +148,6 @@ bool parse_options(Options* opts, int argc, const char* argv[]) {
     return true;
 }
 
-template <typename T, void(*deleter)(T*)>
-struct Deleter {
-    void operator()(T* t) const {
-        deleter(t);
-    }
-};
-
-template <typename T, void(*deleter)(T*)>
-using UniqueCPtr = std::unique_ptr<T, Deleter<T, deleter>>;
-
 template <typename T>
 struct Free {
     void operator()(T* ptr) const {
@@ -163,6 +157,92 @@ struct Free {
 
 template <typename T>
 using MallocPtr = std::unique_ptr<T, Free<T>>;
+
+void report_futhark_error(futhark::Context& ctx, std::string_view msg) {
+    auto err = MallocPtr<char>(futhark_context_get_error(ctx.get()));
+    fmt::print(std::cerr, "Error: {}:\n{}", msg, err ? err.get() : "(no diagnostic)");
+}
+
+futhark_opaque_lex_table* upload_lex_table(futhark::Context& ctx) {
+    auto* initial_state = futhark_new_u16_1d(
+        ctx.get(),
+        reinterpret_cast<const grammar::LexTable::State*>(grammar::lex_table.initial_states),
+        grammar::LexTable::NUM_INITIAL_STATES
+    );
+
+    auto* merge_table = futhark_new_u16_2d(
+        ctx.get(),
+        reinterpret_cast<const grammar::LexTable::State*>(grammar::lex_table.merge_table),
+        grammar::lex_table.n,
+        grammar::lex_table.n
+    );
+
+    auto* final_state = futhark_new_u8_1d(
+        ctx.get(),
+        reinterpret_cast<const std::underlying_type_t<grammar::Token>*>(grammar::lex_table.final_states),
+        grammar::lex_table.n
+    );
+
+
+    futhark_opaque_lex_table* lex_table = nullptr;
+
+    if (initial_state && merge_table && final_state) {
+        int err = futhark_entry_mk_lex_table(
+            ctx.get(),
+            &lex_table,
+            initial_state,
+            merge_table,
+            final_state
+        );
+        if (err)
+            report_futhark_error(ctx, "Failed to upload lex table");
+    }
+
+    if (initial_state)
+        futhark_free_u16_1d(ctx.get(), initial_state);
+
+    if (merge_table)
+        futhark_free_u16_2d(ctx.get(), merge_table);
+
+    if (final_state)
+        futhark_free_u8_1d(ctx.get(), final_state);
+
+    return lex_table;
+}
+
+template <typename T, typename U, typename F>
+T* upload_strtab(futhark::Context& ctx, const grammar::StrTab<U>& strtab, F upload_fn) {
+    static_assert(sizeof(U) == sizeof(uint8_t));
+
+    auto* table = futhark_new_u8_1d(
+        ctx.get(),
+        reinterpret_cast<const uint8_t*>(strtab.table),
+        strtab.n
+    );
+
+    auto* offsets = futhark_new_i32_2d(ctx.get(), strtab.offsets, grammar::NUM_TOKENS, grammar::NUM_TOKENS);
+    auto* lengths = futhark_new_i32_2d(ctx.get(), strtab.lengths, grammar::NUM_TOKENS, grammar::NUM_TOKENS);
+
+    T* tab = nullptr;
+
+    if (table && offsets && lengths) {
+        int err = upload_fn(ctx.get(), &tab, table, offsets, lengths);
+        if (err)
+            report_futhark_error(ctx, "Failed to upload string table");
+    }
+
+    if (table)
+        futhark_free_u8_1d(ctx.get(), table);
+
+    if (offsets)
+        futhark_free_i32_2d(ctx.get(), offsets);
+
+    if (lengths)
+        futhark_free_i32_2d(ctx.get(), lengths);
+
+    return tab;
+}
+
 
 int main(int argc, const char* argv[]) {
     Options opts;
@@ -174,7 +254,16 @@ int main(int argc, const char* argv[]) {
         return EXIT_SUCCESS;
     }
 
-    auto config = UniqueCPtr<futhark_context_config, futhark_context_config_free>(futhark_context_config_new());
+    auto in = std::ifstream(opts.input_path, std::ios::binary);
+    if (!in) {
+        fmt::print(std::cerr, "Error: Failed to open input file '{}'\n", opts.input_path);
+        return EXIT_FAILURE;
+    }
+
+    auto input = std::string(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
+    in.close();
+
+    auto config = futhark::ContextConfig(futhark_context_config_new());
     futhark_context_config_set_logging(config.get(), opts.verbose);
     futhark_context_config_set_debugging(config.get(), opts.debug);
 
@@ -188,23 +277,63 @@ int main(int argc, const char* argv[]) {
         futhark_context_config_set_profiling(config.get(), opts.profile);
     #endif
 
-    auto context = UniqueCPtr<futhark_context, futhark_context_free>(futhark_context_new(config.get()));
+    auto ctx = futhark::Context(futhark_context_new(config.get()));
 
-    // int64_t result;
-    // int err = futhark_entry_main(context.get(), &result, 10);
-    // if (!err)
-    //     err = futhark_context_sync(context.get());
+    auto* lex_table = upload_lex_table(ctx);
+    auto* sct = upload_strtab<futhark_opaque_stack_change_table>(
+        ctx,
+        grammar::stack_change_table,
+        futhark_entry_mk_stack_change_table
+    );
 
-    // if (err) {
-    //     auto err = MallocPtr<char>(futhark_context_get_error(context.get()));
-    //     fmt::print(std::cerr, "Futhark error: {}", err ? err.get() : "(no diagnostic)");
-    //     return EXIT_FAILURE;
-    // }
+    auto* pt = upload_strtab<futhark_opaque_parse_table>(
+        ctx,
+        grammar::parse_table,
+        futhark_entry_mk_parse_table
+    );
 
-    // fmt::print("Result: {}", result);
+    auto* arity_array = futhark_new_i32_1d(ctx.get(), grammar::arities, grammar::NUM_PRODUCTIONS);
+
+    auto* input_array = futhark_new_u8_1d(ctx.get(), reinterpret_cast<const uint8_t*>(input.data()), input.size());
+
+    if (lex_table && sct && pt && arity_array && input_array) {
+        int32_t out = 0;
+
+        int err = futhark_entry_main(
+            ctx.get(),
+            &out,
+            input_array,
+            lex_table,
+            sct,
+            pt,
+            arity_array
+        );
+
+        if (err)
+            report_futhark_error(ctx, "Main kernel failed");
+
+        fmt::print("Result: {}\n", out);
+    } else {
+        fmt::print(std::cerr, "Error: Failed to upload required data\n");
+    }
+
+    if (lex_table)
+        futhark_free_opaque_lex_table(ctx.get(), lex_table);
+
+    if (sct)
+        futhark_free_opaque_stack_change_table(ctx.get(), sct);
+
+    if (pt)
+        futhark_free_opaque_parse_table(ctx.get(), pt);
+
+    if (arity_array)
+        futhark_free_i32_1d(ctx.get(), arity_array);
+
+    if (input_array)
+        futhark_free_u8_1d(ctx.get(), input_array);
 
     if (opts.profile) {
-        auto report = MallocPtr<char>(futhark_context_report(context.get()));
+        auto report = MallocPtr<char>(futhark_context_report(ctx.get()));
         fmt::print("Profile report:\n{}", report);
     }
 
