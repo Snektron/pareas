@@ -1,5 +1,6 @@
 #include "pareas/lpg/parser/grammar.hpp"
 #include "pareas/lpg/hash_util.hpp"
+#include "pareas/lpg/render_util.hpp"
 
 #include <fmt/format.h>
 #include <fmt/ostream.h>
@@ -167,6 +168,15 @@ namespace pareas::parser {
 
         if (error)
             throw TokenLinkError();
+    }
+
+    size_t Grammar::production_id(const Production* p) const {
+        assert(p >= this->productions.data() && p < &this->productions.data()[this->productions.size()]);
+        return p - this->productions.data();
+    }
+
+    size_t Grammar::production_backing_type_bits() const {
+        return int_bit_width(this->productions.size() - 1);
     }
 
     bool Grammar::check_production_definitions(ErrorReporter& er) const {

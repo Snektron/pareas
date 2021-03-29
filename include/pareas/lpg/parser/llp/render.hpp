@@ -17,7 +17,7 @@ namespace pareas::parser::llp {
         const Grammar* g;
         const ParsingTable* pt;
 
-        std::unordered_map<Symbol, size_t, Symbol::Hash> symbol_mapping;
+        std::unordered_map<Symbol, uint64_t, Symbol::Hash> symbol_mapping;
 
     public:
         constexpr const static size_t TABLE_OFFSET_BITS = 32;
@@ -26,7 +26,7 @@ namespace pareas::parser::llp {
         void render() const;
 
     private:
-        size_t bracket_id(const Symbol& sym, bool left) const;
+        uint64_t bracket_id(const Symbol& sym, bool left) const;
         size_t bracket_backing_bits() const;
 
         void render_productions() const;

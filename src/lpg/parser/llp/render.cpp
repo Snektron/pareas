@@ -22,25 +22,20 @@ namespace {
         int32_t size;
     };
 
-    template <typename T>
-    struct StringTable {
-        std::vector<T> superstring;
+    struct StrTab {
+        size_t item_bytes;
+        std::vector<uint64_t> superstring;
         std::unordered_map<AdmissiblePair, String, AdmissiblePair::Hash> strings;
 
         template <typename F>
-        StringTable(const ParsingTable& pt, F get_string);
+        StrTab(const ParsingTable& pt, size_t item_bytes, F get_string);
 
-        void render(
-            std::ostream& out,
-            const std::string& base_name,
-            const std::string& table_type,
-            const TokenMapping* tm
-        );
+        void render(Renderer* r, const TokenMapping* tm, std::string_view name, std::string_view type);
     };
 
-    template <typename T>
     template <typename F>
-    StringTable<T>::StringTable(const ParsingTable& pt, F get_string) {
+    StrTab::StrTab(const ParsingTable& pt, size_t item_bytes, F get_string):
+        item_bytes(item_bytes) {
         // Simple implementation for now
         int32_t offset = 0;
         for (const auto& [ap, entry] : pt.table) {
@@ -51,26 +46,11 @@ namespace {
         }
     }
 
-    template <typename T>
-    void StringTable<T>::render(
-        std::ostream& out,
-        const std::string& base_name,
-        const std::string& table_type,
-        const TokenMapping* tm
-    ) {
-        fmt::print(out, "let {}_table_size: i64 = {}\n", base_name, this->superstring.size());
-        fmt::print(out, "let {}_table = [", base_name);
-
-        bool first = true;
-        for (auto val : this->superstring) {
-            fmt::print(out, "{}{}", first ? first = false, "" : ", ", val);
-        }
-        fmt::print(out, "] :> [{}_table_size]{}\n", base_name, table_type);
-
-        size_t n_tokens = tm->num_tokens();
+    void StrTab::render(Renderer* r, const TokenMapping* tm, std::string_view name, std::string_view type) {
+        size_t n = tm->num_tokens();
         auto stringrefs = std::vector<std::vector<String>>(
-            n_tokens,
-            std::vector<String>(n_tokens, {-1, -1})
+            n,
+            std::vector<String>(n, {-1, -1})
         );
 
         for (const auto& [ap, string] : this->strings) {
@@ -79,27 +59,48 @@ namespace {
             stringrefs[i][j] = string;
         }
 
-        fmt::print(out, "let {0}_refs = [\n    ", base_name);
-        bool outer_first = true;
-        for (const auto& v : stringrefs) {
-            if (outer_first)
-                outer_first = false;
-            else
-                fmt::print(out, ",\n    ");
+        r->align_data(this->item_bytes);
+        auto table_offset = r->data_offset();
 
-            fmt::print(out, "[");
-            bool inner_first = true;
-            for (const auto& [offset, size] : v) {
-                if (inner_first)
-                    inner_first = false;
-                else
-                    fmt::print(out, ", ");
-                fmt::print(out, "({}, {})", offset, size);
-            }
-            fmt::print(out, "]");
+        for (auto value : this->superstring) {
+            r->write_data_int(value, this->item_bytes);
         }
 
-        fmt::print(out, "\n] :> [num_tokens][num_tokens](i{0}, i{0})\n", ParserRenderer::TABLE_OFFSET_BITS);
+        r->align_data(sizeof(int32_t));
+        auto offsets_offset = r->data_offset();
+
+        for (const auto& v : stringrefs) {
+            for (auto str : v) {
+                // According to cppreference, this cast is valid and will produce the desired result.
+                r->write_data_int(static_cast<uint32_t>(str.offset), sizeof(uint32_t));
+            }
+        }
+
+        auto lengths_offset = r->data_offset();
+
+        for (const auto& v : stringrefs) {
+            for (auto str : v) {
+                r->write_data_int(static_cast<uint32_t>(str.size), sizeof(uint32_t));
+            }
+        }
+
+        fmt::print(r->hpp, "extern const StrTab<{}> {};\n", type, name);
+
+        fmt::print(
+            r->cpp,
+            "const StrTab<{}> {}= {{\n"
+            "    .n = {},\n"
+            "    .table = {},\n"
+            "    .offsets = {},\n"
+            "    .length = {},\n"
+            "}};\n",
+            type,
+            name,
+            this->superstring.size(),
+            r->render_offset_cast(table_offset, type),
+            r->render_offset_cast(offsets_offset, "int32_t"),
+            r->render_offset_cast(lengths_offset, "int32_t")
+        );
     }
 }
 
@@ -120,16 +121,13 @@ namespace pareas::parser::llp {
 
         fmt::print(
             this->r->hpp,
-            "using Bracket = uint{}_t;\n"
             "template <typename T>\n"
             "struct StrTab {{\n"
             "    size_t n;\n"
             "    const T* table; // n\n"
             "    const uint32_t* offsets; // NUM_TOKENS\n"
             "    const uint32_t* lengths; // NUM_TOKENS\n"
-            "}};\n"
-            "extern const StrTab<Bracket> stack_change_table;\n"
-            "extern const StrTab<Production> parse_table;\n",
+            "}};\n",
             this->bracket_backing_bits()
         );
 
@@ -138,7 +136,7 @@ namespace pareas::parser::llp {
         this->render_parse_table();
     }
 
-    size_t ParserRenderer::bracket_id(const Symbol& sym, bool left) const {
+    uint64_t ParserRenderer::bracket_id(const Symbol& sym, bool left) const {
         auto id = this->symbol_mapping.at(sym);
 
         // Left brackets get odd ID's, rightb rackets get even ID's.
@@ -153,11 +151,11 @@ namespace pareas::parser::llp {
 
     void ParserRenderer::render_productions() const {
         auto n = this->g->productions.size();
-        auto bits = pareas::int_bit_width(n);
+        auto backing_bits = this->g->production_backing_type_bits();
 
-        fmt::print(this->r->fut, "module production = u{}\n", bits);
+        fmt::print(this->r->fut, "module production = u{}\n", backing_bits);
 
-        fmt::print(this->r->hpp, "enum class Production : uint{}_t {{\n", bits);
+        fmt::print(this->r->hpp, "enum class Production : uint{}_t {{\n", backing_bits);
 
         fmt::print(this->r->cpp, "const char* production_name(Production p) {{\n");
         fmt::print(this->r->cpp, "    switch (p) {{\n");
@@ -191,22 +189,25 @@ namespace pareas::parser::llp {
         this->r->align_data(sizeof(uint32_t));
         auto offset = this->r->data_offset();
 
-        fmt::print(this->r->hpp, "extern const uint32_t* arities; // NUM_PRODUCTIONS\n");
+        fmt::print(this->r->hpp, "extern const int32_t* arities; // NUM_PRODUCTIONS\n");
 
-        fmt::print(this->r->cpp, "const uint32_t* arities = {};\n", this->r->render_offset_cast(offset, "uint32_t"));
+        fmt::print(this->r->cpp, "const int32_t* arities = {};\n", this->r->render_offset_cast(offset, "int32_t"));
 
         // Production id's are assigned according to their index in the
-        // productions vector, so we can just push_back the arities.
+        // productions vector, so we can just write them in order of definition.
         for (const auto& prod : this->g->productions) {
             this->r->write_data_int(prod.arity(), sizeof(uint32_t));
         }
     }
 
     void ParserRenderer::render_stack_change_table() const {
-        auto strtab = StringTable<size_t>(
+        size_t bracket_bits = this->bracket_backing_bits();
+
+        auto strtab = StrTab(
             *this->pt,
+            bracket_bits / 8,
             [&](const ParsingTable::Entry& entry) {
-                auto result = std::vector<size_t>();
+                auto result = std::vector<uint64_t>();
 
                 for (auto it = entry.initial_stack.rbegin(); it != entry.initial_stack.rend(); ++it) {
                     result.push_back(this->bracket_id(*it, false));
@@ -220,21 +221,25 @@ namespace pareas::parser::llp {
             }
         );
 
-        size_t bracket_bits = this->bracket_backing_bits();
-        fmt::print(this->r->fut, "module bracket = u{}\n", bracket_bits);
-        strtab.render(this->r->fut, "stack_change", fmt::format("u{}", bracket_bits), this->tm);
+        fmt::print(this->r->hpp, "using Bracket = uint{}_t;\n", bracket_bits);
+        strtab.render(this->r, this->tm, "stack_change_table", "Bracket");
     }
 
     void ParserRenderer::render_parse_table() const {
-           auto strtab = StringTable<std::string>(
+        size_t backing_bits = this->g->production_backing_type_bits();
+
+        auto strtab = StrTab(
             *this->pt,
+            backing_bits / 8,
             [&](const ParsingTable::Entry& entry) {
-                auto result = std::vector<std::string>();
+                auto result = std::vector<uint64_t>();
+
                 for (const auto* prod : entry.productions)
-                    result.push_back(fmt::format("production_{}", prod->tag));
+                    result.push_back(this->g->production_id(prod));
                 return result;
             }
         );
-        strtab.render(this->r->fut, "parse", "production.t", this->tm);
+
+        strtab.render(this->r, this->tm, "parse_table", "Production");
     }
 }

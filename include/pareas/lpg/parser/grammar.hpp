@@ -102,6 +102,9 @@ namespace pareas::parser {
         void add_tokens(TokenMapping& tm) const;
         void link_tokens(ErrorReporter& er, const TokenMapping& mapping) const;
 
+        size_t production_id(const Production* p) const;
+        size_t production_backing_type_bits() const;
+
     private:
         bool check_production_definitions(ErrorReporter& er) const;
         bool check_start_rule(ErrorReporter& er) const;
