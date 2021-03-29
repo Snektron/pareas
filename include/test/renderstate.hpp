@@ -9,6 +9,8 @@ class RenderState {
     public:
         virtual ~RenderState() = default;
         virtual void render(CodeRenderer&, std::ostream&) const = 0;
+
+        virtual void setChild(size_t, const RenderState*);
 };
 
 #endif

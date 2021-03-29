@@ -70,7 +70,7 @@ const char ID_CHARS[] = {
     '9'
 };
 
-IDCreateRenderState::IDCreateRenderState(size_t avg_len, size_t stddev_len) : avg_len(avg_len), stddev_len(stddev_len) {}
+IDCreateRenderState::IDCreateRenderState(size_t avg_len, size_t stddev_len, size_t category) : avg_len(avg_len), stddev_len(stddev_len), category(category) {}
 
 void IDCreateRenderState::render(CodeRenderer& renderer, std::ostream& os) const {
     std::string id;
@@ -90,7 +90,7 @@ void IDCreateRenderState::render(CodeRenderer& renderer, std::ostream& os) const
         }
 
         id = ss.str();
-    } while(!renderer.addId(id));
+    } while(!renderer.addId(id, this->category));
 
     os << id;
 }

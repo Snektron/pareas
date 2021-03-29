@@ -13,6 +13,7 @@ class NodeRenderState : public RenderState {
         ~NodeRenderState() = default;
 
         void render(CodeRenderer&, std::ostream&) const override;
+        void setChild(size_t, const RenderState*);
 };
 
 #endif

@@ -59,13 +59,17 @@ sources = [
 # Test executable
 test_sources = [
     'src/test/coderenderer.cpp',
+    'src/test/commitrenderstate.cpp',
     'src/test/idcreaterenderstate.cpp',
+    'src/test/idrenderstate.cpp',
     'src/test/indentrenderstate.cpp',
     'src/test/noderenderstate.cpp',
+    'src/test/randomintrenderstate.cpp',
+    'src/test/renderstate.cpp',
     'src/test/repeatrenderstate.cpp',
     'src/test/scoperenderstate.cpp',
-    'src/test/textrenderstate.cpp',
-    'src/test/testgen.cpp'
+    'src/test/testgen.cpp',
+    'src/test/textrenderstate.cpp'
 ]
 
 executable(
