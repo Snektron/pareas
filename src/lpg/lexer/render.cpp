@@ -47,22 +47,22 @@ namespace pareas::lexer {
     }
 
     size_t LexerRenderer::render_initial_state_data() const {
-        this->r->align_dat(sizeof(EncodedTransition));
-        auto offset = this->r->dat_offset();
+        this->r->align_data(sizeof(EncodedTransition));
+        auto offset = this->r->data_offset();
 
         uint64_t dim = this->lexer->initial_states.size();
         for (uint64_t i = 0; i < dim; ++i) {
             const auto& transition = this->lexer->initial_states[i];
             auto encoded = this->encode(transition);
-            this->r->dat.write(reinterpret_cast<const char*>(&encoded), sizeof encoded);
+            this->r->write_data_int(encoded, sizeof(EncodedTransition));
         }
 
         return offset;
     }
 
     size_t LexerRenderer::render_merge_table_data() const {
-        this->r->align_dat(sizeof(EncodedTransition));
-        auto offset = this->r->dat_offset();
+        this->r->align_data(sizeof(EncodedTransition));
+        auto offset = this->r->data_offset();
 
         const auto& merge_table = this->lexer->merge_table;
 
@@ -71,7 +71,7 @@ namespace pareas::lexer {
         for (uint64_t x = 0; x < dim; ++x) {
             for (uint64_t y = 0; y < dim; ++y) {
                 auto encoded = this->encode(merge_table(x, y));
-                this->r->dat.write(reinterpret_cast<const char*>(&encoded), sizeof encoded);
+                this->r->write_data_int(encoded, sizeof(EncodedTransition));
             }
         }
 
@@ -79,20 +79,15 @@ namespace pareas::lexer {
     }
 
     size_t LexerRenderer::render_final_state_data() const {
-        this->r->align_dat(this->tm->backing_type_bits() / 8);
-        auto offset = this->r->dat_offset();
+        this->r->align_data(this->tm->backing_type_bits() / 8);
+        auto offset = this->r->data_offset();
 
         uint64_t dim = this->lexer->final_states.size();
         for (uint64_t i = 0; i < dim; ++i) {
             const auto* lexeme = this->lexer->final_states[i];
 
             uint64_t token_definition = lexeme ? this->tm->token_id(lexeme->as_token()) : this->tm->token_id(Token::INVALID);
-
-            // Write the token definition in little endian.
-            for (size_t i = 0; i < this->tm->backing_type_bits(); i += 8) {
-                uint8_t byte = (token_definition >> i) & 0xFF;
-                this->r->dat.write(reinterpret_cast<char*>(&byte), 1);
-            }
+            this->r->write_data_int(token_definition, this->tm->backing_type_bits() / 8);
         }
 
         return offset;

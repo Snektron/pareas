@@ -117,7 +117,23 @@ namespace pareas::parser::llp {
 
     void ParserRenderer::render() const {
         this->render_productions();
-        this->render_production_arities();
+
+        fmt::print(
+            this->r->hpp,
+            "using Bracket = uint{}_t;\n"
+            "template <typename T>\n"
+            "struct StrTab {{\n"
+            "    size_t n;\n"
+            "    const T* table; // n\n"
+            "    const uint32_t* offsets; // NUM_TOKENS\n"
+            "    const uint32_t* lengths; // NUM_TOKENS\n"
+            "}};\n"
+            "extern const StrTab<Bracket> stack_change_table;\n"
+            "extern const StrTab<Production> parse_table;\n",
+            this->bracket_backing_bits()
+        );
+
+        this->render_production_arity_data();
         this->render_stack_change_table();
         this->render_parse_table();
     }
@@ -131,12 +147,15 @@ namespace pareas::parser::llp {
         return left ? id * 2 + 1 : id * 2;
     }
 
+    size_t ParserRenderer::bracket_backing_bits() const {
+        return pareas::int_bit_width(2 * this->symbol_mapping.size());
+    }
+
     void ParserRenderer::render_productions() const {
         auto n = this->g->productions.size();
         auto bits = pareas::int_bit_width(n);
 
         fmt::print(this->r->fut, "module production = u{}\n", bits);
-        fmt::print(this->r->fut, "let num_productions: i64 = {}\n", n);
 
         fmt::print(this->r->hpp, "enum class Production : uint{}_t {{\n", bits);
 
@@ -159,21 +178,28 @@ namespace pareas::parser::llp {
             fmt::print(this->r->cpp, "        case Production::{}: return \"{}\";\n", tag_upper, tag);
         }
 
+        fmt::print(this->r->fut, "let num_productions: i64 = {}\n", n);
+
         fmt::print(this->r->hpp, "}};\n");
+        fmt::print(this->r->hpp, "constexpr const size_t NUM_PRODUCTIONS = {};\n", n);
         fmt::print(this->r->hpp, "const char* production_name(Production p);\n");
 
         fmt::print(this->r->cpp, "    }}\n}}\n");
     }
 
-    void ParserRenderer::render_production_arities() const {
+    void ParserRenderer::render_production_arity_data() const {
+        this->r->align_data(sizeof(uint32_t));
+        auto offset = this->r->data_offset();
+
+        fmt::print(this->r->hpp, "extern const uint32_t* arities; // NUM_PRODUCTIONS\n");
+
+        fmt::print(this->r->cpp, "const uint32_t* arities = {};\n", this->r->render_offset_cast(offset, "uint32_t"));
+
         // Production id's are assigned according to their index in the
         // productions vector, so we can just push_back the arities.
-        auto arities = std::vector<size_t>();
         for (const auto& prod : this->g->productions) {
-            arities.push_back(prod.arity());
+            this->r->write_data_int(prod.arity(), sizeof(uint32_t));
         }
-
-        fmt::print(this->r->fut, "let production_arity = [{}] :> [num_productions]i32\n", fmt::join(arities, ", "));
     }
 
     void ParserRenderer::render_stack_change_table() const {
@@ -194,7 +220,7 @@ namespace pareas::parser::llp {
             }
         );
 
-        size_t bracket_bits = pareas::int_bit_width(2 * this->symbol_mapping.size());
+        size_t bracket_bits = this->bracket_backing_bits();
         fmt::print(this->r->fut, "module bracket = u{}\n", bracket_bits);
         strtab.render(this->r->fut, "stack_change", fmt::format("u{}", bracket_bits), this->tm);
     }

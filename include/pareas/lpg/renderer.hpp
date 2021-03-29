@@ -6,6 +6,7 @@
 #include <string>
 #include <string_view>
 #include <fstream>
+#include <cstdint>
 
 namespace pareas {
     struct RenderError : std::runtime_error {
@@ -24,8 +25,11 @@ namespace pareas {
 
         void finalize();
 
-        void align_dat(size_t align);
-        size_t dat_offset();
+        void align_data(size_t align);
+        size_t data_offset();
+
+        void write_data_int(uint64_t value, size_t bytes);
+
         std::string render_offset_cast(size_t offset, std::string_view type) const;
     };
 }

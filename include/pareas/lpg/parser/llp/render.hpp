@@ -27,9 +27,12 @@ namespace pareas::parser::llp {
 
     private:
         size_t bracket_id(const Symbol& sym, bool left) const;
+        size_t bracket_backing_bits() const;
 
         void render_productions() const;
-        void render_production_arities() const;
+
+        void render_production_arity_data() const;
+
         void render_stack_change_table() const;
         void render_parse_table() const;
     };

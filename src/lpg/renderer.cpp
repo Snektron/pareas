@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <string>
+#include <bit>
 #include <cassert>
 
 namespace {
@@ -70,19 +71,27 @@ namespace pareas {
         fmt::print(this->cpp, "}}\n");
     }
 
-    void Renderer::align_dat(size_t align) {
-        auto offset = this->dat_offset();
-        auto diff = offset - offset % align;
+    void Renderer::align_data(size_t align) {
+        auto offset = this->data_offset();
+        auto diff = (align - offset % align) % align;
 
         for (size_t i = 0; i < diff; ++i) {
             this->dat.put(0);
         }
     }
 
-    size_t Renderer::dat_offset() {
+    size_t Renderer::data_offset() {
         auto p = this->dat.tellp();
         assert(p >= 0);
         return static_cast<size_t>(p);
+    }
+
+    void Renderer::write_data_int(uint64_t value, size_t bytes) {
+        // If the system is little endian, a value can be truncated simply by writing less bytes.
+        static_assert(std::endian::native == std::endian::little);
+        assert(value < (1ULL << (8ULL * bytes)));
+
+        this->dat.write(reinterpret_cast<char*>(&value), bytes);
     }
 
     std::string Renderer::render_offset_cast(size_t offset, std::string_view type) const {

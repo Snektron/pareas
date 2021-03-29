@@ -93,6 +93,7 @@ namespace pareas {
         fmt::print(r.fut, "let num_tokens: i64 = {}\n", this->num_tokens());
 
         fmt::print(r.hpp, "}};\n");
+        fmt::print(r.hpp, "constexpr const size_t NUM_TOKENS = {};\n", this->num_tokens());
         fmt::print(r.hpp, "const char* token_name(Token t);\n");
 
         fmt::print(r.cpp, "    }}\n}}\n");
