@@ -8,6 +8,7 @@ type production = g.production.t
 type~ lex_table [n] = lexer.lex_table [n] g.token.t
 type~ stack_change_table [n] = pareas_parser.stack_change_table [n]
 type~ parse_table [n] = pareas_parser.parse_table [n]
+type~ arity_array = pareas_parser.arity_array
 
 entry mk_lex_table [n] (is: [256]lexer.state) (mt: [n][n]lexer.state) (fs: [n]g.token.t): lex_table [n]
     = lexer.mk_lex_table is mt fs g.identity_state
@@ -97,7 +98,7 @@ entry main [n] [m] [k] [l]
     (lt: lex_table [m])
     (pt: parse_table [l])
     (sct: stack_change_table [k])
-    (arities: [g.num_productions]i32)
+    (arities: arity_array)
     =
     let (tokens, _, _) =
         lexer.lex input lt
