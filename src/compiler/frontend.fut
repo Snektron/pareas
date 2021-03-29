@@ -109,5 +109,5 @@ entry main [n] [m] [k] [l]
     in if !(pareas_parser.check tokens sct) then -1 else
     let tree = pareas_parser.parse tokens pt
     let parents = pareas_parser.build_parent_vector tree arities
-    let parents = clean_up_lists tree parents
+    --  let parents = clean_up_lists tree parents
     in last parents

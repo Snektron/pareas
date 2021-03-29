@@ -57,14 +57,12 @@ pareas_lpg = executable(
 )
 
 # Compiler
-dependencies = [fmt_dep]
+dependencies = [fmt_dep, dependency('threads')]
 
 # Build futhark library
 futhark_backend = get_option('futhark-backend')
 
-if futhark_backend == 'multicore'
-    dependencies += dependency('threads')
-elif futhark_backend == 'opencl'
+if futhark_backend == 'opencl'
     dependencies += dependency('OpenCL')
 elif futhark_backend == 'cuda'
     dependencies += dependency('cuda', modules: ['cuda', 'cudart', 'nvrtc'])

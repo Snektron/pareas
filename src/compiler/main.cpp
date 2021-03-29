@@ -164,11 +164,15 @@ void report_futhark_error(futhark::Context& ctx, std::string_view msg) {
 }
 
 futhark_opaque_lex_table* upload_lex_table(futhark::Context& ctx) {
+    fmt::print("oef\n");
+
     auto* initial_state = futhark_new_u16_1d(
         ctx.get(),
         reinterpret_cast<const grammar::LexTable::State*>(grammar::lex_table.initial_states),
         grammar::LexTable::NUM_INITIAL_STATES
     );
+
+    fmt::print("auwie\n");
 
     auto* merge_table = futhark_new_u16_2d(
         ctx.get(),
@@ -182,7 +186,6 @@ futhark_opaque_lex_table* upload_lex_table(futhark::Context& ctx) {
         reinterpret_cast<const std::underlying_type_t<grammar::Token>*>(grammar::lex_table.final_states),
         grammar::lex_table.n
     );
-
 
     futhark_opaque_lex_table* lex_table = nullptr;
 
@@ -264,6 +267,7 @@ int main(int argc, const char* argv[]) {
     in.close();
 
     auto config = futhark::ContextConfig(futhark_context_config_new());
+
     futhark_context_config_set_logging(config.get(), opts.verbose);
     futhark_context_config_set_debugging(config.get(), opts.debug);
 
