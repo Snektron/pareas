@@ -164,15 +164,11 @@ void report_futhark_error(futhark::Context& ctx, std::string_view msg) {
 }
 
 futhark_opaque_lex_table* upload_lex_table(futhark::Context& ctx) {
-    fmt::print("oef\n");
-
     auto* initial_state = futhark_new_u16_1d(
         ctx.get(),
         reinterpret_cast<const grammar::LexTable::State*>(grammar::lex_table.initial_states),
         grammar::LexTable::NUM_INITIAL_STATES
     );
-
-    fmt::print("auwie\n");
 
     auto* merge_table = futhark_new_u16_2d(
         ctx.get(),
