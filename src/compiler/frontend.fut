@@ -59,11 +59,11 @@ let list_end_productions = [
 --    / \
 --   id  end
 -- This step will clean up the unused prod and sum nodes as well.
-let clean_up_lists [n] (tree: [n]production) (parents: [n]i32) =
+let clean_up_lists [n] (nodes: [n]production) (parents: [n]i32) =
     -- First, generate a marking for each node whether it should be removed in this step.
     -- Generate the initial marking simply by checking whether the node is part
     -- of the predefined list of end nodes.
-    let ends = map (\node -> any (== node) list_end_productions) tree
+    let ends = map (\node -> any (== node) list_end_productions) nodes
     -- Generate a new marking of nodes containing a child which is a list end. This can
     -- be done simply by scattering the list end marking one edge up the parent tree.
     -- We can simply re-use the existing array for this.
@@ -99,15 +99,15 @@ entry main [n] [m] [k] [l]
     (sct: stack_change_table [l])
     (pt: parse_table [k])
     (arities: arity_array)
-    =
+    : ([]production, []i32) =
     let (tokens, _, _) =
         lexer.lex input lt
         |> filter (\(t, _, _) -> t != g.token_whitespace && t != g.token_comment)
         |> unzip3
     -- As the lexer returns an `invalid` token when the input cannot be lexed, which is accepted
     -- by the parser also, pareas_parser.check will fail whenever there is a lexing error.
-    in if !(pareas_parser.check tokens sct) then -1 else
-    let tree = pareas_parser.parse tokens pt
-    let parents = pareas_parser.build_parent_vector tree arities
+    in if !(pareas_parser.check tokens sct) then ([], []) else
+    let nodes = pareas_parser.parse tokens pt
+    let parents = pareas_parser.build_parent_vector nodes arities
     --  let parents = clean_up_lists tree parents
-    in last parents
+    in (nodes, parents)

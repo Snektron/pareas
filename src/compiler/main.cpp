@@ -293,15 +293,16 @@ int main(int argc, const char* argv[]) {
     );
 
     auto* arity_array = futhark_new_i32_1d(ctx.get(), grammar::arities, grammar::NUM_PRODUCTIONS);
-
     auto* input_array = futhark_new_u8_1d(ctx.get(), reinterpret_cast<const uint8_t*>(input.data()), input.size());
 
-    if (lex_table && sct && pt && arity_array && input_array) {
-        int32_t out = 0;
+    futhark_u8_1d* nodes = nullptr;
+    futhark_i32_1d* parents = nullptr;
 
+    if (lex_table && sct && pt && arity_array && input_array) {
         int err = futhark_entry_main(
             ctx.get(),
-            &out,
+            &nodes,
+            &parents,
             input_array,
             lex_table,
             sct,
@@ -311,11 +312,15 @@ int main(int argc, const char* argv[]) {
 
         if (err)
             report_futhark_error(ctx, "Main kernel failed");
-
-        fmt::print("Result: {}\n", out);
     } else {
         fmt::print(std::cerr, "Error: Failed to upload required data\n");
     }
+
+    if (nodes)
+        futhark_free_u8_1d(ctx.get(), nodes);
+
+    if (parents)
+        futhark_free_i32_1d(ctx.get(), parents);
 
     if (lex_table)
         futhark_free_opaque_lex_table(ctx.get(), lex_table);
