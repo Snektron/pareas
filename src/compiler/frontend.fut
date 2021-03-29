@@ -5,6 +5,8 @@ module pareas_parser = parser g
 
 type production = g.production.t
 
+type~ lex_table [n] = lexer.lex_table [n] g.token.t
+
 let list_end_productions = [
     g.production_logical_or_end,
     g.production_logical_and_end,
@@ -73,17 +75,10 @@ let clean_up_lists [n] (tree: [n]production) (parents: [n]i32) =
             then -1 -- mark this node as 'to be removed'
             else find_new_parent node)
 
-entry main [n] [m]
-    (input: [n]u8)
-    (initial_state: [256]lexer.state)
-    (merge_table: [m][m]lexer.state)
-    (final_state: [m]g.token.t) =
-    let lt =
-        lexer.mk_lex_table
-            initial_state
-            merge_table
-            final_state
-            g.identity_state
+entry mk_lex_table [n] (is: [256]lexer.state) (mt: [n][n]lexer.state) (fs: [n]g.token.t): lex_table [n]
+    = lexer.mk_lex_table is mt fs g.identity_state
+
+entry main [n] [m] (input: [n]u8) (lt: lex_table [m]) =
     let (tokens, _, _) =
         lexer.lex input lt
         |> filter (\(t, _, _) -> t != g.token_whitespace && t != g.token_comment)
