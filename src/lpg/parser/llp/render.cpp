@@ -92,7 +92,7 @@ namespace {
             "    .n = {},\n"
             "    .table = {},\n"
             "    .offsets = {},\n"
-            "    .length = {},\n"
+            "    .lengths = {},\n"
             "}};\n",
             type,
             name,
@@ -125,8 +125,8 @@ namespace pareas::parser::llp {
             "struct StrTab {{\n"
             "    size_t n;\n"
             "    const T* table; // n\n"
-            "    const uint32_t* offsets; // NUM_TOKENS\n"
-            "    const uint32_t* lengths; // NUM_TOKENS\n"
+            "    const int32_t* offsets; // NUM_TOKENS\n"
+            "    const int32_t* lengths; // NUM_TOKENS\n"
             "}};\n",
             this->bracket_backing_bits()
         );
@@ -222,6 +222,9 @@ namespace pareas::parser::llp {
         );
 
         fmt::print(this->r->hpp, "using Bracket = uint{}_t;\n", bracket_bits);
+
+        fmt::print(this->r->fut, "module bracket = u{}\n", bracket_bits);
+
         strtab.render(this->r, this->tm, "stack_change_table", "Bracket");
     }
 
