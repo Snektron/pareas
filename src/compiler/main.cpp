@@ -249,12 +249,14 @@ void dump_parse_tree(const std::vector<grammar::Production>& nodes, const std::v
         auto node = nodes[i];
         auto parent = parents[i];
 
-        fmt::print("node{} [label=\"{}\"];\n", i, grammar::production_name(node));
+        if (parent != i) {
+            fmt::print("node{} [label=\"{}\"];\n", i, grammar::production_name(node));
 
-        if (parent >= 0) {
-            fmt::print("node{} -> node{};\n", parent, i);
-        } else {
-            fmt::print("start{0} [style=invis];\nstart{0} -> node{0};\n", i);
+            if (parent >= 0) {
+                fmt::print("node{} -> node{};\n", parent, i);
+            } else {
+                fmt::print("start{0} [style=invis];\nstart{0} -> node{0};\n", i);
+            }
         }
     }
 
