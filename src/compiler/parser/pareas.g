@@ -1,7 +1,7 @@
-start -> program;
+start -> fn_decl_list;
 
-program -> fn_decl program;
-program [program_end] -> ;
+fn_decl_list -> fn_decl fn_decl_list;
+fn_decl_list [fn_decl_list_end] -> ;
 
 fn_decl -> 'fn' compound_stat;
 

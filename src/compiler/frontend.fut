@@ -1,9 +1,11 @@
 import "parser/parser"
+import "passes/util"
+
 module lexer = import "lexer/lexer"
-module g = import "../../gen/pareas_grammar" -- Generated using meson/
+module g = import "../../gen/pareas_grammar"
 module pareas_parser = parser g
 
-type production = g.production.t
+module pass01 = import "passes/01_clean_lists"
 
 type~ lex_table [n] = lexer.lex_table [n] g.token.t
 type~ stack_change_table [n] = pareas_parser.stack_change_table [n]
@@ -25,74 +27,6 @@ entry mk_parse_table [n]
     (lengths: [g.num_tokens][g.num_tokens]i32): parse_table [n]
     = mk_strtab table offsets lengths
 
-let list_end_productions = [
-    g.production_logical_or_end,
-    g.production_logical_and_end,
-    g.production_rela_end,
-    g.production_bitwise_end,
-    g.production_shift_end,
-    g.production_sum_end,
-    g.production_prod_end
-]
-
--- Lists have the form
---    sum
---   / \
---  A   sum_add
---     / \
---    B   sum_add
---       / \
---      C   sum_end
--- We are going to remove the ends by transforming the lists into
---    sum_add
---   / \
---  A   sum_add
---     / \
---    C   D
--- This removes redundant list end nodes (marked as invalid after).
--- This operation has a double purpose: consider the tree
---       expr
---       |
---       sum
---      / \
---  prod   end
---    / \
---   id  end
--- This step will clean up the unused prod and sum nodes as well.
-let clean_up_lists [n] (nodes: [n]production) (parents: [n]i32) =
-    -- First, generate a marking for each node whether it should be removed in this step.
-    -- Generate the initial marking simply by checking whether the node is part
-    -- of the predefined list of end nodes.
-    let ends = map (\node -> any (== node) list_end_productions) nodes
-    -- Generate a new marking of nodes containing a child which is a list end. This can
-    -- be done simply by scattering the list end marking one edge up the parent tree.
-    -- We can simply re-use the existing array for this.
-    -- Also note that in theory, each node may only have a maximum of one possible list end
-    -- child, so we can simply use a scatter here without conflicts.
-    -- We only want to scatter some values though (those with `ends[i]` set to true), and
-    -- for the others set -1 as index, which Futhark will ignore.
-    let is = map2 (\parent is_end -> if is_end then parent else -1) parents ends
-    -- Scatter the markings to the ends array.
-    let ends =
-        scatter
-            ends
-            (map i64.i32 is)
-            (replicate n true)
-    -- Next, find the new parent array. For each node, walk up the tree as long as the parent contains
-    -- a marked node.
-    -- TODO: This could maybe be improved using a prefix-sum like approach?
-    let find_new_parent (node: i32): i32 =
-        loop node = node while ends[parents[node]] do
-            parents[node]
-    in
-        iota n
-        |> map i32.i64
-        |> zip ends
-        |> map (\(is_end, node) ->
-            if is_end
-            then -1 -- mark this node as 'to be removed'
-            else find_new_parent node)
-
 entry main [n] [m] [k] [l]
     (input: [n]u8)
     (lt: lex_table [m])
@@ -109,5 +43,5 @@ entry main [n] [m] [k] [l]
     in if !(pareas_parser.check tokens sct) then ([], []) else
     let nodes = pareas_parser.parse tokens pt
     let parents = pareas_parser.build_parent_vector nodes arities
-    --  let parents = clean_up_lists tree parents
+    let (nodes, parents) = pass01.clean_up_lists nodes parents
     in (nodes, parents)

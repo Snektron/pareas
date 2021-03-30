@@ -87,13 +87,15 @@ grammar_asm = grammar[3]
 
 futhark_sources = [
     'lib/github.com/diku-dk/sorts/radix_sort.fut',
+    'src/compiler/string.fut',
+    'src/compiler/util.fut',
+    'src/compiler/frontend.fut',
     'src/compiler/lexer/lexer.fut',
     'src/compiler/parser/binary_tree.fut',
     'src/compiler/parser/bracket_matching.fut',
     'src/compiler/parser/parser.fut',
-    'src/compiler/string.fut',
-    'src/compiler/frontend.fut',
-    'src/compiler/util.fut',
+    'src/compiler/passes/util.fut',
+    'src/compiler/passes/01_clean_lists.fut',
 ]
 
 futhark_compile_command = [
