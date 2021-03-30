@@ -1,15 +1,16 @@
 #include "test/coderenderer.hpp"
-#include "test/renderstate.hpp"
-#include "test/noderenderstate.hpp"
-#include "test/textrenderstate.hpp"
-#include "test/repeatrenderstate.hpp"
-#include "test/optionrenderstate.hpp"
-#include "test/idcreaterenderstate.hpp"
-#include "test/indentrenderstate.hpp"
-#include "test/scoperenderstate.hpp"
-#include "test/randomintrenderstate.hpp"
-#include "test/idrenderstate.hpp"
 #include "test/commitrenderstate.hpp"
+#include "test/idcreaterenderstate.hpp"
+#include "test/idrenderstate.hpp"
+#include "test/indentrenderstate.hpp"
+#include "test/noderenderstate.hpp"
+#include "test/optionrenderstate.hpp"
+#include "test/randomfloatrenderstate.hpp"
+#include "test/randomintrenderstate.hpp"
+#include "test/renderstate.hpp"
+#include "test/repeatrenderstate.hpp"
+#include "test/scoperenderstate.hpp"
+#include "test/textrenderstate.hpp"
 
 #include <memory>
 #include <iostream>
@@ -18,7 +19,8 @@ using state_ptr = std::unique_ptr<RenderState>;
 
 enum IdCategory {
     CATEGORY_DEFAULT = 0,
-    CATEGORY_INT = 1
+    CATEGORY_INT = 1,
+    CATEGORY_FLOAT = 2
 };
 
 template <typename... T>
@@ -72,11 +74,13 @@ int main(int argc, char* argv[]) {
     size_t function_name_stddev = 3;
     size_t statement_list_len = 20;
     size_t statement_list_stddev = 5;
-    size_t id_name_len = 10;
+    size_t id_name_len = 100;
     size_t id_name_stddev = 2;
-    size_t tree_max_depth = 20;
+    size_t tree_max_depth = 10;
     size_t int_min_value = 0;
     size_t int_max_value = 10000;
+    float float_min_value = 0;
+    float float_max_value = 100000;
 
     //Utility nodes
     state_ptr indent(new IndentRenderState());
@@ -90,14 +94,19 @@ int main(int argc, char* argv[]) {
     state_ptr space(new TextRenderState(" "));
     state_ptr assignment(new TextRenderState(" = "));
     state_ptr declare(new TextRenderState(" <- "));
+    state_ptr add(new TextRenderState(" + "));
+    state_ptr sub(new TextRenderState(" - "));
     state_ptr mul(new TextRenderState(" * "));
     state_ptr div(new TextRenderState(" / "));
     state_ptr mod(new TextRenderState(" % "));
     state_ptr open_par(new TextRenderState("("));
     state_ptr close_par(new TextRenderState(")"));
+    state_ptr cast(new TextRenderState("@"));
 
     //Operator choices
+    state_ptr add_ops(new OptionRenderState({add.get(), sub.get()}, uniform_option_picker));
     state_ptr mul_ops(new OptionRenderState({mul.get(), div.get(), mod.get()}, uniform_option_picker));
+    state_ptr mul_ops_float(new OptionRenderState({mul.get(), div.get()}, uniform_option_picker));
 
     //Types
     state_ptr keyword_integer(new TextRenderState("int"));
@@ -110,8 +119,16 @@ int main(int argc, char* argv[]) {
     state_ptr random_int_id(new IDRenderState(random_int.get(), CATEGORY_INT));
     state_ptr int_parens(new NodeRenderState({open_par.get(), nullptr, close_par.get()}));
     state_ptr int_atom(new OptionRenderState({random_int.get(), random_int_id.get(), int_parens.get()}, depth_based_option_picker<uniform_option_picker>));
-    state_ptr int_mul_expression_base(new NodeRenderState({int_atom.get(), mul_ops.get(), nullptr}));
-    state_ptr int_mul_expression(new OptionRenderState({int_atom.get(), int_mul_expression_base.get()}, depth_based_option_picker<uniform_option_picker>));
+    
+    state_ptr int_cast_expression_base(new NodeRenderState({nullptr, cast.get(), keyword_integer.get()}));
+    state_ptr int_cast_expression(new OptionRenderState({int_atom.get(), int_cast_expression_base.get()}, depth_based_option_picker<uniform_option_picker>));
+
+    state_ptr int_add_expression_base(new NodeRenderState({int_cast_expression.get(), add_ops.get(), nullptr}));
+    state_ptr int_add_expression(new OptionRenderState({int_cast_expression.get(), int_add_expression_base.get()}, depth_based_option_picker<uniform_option_picker>));
+    int_add_expression_base->setChild(2, int_add_expression.get());
+
+    state_ptr int_mul_expression_base(new NodeRenderState({int_add_expression.get(), mul_ops.get(), nullptr}));
+    state_ptr int_mul_expression(new OptionRenderState({int_add_expression.get(), int_mul_expression_base.get()}, depth_based_option_picker<uniform_option_picker>));
     int_mul_expression_base->setChild(2, int_mul_expression.get());
     state_ptr& int_expression = int_mul_expression;
     int_parens->setChild(1, int_expression.get());
@@ -123,7 +140,32 @@ int main(int argc, char* argv[]) {
     opt_int_declare_expression->setChild(1, int_declare_expression.get());
 
     //Float expressions
-    state_ptr float_declare_expression(new TextRenderState("=f"));
+    state_ptr random_float(new RandomFloatRenderState(float_min_value, float_max_value));
+    state_ptr random_float_id(new IDRenderState(random_float.get(), CATEGORY_FLOAT));
+    state_ptr float_parens(new NodeRenderState({open_par.get(), nullptr, close_par.get()}));
+    state_ptr float_atom(new OptionRenderState({random_float.get(), random_float_id.get(), float_parens.get()}, depth_based_option_picker<uniform_option_picker>));
+    
+    state_ptr float_cast_expression_base(make_noderenderstate(int_atom, cast, keyword_float));
+    state_ptr float_cast_expression(new OptionRenderState({float_atom.get(), float_cast_expression_base.get()}, depth_based_option_picker<uniform_option_picker>));
+    int_cast_expression_base->setChild(0, float_atom.get());
+
+    state_ptr float_add_expression_base(new NodeRenderState({float_cast_expression.get(), add_ops.get(), nullptr}));
+    state_ptr float_add_expression(new OptionRenderState({float_cast_expression.get(), float_add_expression_base.get()}, depth_based_option_picker<uniform_option_picker>));
+    float_add_expression_base->setChild(2, float_add_expression.get());
+
+    state_ptr float_mul_expression_base(new NodeRenderState({float_add_expression.get(), mul_ops_float.get(), nullptr}));
+    state_ptr float_mul_expression(new OptionRenderState({float_add_expression.get(), float_mul_expression_base.get()}, depth_based_option_picker<uniform_option_picker>));
+    float_mul_expression_base->setChild(2, float_mul_expression.get());
+    state_ptr& float_expression = float_mul_expression;
+    float_parens->setChild(1, float_expression.get());
+
+    state_ptr float_gen_new_var(new IDCreateRenderState(id_name_len, id_name_stddev, CATEGORY_FLOAT));
+    state_ptr float_makevar_expression(make_noderenderstate(float_gen_new_var, declare, keyword_float));
+    state_ptr opt_float_declare_expression(new OptionRenderState({float_expression.get(), nullptr}, bias_first_option_picker<3>));
+    state_ptr float_declare_expression(make_noderenderstate(float_makevar_expression, assignment, opt_float_declare_expression));
+    opt_float_declare_expression->setChild(1, float_declare_expression.get());
+
+    //Generic declaration
     state_ptr declare_expression(new OptionRenderState({int_declare_expression.get(), float_declare_expression.get()}, uniform_option_picker));
 
     //Statements

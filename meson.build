@@ -64,6 +64,7 @@ test_sources = [
     'src/test/idrenderstate.cpp',
     'src/test/indentrenderstate.cpp',
     'src/test/noderenderstate.cpp',
+    'src/test/randomfloatrenderstate.cpp',
     'src/test/randomintrenderstate.cpp',
     'src/test/renderstate.cpp',
     'src/test/repeatrenderstate.cpp',
