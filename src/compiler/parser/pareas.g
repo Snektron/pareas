@@ -5,8 +5,6 @@ fn_decl_list [fn_decl_list_end] -> ;
 
 fn_decl -> 'fn' compound_stat;
 
-type -> 'id';
-
 # Statements
 stat [stat_while] -> 'while' expr compound_stat;
 stat [stat_if] -> 'if' expr compound_stat;
@@ -74,5 +72,5 @@ unary [unary_bitflip] -> 'tilde' unary;
 unary [unary_not] -> 'exclam' unary;
 unary [unary_atom] -> atom;
 
-atom [atom_paren] -> 'lparen' expr 'rparen';
+atom [atom_paren] -> 'lparen' logical_or 'rparen';
 atom [atom_variable] -> 'id';

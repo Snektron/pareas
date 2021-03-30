@@ -1,12 +1,10 @@
-module g = import "../../../gen/pareas_grammar"
-
-type production = g.production.t
+import "../../../gen/pareas_grammar"
 
 -- Removes marked nodes by adjusting parent pointers of other nodes
 -- The parents of the removed nodes are set to their own ID, creating a loop.
 -- Remember, the root node is given by a node which' parent is -1.
 -- Returns a new list of parents for each node.
-let remove_nodes [n] (remove: [n]bool) (parents: [n]i32): [n]i32 =
+let remove_nodes [n] (parents: [n]i32) (remove: [n]bool): [n]i32 =
     -- For each node, walk up the tree as long as the parent contains
     -- a marked node.
     -- TODO: This could maybe be improved using a prefix-sum like approach?
@@ -22,8 +20,8 @@ let remove_nodes [n] (remove: [n]bool) (parents: [n]i32): [n]i32 =
         |> map find_new_parent
 
 -- Make a mask-array of a set of productions
-let mk_production_mask [n] (productions: [n]production) =
+let mk_production_mask [n] (productions: [n]production.t): [num_productions]bool =
     scatter
-        (replicate g.num_productions false)
+        (replicate num_productions false)
         (productions |> map i64.u8)
         (productions |> map (\_ -> true))
