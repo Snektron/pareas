@@ -242,6 +242,48 @@ T* upload_strtab(futhark::Context& ctx, const grammar::StrTab<U>& strtab, F uplo
     return tab;
 }
 
+void dump_dot(const std::vector<grammar::Production>& nodes, const std::vector<int32_t>& parents) {
+    fmt::print("digraph prog {{\n");
+
+    for (size_t i = 0; i < nodes.size(); ++i) {
+        auto node = nodes[i];
+        auto parent = parents[i];
+
+        fmt::print("node{} [label=\"{}\"];\n", i, grammar::production_name(node));
+
+        if (parent >= 0) {
+            fmt::print("node{} -> node{};\n", parent, i);
+        }
+    }
+
+    fmt::print("}}\n");
+}
+
+void download_and_dump_dot(futhark::Context& ctx, futhark_u8_1d* nodes, futhark_i32_1d* parents) {
+    int64_t n = futhark_shape_u8_1d(ctx.get(), nodes)[0];
+    assert(n == futhark_shape_i32_1d(ctx.get(), parents)[0]);
+
+    auto host_nodes = std::vector<grammar::Production>(n);
+    auto host_parents = std::vector<int32_t>(n);
+
+    int err = futhark_values_u8_1d(
+        ctx.get(),
+        nodes,
+        reinterpret_cast<std::underlying_type_t<grammar::Production>*>(host_nodes.data())
+    );
+    if (err) {
+        report_futhark_error(ctx, "Failed to download node data");
+        return;
+    }
+
+    err = futhark_values_i32_1d(ctx.get(), parents, host_parents.data());
+    if (err) {
+        report_futhark_error(ctx, "Failed to download parent data");
+        return;
+    }
+
+    dump_dot(host_nodes, host_parents);
+}
 
 int main(int argc, const char* argv[]) {
     Options opts;
@@ -298,8 +340,9 @@ int main(int argc, const char* argv[]) {
     futhark_u8_1d* nodes = nullptr;
     futhark_i32_1d* parents = nullptr;
 
+    int err = 0;
     if (lex_table && sct && pt && arity_array && input_array) {
-        int err = futhark_entry_main(
+        err = futhark_entry_main(
             ctx.get(),
             &nodes,
             &parents,
@@ -312,6 +355,8 @@ int main(int argc, const char* argv[]) {
 
         if (err)
             report_futhark_error(ctx, "Main kernel failed");
+
+        download_and_dump_dot(ctx, nodes, parents);
     } else {
         fmt::print(std::cerr, "Error: Failed to upload required data\n");
     }
@@ -337,10 +382,10 @@ int main(int argc, const char* argv[]) {
     if (input_array)
         futhark_free_u8_1d(ctx.get(), input_array);
 
-    if (opts.profile) {
+    if (!err && opts.profile) {
         auto report = MallocPtr<char>(futhark_context_report(ctx.get()));
         fmt::print("Profile report:\n{}", report);
     }
 
-    return EXIT_SUCCESS;
+    return !err ? EXIT_SUCCESS : EXIT_FAILURE;
 }
