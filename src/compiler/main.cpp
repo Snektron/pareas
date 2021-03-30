@@ -242,7 +242,7 @@ T* upload_strtab(futhark::Context& ctx, const grammar::StrTab<U>& strtab, F uplo
     return tab;
 }
 
-void dump_dot(const std::vector<grammar::Production>& nodes, const std::vector<int32_t>& parents) {
+void dump_parse_tree(const std::vector<grammar::Production>& nodes, const std::vector<int32_t>& parents) {
     fmt::print("digraph prog {{\n");
 
     for (size_t i = 0; i < nodes.size(); ++i) {
@@ -259,7 +259,7 @@ void dump_dot(const std::vector<grammar::Production>& nodes, const std::vector<i
     fmt::print("}}\n");
 }
 
-void download_and_dump_dot(futhark::Context& ctx, futhark_u8_1d* nodes, futhark_i32_1d* parents) {
+void download_and_parse_tree(futhark::Context& ctx, futhark_u8_1d* nodes, futhark_i32_1d* parents) {
     int64_t n = futhark_shape_u8_1d(ctx.get(), nodes)[0];
     assert(n == futhark_shape_i32_1d(ctx.get(), parents)[0]);
 
@@ -282,7 +282,27 @@ void download_and_dump_dot(futhark::Context& ctx, futhark_u8_1d* nodes, futhark_
         return;
     }
 
-    dump_dot(host_nodes, host_parents);
+    dump_parse_tree(host_nodes, host_parents);
+}
+
+void download_and_dump_tokens(futhark::Context& ctx, futhark_u8_1d* tokens) {
+    int64_t n = futhark_shape_u8_1d(ctx.get(), tokens)[0];
+
+    auto host_tokens = std::vector<grammar::Token>(n);
+
+    int err = futhark_values_u8_1d(
+        ctx.get(),
+        tokens,
+        reinterpret_cast<std::underlying_type_t<grammar::Token>*>(host_tokens.data())
+    );
+    if (err) {
+        report_futhark_error(ctx, "Failed to download tokens");
+        return;
+    }
+
+    for (auto token : host_tokens) {
+        fmt::print("{}\n", grammar::token_name(token));
+    }
 }
 
 int main(int argc, const char* argv[]) {
@@ -356,7 +376,7 @@ int main(int argc, const char* argv[]) {
         if (err)
             report_futhark_error(ctx, "Main kernel failed");
 
-        download_and_dump_dot(ctx, nodes, parents);
+        download_and_parse_tree(ctx, nodes, parents);
     } else {
         fmt::print(std::cerr, "Error: Failed to upload required data\n");
     }

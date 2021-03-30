@@ -38,7 +38,9 @@ semi = /;/
 # The parser cannot differ between unary and binary minus, as it accepts a subset of LL.
 # For this case, we differentiate binary minus from unary minus based on the tokens
 # that precede it.
-binary_minus = /-/ [rparen, id, float_literal, int_literal]
+# Also define a special binary whitespace token so that we can lex `a - b`.
+binary_minus_whitespace = /[ \t\r\n]+/ [rparen, id, float_literal, int_literal]
+binary_minus = /-/ [rparen, id, float_literal, int_literal, binary_minus_whitespace]
 
 ## Parenthesis
 rparen = /\)/

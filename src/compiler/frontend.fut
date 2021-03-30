@@ -99,10 +99,10 @@ entry main [n] [m] [k] [l]
     (sct: stack_change_table [l])
     (pt: parse_table [k])
     (arities: arity_array)
-    : ([]production, []i32) =
+    =
     let (tokens, _, _) =
         lexer.lex input lt
-        |> filter (\(t, _, _) -> t != g.token_whitespace && t != g.token_comment)
+        |> filter (\(t, _, _) -> t != g.token_whitespace && t != g.token_comment && t != g.token_binary_minus_whitespace)
         |> unzip3
     -- As the lexer returns an `invalid` token when the input cannot be lexed, which is accepted
     -- by the parser also, pareas_parser.check will fail whenever there is a lexing error.
