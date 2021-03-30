@@ -5,7 +5,7 @@ module lexer = import "lexer/lexer"
 module g = import "../../gen/pareas_grammar"
 module pareas_parser = parser g
 
-module pass01 = import "passes/01_clean_lists"
+module pass01 = import "passes/clean_lists"
 
 type~ lex_table [n] = lexer.lex_table [n] g.token.t
 type~ stack_change_table [n] = pareas_parser.stack_change_table [n]

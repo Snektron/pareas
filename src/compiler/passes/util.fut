@@ -11,9 +11,11 @@ let remove_nodes [n] (remove: [n]bool) (parents: [n]i32): [n]i32 =
     -- a marked node.
     -- TODO: This could maybe be improved using a prefix-sum like approach?
     let find_new_parent (node: i32): i32 =
-        if remove[node] then node
-        else loop current = parents[node] while current != -1 && parents[current] != current && remove[current] do
+        if remove[node] then node else
+        let new_parent = loop current = parents[node] while current != -1 && parents[current] != current && remove[current] do
             parents[current]
+        -- To remove the entire subtree at once
+        in if new_parent == -1 || !remove[new_parent] then new_parent else node
     in
         iota n
         |> map i32.i64
