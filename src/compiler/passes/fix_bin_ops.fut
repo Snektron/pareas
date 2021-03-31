@@ -1,6 +1,76 @@
 import "util"
 import "../../../gen/pareas_grammar"
 
+-- This pass processes expression lists into a better form.
+-- List start out of the form
+--    X
+--    |
+--    sum
+--   / \
+--  A   sum_add
+--     / \
+--    B   sum_add
+--       / \
+--      C   sum_end
+-- for the an expression like `A + B + C`.
+-- These lists need to be rotated to form the proper expression tree, so
+-- that they represent `(A + B) + C` instead of `A + (B + C)`. This is done
+-- in a few steps. First, the proper parent of the expression lists' children
+-- are computed by moving the parent of all of the children except the first
+-- up one element:
+--    X
+--    |
+--    sum
+--   /|\
+--  A | sum_add
+--    | |\
+--    B | sum_add
+--      |  \
+--      C   sum_end
+-- Next, the types of the list intermediate and end nodes is shifted one up,
+-- and the original list end is removed (by making itself its own parent)
+--    X
+--    |
+--    sum_add
+--   /|\
+--  A | sum_add
+--    | |\
+--    B | sum_end
+--      |
+--      C   sum_end
+-- Next, for each of the ends which havent been removed, compute the
+-- parent of the list:
+--    X--------
+--    |        \
+--    sum_add   |
+--   /|\        |
+--  A | sum_add |
+--    | |       |
+--    B | sum_end
+--      |
+--      C   sum_end
+-- Next, invert the direction of the parents between the list intermediates:
+--        X
+--        |
+--        sum_end
+--       /
+--      sum_add
+--     /      \
+--    sum_add  C
+--   / \
+--  A   B
+--         sum_end
+-- Finally, the intermediate ends are removed. This also removes
+-- ends of other lists which have no elements:
+--      X   sum_end
+--      |
+--      sum_add
+--     /      \
+--    sum_add  C
+--   / \
+--  A   B
+--         sum_end
+
 local let is_list_intermediate = mk_production_mask [
         production_logical_or_list,
 
@@ -74,27 +144,27 @@ local let expr_list_type = mk_production_array 0i32 [
         (production_prod_end, 7)
     ]
 
-let fix_bin_ops [n] (nodes: [n]production.t) (parents: [n]i32) =
+let fix_bin_ops [n] (types: [n]production.t) (parents: [n]i32) =
     -- First, move all the parent pointers of nodes that point to list intermediates one up.
     let new_parents =
         iota n
         |> map
             (\i ->
-                !is_list_end[production.to_i64 nodes[i]]
-                && !is_list_intermediate[production.to_i64 nodes[i]]
+                !is_list_end[production.to_i64 types[i]]
+                && !is_list_intermediate[production.to_i64 types[i]]
                 && parents[i] != -1
-                && is_list_intermediate[production.to_i64 nodes[parents[i]]])
+                && is_list_intermediate[production.to_i64 types[parents[i]]])
         |> map2
             (\parent im -> if im then parents[parent] else parent)
             parents
         -- Also remove old list ends - these should have no children so removing them should be cheap
         |> map2
-            (\i parent -> if is_list_end[production.to_i64 nodes[i]] then i else parent)
+            (\i parent -> if is_list_end[production.to_i64 types[i]] then i else parent)
             (iota n |> map i32.i64)
     -- Compute new nodes by moving all list intermediate/end nodes one up.
-    let new_nodes =
+    let new_types =
         let is =
-            nodes
+            types
             |> map production.to_i64
             |> map (\node -> is_list_intermediate[node] || is_list_end[node])
             -- Generate the new nodes list simply by scatterin To avoid a filter here, simply set the scatter target
@@ -104,10 +174,10 @@ let fix_bin_ops [n] (nodes: [n]production.t) (parents: [n]i32) =
             |> map2 (\parent is_tail_node -> if is_tail_node then parent else -1) parents
             |> map i64.i32
         in scatter
-            (copy nodes)
+            (copy types)
             is
-            nodes
-    let expr_type = map (\node -> expr_list_type[production.to_i64 node]) new_nodes
+            types
+    let expr_type = map (\node -> expr_list_type[production.to_i64 node]) new_types
     -- Compute whether this node's expression type is the same as that of the parent - and thus whether their
     -- pointers need to be flipped.
     let same_type_as_parent =
@@ -123,7 +193,7 @@ let fix_bin_ops [n] (nodes: [n]production.t) (parents: [n]i32) =
         in
             iota n
             -- Careful to not mess up lists that only have the end node here
-            |> map2 (\node i -> is_list_end[production.to_i64 node] && same_type_as_parent[i]) new_nodes
+            |> map2 (\node i -> is_list_end[production.to_i64 node] && same_type_as_parent[i]) new_types
             |> map3
                 (\parent end_parent is_end -> if is_end then new_parents[end_parent] else parent)
                 new_parents
@@ -140,8 +210,8 @@ let fix_bin_ops [n] (nodes: [n]production.t) (parents: [n]i32) =
                 (iota n |> map i32.i64)
     -- Finally, just remove all the list end markers.
     let new_parents =
-        new_nodes
+        new_types
         |> map production.to_i64
         |> map (\node -> is_list_end[node])
         |> remove_nodes new_parents
-    in (new_nodes, new_parents)
+    in (new_types, new_parents)

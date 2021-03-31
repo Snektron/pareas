@@ -7,7 +7,7 @@ import "../../../gen/pareas_grammar"
 -- are removed.
 
 -- Should be kept in sync with pareas.g
-local let is_tail_production = mk_production_mask [
+local let is_list_tail = mk_production_mask [
         production_fn_decl_list_end,
 
         production_stat_list_end,
@@ -46,7 +46,7 @@ local let is_tail_production = mk_production_mask [
         production_prod_end
     ]
 
-local let is_end_production = mk_production_mask [
+local let is_list_end = mk_production_mask [
         production_fn_decl_list_end,
         production_stat_list_end,
         production_logical_or_end,
@@ -93,14 +93,14 @@ local let is_end_production = mk_production_mask [
 --  expr
 --  |
 --  id
-let clean_up_lists [n] (nodes: [n]production.t) (parents: [n]i32): ([n]production.t, [n]i32) =
+let clean_up_lists [n] (types: [n]production.t) (parents: [n]i32): ([n]production.t, [n]i32) =
     -- Compute the new nodes vector. We do this by moving all of the list tail elements one
     -- element up the tree. Due to the structure of the parse tree, this will never produce a conflict.
     -- First, compute a mask of which nodes will have to move up.
     let is =
-        nodes
+        types
         |> map production.to_i64
-        |> map (\node -> is_tail_production[node])
+        |> map (\ty -> is_list_tail[ty])
         -- Generate the new nodes list simply by scattering. To avoid a filter here, simply set the scatter target
         -- index of a node that shouldn't be moved up to out of bounds, which scatter will ignore for us.
         |> map2 (\parent is_tail_node -> if is_tail_node then parent else -1) parents
@@ -108,13 +108,13 @@ let clean_up_lists [n] (nodes: [n]production.t) (parents: [n]i32): ([n]productio
     -- Perform the scatter to obtain the new nodes array
     let new_nodes =
         scatter
-            (copy nodes)
+            (copy types)
             is
-            nodes
+            types
     -- Now, simply mark all list_end nodes and filter them out.
     let new_parents =
         new_nodes
         |> map production.to_i64
-        |> map (\node -> is_end_production[node])
+        |> map (\ty -> is_list_end[ty])
         |> remove_nodes parents
     in (new_nodes, new_parents)

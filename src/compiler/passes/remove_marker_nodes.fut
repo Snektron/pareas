@@ -14,8 +14,8 @@ local let is_marker = mk_production_mask [
     ]
 
 -- This function simply removes all nodes for which is_marker is true
-let remove_marker_nodes [n] (nodes: [n]production.t) (parents: [n]i32): [n]i32 =
-    nodes
+let remove_marker_nodes [n] (types: [n]production.t) (parents: [n]i32): [n]i32 =
+    types
     |> map production.to_i64
-    |> map (\node -> is_marker[node])
+    |> map (\ty -> is_marker[ty])
     |> remove_nodes parents

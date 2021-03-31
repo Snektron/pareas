@@ -44,8 +44,8 @@ entry main [n] [m] [k] [l]
     -- As the lexer returns an `invalid` token when the input cannot be lexed, which is accepted
     -- by the parser also, pareas_parser.check will fail whenever there is a lexing error.
     in if !(pareas_parser.check tokens sct) then bad else
-    let nodes = pareas_parser.parse tokens pt
-    let parents = pareas_parser.build_parent_vector nodes arities
-    let (nodes, parents) = fix_bin_ops nodes parents
-    let parents = remove_marker_nodes nodes parents
-    in (nodes, parents)
+    let types = pareas_parser.parse tokens pt
+    let parents = pareas_parser.build_parent_vector types arities
+    let (types, parents) = fix_bin_ops types parents
+    let parents = remove_marker_nodes types parents
+    in (types, parents)
