@@ -101,11 +101,10 @@ let clean_up_lists [n] (nodes: [n]production.t) (parents: [n]i32): ([n]productio
         nodes
         |> map production.to_i64
         |> map (\node -> is_tail_production[node])
-        -- Generate the new nodes list simply by scatterin To avoid a filter here, simply set the scatter target
+        -- Generate the new nodes list simply by scattering. To avoid a filter here, simply set the scatter target
         -- index of a node that shouldn't be moved up to out of bounds, which scatter will ignore for us.
         |> map2 (\parent is_tail_node -> if is_tail_node then parent else -1) parents
         |> map i64.i32
-
     -- Perform the scatter to obtain the new nodes array
     let new_nodes =
         scatter

@@ -1,5 +1,14 @@
 import "../../../gen/pareas_grammar"
 
+let find_unmarked_parents [n] (parents: [n]i32) (marks: [n]bool): [n]i32 =
+    let find_new_parent (node: i32): i32 =
+        loop current = parents[node] while current != -1 && parents[current] != current && marks[current] do
+            parents[current]
+    in
+        iota n
+        |> map i32.i64
+        |> map find_new_parent
+
 -- Removes marked nodes by adjusting parent pointers of other nodes
 -- The parents of the removed nodes are set to their own ID, creating a loop.
 -- Remember, the root node is given by a node which' parent is -1.
@@ -25,3 +34,11 @@ let mk_production_mask [n] (productions: [n]production.t): [num_productions]bool
         (replicate num_productions false)
         (productions |> map i64.u8)
         (productions |> map (\_ -> true))
+
+-- Make an associative array of production to value
+let mk_production_array [n] 't (default: t) (items: [n](production.t, t)): [num_productions]t =
+    let (keys, values) = unzip items
+    in scatter
+        (replicate num_productions default)
+        (keys |> map i64.u8)
+        values

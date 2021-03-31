@@ -1,13 +1,12 @@
-import "parser/parser"
-import "passes/util"
-
 module lexer = import "lexer/lexer"
 
+import "parser/parser"
 module g = import "../../gen/pareas_grammar"
 local open g
 module pareas_parser = parser g
 
 import "passes/clean_up_lists"
+import "passes/fix_bin_ops"
 import "passes/remove_marker_nodes"
 
 type~ lex_table [n] = lexer.lex_table [n] token.t
@@ -36,16 +35,17 @@ entry main [n] [m] [k] [l]
     (sct: stack_change_table [l])
     (pt: parse_table [k])
     (arities: arity_array)
-    =
+    : ([]token.t, []i32)
+    = let bad: ([]token.t, []i32) = ([], [])
     let (tokens, _, _) =
         lexer.lex input lt
         |> filter (\(t, _, _) -> t != token_whitespace && t != token_comment && t != token_binary_minus_whitespace)
         |> unzip3
     -- As the lexer returns an `invalid` token when the input cannot be lexed, which is accepted
     -- by the parser also, pareas_parser.check will fail whenever there is a lexing error.
-    in if !(pareas_parser.check tokens sct) then ([], []) else
+    in if !(pareas_parser.check tokens sct) then bad else
     let nodes = pareas_parser.parse tokens pt
     let parents = pareas_parser.build_parent_vector nodes arities
-    let (nodes, parents) = clean_up_lists nodes parents
+    let (nodes, parents) = fix_bin_ops nodes parents
     let parents = remove_marker_nodes nodes parents
     in (nodes, parents)

@@ -73,4 +73,6 @@ unary [unary_not] -> 'exclam' unary;
 unary [unary_atom] -> atom;
 
 atom [atom_paren] -> 'lparen' logical_or 'rparen';
-atom [atom_variable] -> 'id';
+atom [atom_id] -> 'id';
+atom [atom_int] -> 'int_literal';
+atom [atom_float] -> 'float_literal';

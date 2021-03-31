@@ -96,6 +96,7 @@ futhark_sources = [
     'src/compiler/parser/parser.fut',
     'src/compiler/passes/util.fut',
     'src/compiler/passes/clean_up_lists.fut',
+    'src/compiler/passes/fix_bin_ops.fut',
     'src/compiler/passes/remove_marker_nodes.fut',
 ]
 

@@ -242,15 +242,19 @@ T* upload_strtab(futhark::Context& ctx, const grammar::StrTab<U>& strtab, F uplo
     return tab;
 }
 
-void dump_parse_tree(const std::vector<grammar::Production>& nodes, const std::vector<int32_t>& parents) {
+void dump_parse_tree(size_t n, const grammar::Production* productions, const int32_t* parents) {
     fmt::print("digraph prog {{\n");
 
-    for (size_t i = 0; i < nodes.size(); ++i) {
-        auto node = nodes[i];
+    for (size_t i = 0; i < n; ++i) {
+        auto prod = productions[i];
         auto parent = parents[i];
 
         if (parent != i) {
-            fmt::print("node{} [label=\"{}\"];\n", i, grammar::production_name(node));
+            fmt::print(
+                "node{} [label=\"{}\"];\n",
+                i,
+                grammar::production_name(prod)
+            );
 
             if (parent >= 0) {
                 fmt::print("node{} -> node{};\n", parent, i);
@@ -267,26 +271,25 @@ void download_and_parse_tree(futhark::Context& ctx, futhark_u8_1d* nodes, futhar
     int64_t n = futhark_shape_u8_1d(ctx.get(), nodes)[0];
     assert(n == futhark_shape_i32_1d(ctx.get(), parents)[0]);
 
-    auto host_nodes = std::vector<grammar::Production>(n);
-    auto host_parents = std::vector<int32_t>(n);
+    auto host_nodes = std::make_unique<grammar::Production[]>(n);
+    auto host_parents = std::make_unique<int32_t[]>(n);
 
     int err = futhark_values_u8_1d(
         ctx.get(),
         nodes,
-        reinterpret_cast<std::underlying_type_t<grammar::Production>*>(host_nodes.data())
+        reinterpret_cast<std::underlying_type_t<grammar::Production>*>(host_nodes.get())
     );
     if (err) {
         report_futhark_error(ctx, "Failed to download node data");
         return;
     }
 
-    err = futhark_values_i32_1d(ctx.get(), parents, host_parents.data());
-    if (err) {
+    if (futhark_values_i32_1d(ctx.get(), parents, host_parents.get())) {
         report_futhark_error(ctx, "Failed to download parent data");
         return;
     }
 
-    dump_parse_tree(host_nodes, host_parents);
+    dump_parse_tree(n, host_nodes.get(), host_parents.get());
 }
 
 void download_and_dump_tokens(futhark::Context& ctx, futhark_u8_1d* tokens) {
