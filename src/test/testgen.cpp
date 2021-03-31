@@ -140,7 +140,8 @@ int main(int argc, char* argv[]) {
     opt_int_declare_expression->setChild(1, int_declare_expression.get());
 
     //Float expressions
-    state_ptr random_float(new RandomFloatRenderState(float_min_value, float_max_value));
+    //state_ptr random_float(new RandomFloatRenderState(float_min_value, float_max_value));
+    state_ptr random_float(new TextRenderState("0@float"));
     state_ptr random_float_id(new IDRenderState(random_float.get(), CATEGORY_FLOAT));
     state_ptr float_parens(new NodeRenderState({open_par.get(), nullptr, close_par.get()}));
     state_ptr float_atom(new OptionRenderState({random_float.get(), random_float_id.get(), float_parens.get()}, depth_based_option_picker<uniform_option_picker>));
