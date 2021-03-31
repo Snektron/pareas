@@ -74,7 +74,7 @@ int main(int argc, char* argv[]) {
     size_t function_name_stddev = 3;
     size_t statement_list_len = 20;
     size_t statement_list_stddev = 5;
-    size_t id_name_len = 100;
+    size_t id_name_len = 10;
     size_t id_name_stddev = 2;
     size_t tree_max_depth = 10;
     size_t int_min_value = 0;
