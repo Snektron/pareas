@@ -242,11 +242,11 @@ T* upload_strtab(futhark::Context& ctx, const grammar::StrTab<U>& strtab, F uplo
     return tab;
 }
 
-void dump_parse_tree(size_t n, const grammar::Production* productions, const int32_t* parents) {
+void dump_parse_tree(size_t n, const grammar::Production* types, const int32_t* parents) {
     fmt::print("digraph prog {{\n");
 
     for (size_t i = 0; i < n; ++i) {
-        auto prod = productions[i];
+        auto prod = types[i];
         auto parent = parents[i];
 
         if (parent != i) {
@@ -267,17 +267,17 @@ void dump_parse_tree(size_t n, const grammar::Production* productions, const int
     fmt::print("}}\n");
 }
 
-void download_and_parse_tree(futhark::Context& ctx, futhark_u8_1d* nodes, futhark_i32_1d* parents) {
-    int64_t n = futhark_shape_u8_1d(ctx.get(), nodes)[0];
+void download_and_parse_tree(futhark::Context& ctx, futhark_u8_1d* types, futhark_i32_1d* parents) {
+    int64_t n = futhark_shape_u8_1d(ctx.get(), types)[0];
     assert(n == futhark_shape_i32_1d(ctx.get(), parents)[0]);
 
-    auto host_nodes = std::make_unique<grammar::Production[]>(n);
+    auto host_types = std::make_unique<grammar::Production[]>(n);
     auto host_parents = std::make_unique<int32_t[]>(n);
 
     int err = futhark_values_u8_1d(
         ctx.get(),
-        nodes,
-        reinterpret_cast<std::underlying_type_t<grammar::Production>*>(host_nodes.get())
+        types,
+        reinterpret_cast<std::underlying_type_t<grammar::Production>*>(host_types.get())
     );
     if (err) {
         report_futhark_error(ctx, "Failed to download node data");
@@ -292,7 +292,7 @@ void download_and_parse_tree(futhark::Context& ctx, futhark_u8_1d* nodes, futhar
     if (futhark_context_sync(ctx.get()))
         report_futhark_error(ctx, "Sync after downloading parse tree kernel failed");
 
-    dump_parse_tree(n, host_nodes.get(), host_parents.get());
+    dump_parse_tree(n, host_types.get(), host_parents.get());
 }
 
 void download_and_dump_tokens(futhark::Context& ctx, futhark_u8_1d* tokens) {
@@ -370,14 +370,14 @@ int main(int argc, const char* argv[]) {
     auto* arity_array = futhark_new_i32_1d(ctx.get(), grammar::arities, grammar::NUM_PRODUCTIONS);
     auto* input_array = futhark_new_u8_1d(ctx.get(), reinterpret_cast<const uint8_t*>(input.data()), input.size());
 
-    futhark_u8_1d* nodes = nullptr;
+    futhark_u8_1d* types = nullptr;
     futhark_i32_1d* parents = nullptr;
 
     int err = 0;
     if (lex_table && sct && pt && arity_array && input_array) {
         err = futhark_entry_main(
             ctx.get(),
-            &nodes,
+            &types,
             &parents,
             input_array,
             lex_table,
@@ -392,13 +392,13 @@ int main(int argc, const char* argv[]) {
         if (futhark_context_sync(ctx.get()))
             report_futhark_error(ctx, "Sync after main kernel failed");
 
-        // download_and_parse_tree(ctx, nodes, parents);
+        download_and_parse_tree(ctx, types, parents);
     } else {
         fmt::print(std::cerr, "Error: Failed to upload required data\n");
     }
 
-    if (nodes)
-        futhark_free_u8_1d(ctx.get(), nodes);
+    if (types)
+        futhark_free_u8_1d(ctx.get(), types);
 
     if (parents)
         futhark_free_i32_1d(ctx.get(), parents);
