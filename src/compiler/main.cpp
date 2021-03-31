@@ -289,6 +289,9 @@ void download_and_parse_tree(futhark::Context& ctx, futhark_u8_1d* nodes, futhar
         return;
     }
 
+    if (futhark_context_sync(ctx.get()))
+        report_futhark_error(ctx, "Sync after downloading parse tree kernel failed");
+
     dump_parse_tree(n, host_nodes.get(), host_parents.get());
 }
 
@@ -306,6 +309,9 @@ void download_and_dump_tokens(futhark::Context& ctx, futhark_u8_1d* tokens) {
         report_futhark_error(ctx, "Failed to download tokens");
         return;
     }
+
+    if (futhark_context_sync(ctx.get()))
+        report_futhark_error(ctx, "Sync after downloading tokens failed");
 
     for (auto token : host_tokens) {
         fmt::print("{}\n", grammar::token_name(token));
@@ -416,6 +422,9 @@ int main(int argc, const char* argv[]) {
         auto report = MallocPtr<char>(futhark_context_report(ctx.get()));
         fmt::print("Profile report:\n{}", report);
     }
+
+    if (futhark_context_sync(ctx.get()))
+        report_futhark_error(ctx, "Final sync failed");
 
     return !err ? EXIT_SUCCESS : EXIT_FAILURE;
 }

@@ -5,7 +5,6 @@ module g = import "../../gen/pareas_grammar"
 local open g
 module pareas_parser = parser g
 
-import "passes/clean_up_lists"
 import "passes/fix_bin_ops"
 import "passes/remove_marker_nodes"
 
