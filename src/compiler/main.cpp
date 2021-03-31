@@ -383,7 +383,10 @@ int main(int argc, const char* argv[]) {
         if (err)
             report_futhark_error(ctx, "Main kernel failed");
 
-        download_and_parse_tree(ctx, nodes, parents);
+        if (futhark_context_sync(ctx.get()))
+            report_futhark_error(ctx, "Sync after main kernel failed");
+
+        // download_and_parse_tree(ctx, nodes, parents);
     } else {
         fmt::print(std::cerr, "Error: Failed to upload required data\n");
     }
