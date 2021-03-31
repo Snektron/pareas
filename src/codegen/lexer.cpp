@@ -71,7 +71,7 @@ Token Lexer::next_id() {
     std::stringstream ss;
 
     char c = this->read();
-    while(this->isIdChar(c)) {
+    while(this->isIdChar(c) || (c >= '0' && c <= '9')) {
         ss << c;
 
         c = this->read();
