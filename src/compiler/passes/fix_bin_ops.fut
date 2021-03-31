@@ -49,7 +49,7 @@ import "../../../gen/pareas_grammar"
 --    B | sum_end
 --      |
 --      C   sum_end
--- Next, invert the direction of the parents between the list intermediates:
+-- Next*, invert the direction of the parents between the list intermediates.
 --        X
 --        |
 --        sum_end
@@ -70,6 +70,23 @@ import "../../../gen/pareas_grammar"
 --   / \
 --  A   B
 --         sum_end
+-- (*) Note that this step will mess up the general pre-order layout of the tree.
+-- It still holds that left childs will have a lower index than right childs,
+-- however, children will no longer have a higher ID than their parents.
+-- Consider a tree like:
+--    0
+--   / \
+--  1   2
+--     / \
+--    3   4
+--       / \
+--      5   6 <- list end
+-- This will be transformed in:
+--      2
+--     / \
+--    0   5
+--   / \
+--  1   3
 
 local let is_list_intermediate = mk_production_mask [
         production_logical_or_list,
