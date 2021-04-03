@@ -9,7 +9,7 @@ let in_windows_of_pairs [n] 't (xs: [n]t): [](t, t) =
     let m = n - 1
     in zip (xs[:m] :> [m]t) (xs[1:] :> [m]t)
 
--- | Calculate the number of bits required to store a certai n value
+-- | Calculate the number of bits required to store a certain value
 -- Returns `i32.num_bits` for negative numbers, and returns 0 for 0.
 let bit_width (x: i32): i32 = i32.num_bits - (i32.clz x)
 

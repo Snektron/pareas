@@ -7,6 +7,7 @@ module pareas_parser = parser g
 
 import "passes/fix_bin_ops"
 import "passes/remove_marker_nodes"
+import "passes/compactify"
 
 type~ lex_table [n] = lexer.lex_table [n] token.t
 type~ stack_change_table [n] = pareas_parser.stack_change_table [n]
@@ -28,14 +29,14 @@ entry mk_parse_table [n]
     (lengths: [num_tokens][num_tokens]i32): parse_table [n]
     = mk_strtab table offsets lengths
 
-entry main [n] [m] [k] [l]
-    (input: [n]u8)
+entry main [n] [m] [o]
+    (input: []u8)
     (lt: lex_table [m])
-    (sct: stack_change_table [l])
-    (pt: parse_table [k])
+    (sct: stack_change_table [n])
+    (pt: parse_table [o])
     (arities: arity_array)
-    : ([]token.t, []i32)
-    = let bad: ([]token.t, []i32) = ([], [])
+    : ([]token.t, []i32, []i32)
+    = let bad: ([]token.t, []i32, []i32) = ([], [], [])
     let (tokens, _, _) =
         lexer.lex input lt
         |> filter (\(t, _, _) -> t != token_whitespace && t != token_comment && t != token_binary_minus_whitespace)
@@ -47,4 +48,5 @@ entry main [n] [m] [k] [l]
     let parents = pareas_parser.build_parent_vector types arities
     let (types, parents) = fix_bin_ops types parents
     let parents = remove_marker_nodes types parents
-    in (types, parents)
+    let links = compactify parents
+    in (types, parents, links)
