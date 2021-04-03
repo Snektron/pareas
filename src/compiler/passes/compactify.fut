@@ -36,9 +36,8 @@ local let right_grandchild [n] (parents: [n]i32) (is_last_child: [n]bool): [n]i3
             (n |> i32.i64 |> bit_width)
             (\(links, rgc) ->
                 let is =
-                    iota n
-                    |> zip links
-                    |> map (\(link, i) -> if link == -1 then -1 else link)
+                    links
+                    |> map (\link-> if link == -1 then -1 else link)
                     |> map i64.i32
                 let rgc' =
                     scatter

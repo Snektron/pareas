@@ -16,6 +16,19 @@
 #include <cstring>
 #include <cassert>
 
+// Keep in sync with src/compiler/frontend.fut
+enum class Status : uint8_t {
+    OK = 0,
+    PARSE_ERROR = 1,
+};
+
+const char* status_name(Status s) {
+    switch (s) {
+        case Status::OK: return "ok";
+        case Status::PARSE_ERROR: return "parse error";
+    }
+}
+
 struct Options {
     const char* input_path;
     const char* output_path;
@@ -242,15 +255,12 @@ T* upload_strtab(futhark::Context& ctx, const grammar::StrTab<U>& strtab, F uplo
     return tab;
 }
 
-void dump_parse_tree(size_t n, const grammar::Production* types, const int32_t* parents, const int32_t* links) {
+void dump_parse_tree(size_t n, const grammar::Production* types, const int32_t* parents, const int32_t* data) {
     fmt::print("digraph prog {{\n");
 
     for (size_t i = 0; i < n; ++i) {
         auto prod = types[i];
         auto parent = parents[i];
-        auto link = links[i];
-
-        // fmt::print(std::cerr, "{} {} {}\n", link, parents[link], production_name(types[link]));
 
         if (parent != i) {
             fmt::print(
@@ -258,7 +268,7 @@ void dump_parse_tree(size_t n, const grammar::Production* types, const int32_t* 
                 i,
                 grammar::production_name(prod),
                 i,
-                link
+                data[i]
             );
 
             if (parent >= 0) {
@@ -272,13 +282,13 @@ void dump_parse_tree(size_t n, const grammar::Production* types, const int32_t* 
     fmt::print("}}\n");
 }
 
-void download_and_parse_tree(futhark::Context& ctx, futhark_u8_1d* types, futhark_i32_1d* parents, futhark_i32_1d* links) {
+void download_and_parse_tree(futhark::Context& ctx, futhark_u8_1d* types, futhark_i32_1d* parents, futhark_i32_1d* data) {
     int64_t n = futhark_shape_u8_1d(ctx.get(), types)[0];
     assert(n == futhark_shape_i32_1d(ctx.get(), parents)[0]);
 
     auto host_types = std::make_unique<grammar::Production[]>(n);
     auto host_parents = std::make_unique<int32_t[]>(n);
-    auto host_links = std::make_unique<int32_t[]>(n);
+    auto host_data = std::make_unique<int32_t[]>(n);
 
     int err = futhark_values_u8_1d(
         ctx.get(),
@@ -295,15 +305,15 @@ void download_and_parse_tree(futhark::Context& ctx, futhark_u8_1d* types, futhar
         return;
     }
 
-    if (futhark_values_i32_1d(ctx.get(), links, host_links.get())) {
-        report_futhark_error(ctx, "Failed to download link data");
+    if (futhark_values_i32_1d(ctx.get(), data, host_data.get())) {
+        report_futhark_error(ctx, "Failed to download extra data");
         return;
     }
 
     if (futhark_context_sync(ctx.get()))
         report_futhark_error(ctx, "Sync after downloading parse tree kernel failed");
 
-    dump_parse_tree(n, host_types.get(), host_parents.get(), host_links.get());
+    dump_parse_tree(n, host_types.get(), host_parents.get(), host_data.get());
 }
 
 void download_and_dump_tokens(futhark::Context& ctx, futhark_u8_1d* tokens) {
@@ -383,15 +393,17 @@ int main(int argc, const char* argv[]) {
 
     futhark_u8_1d* types = nullptr;
     futhark_i32_1d* parents = nullptr;
-    futhark_i32_1d* links = nullptr;
+    futhark_i32_1d* data = nullptr;
+    Status status;
 
     int err = 0;
     if (lex_table && sct && pt && arity_array && input_array) {
         err = futhark_entry_main(
             ctx.get(),
+            reinterpret_cast<std::underlying_type_t<Status>*>(&status),
             &types,
             &parents,
-            &links,
+            &data,
             input_array,
             lex_table,
             sct,
@@ -402,10 +414,17 @@ int main(int argc, const char* argv[]) {
         if (err)
             report_futhark_error(ctx, "Main kernel failed");
 
-        if (futhark_context_sync(ctx.get()))
+        if ((err = futhark_context_sync(ctx.get())))
             report_futhark_error(ctx, "Sync after main kernel failed");
 
-        download_and_parse_tree(ctx, types, parents, links);
+        if (!err) {
+            if (status == Status::OK) {
+                download_and_parse_tree(ctx, types, parents, data);
+            } else {
+                fmt::print(std::cerr, "Error: {}\n", status_name(status));
+                err = 1;
+            }
+        }
     } else {
         fmt::print(std::cerr, "Error: Failed to upload required data\n");
     }
@@ -416,8 +435,8 @@ int main(int argc, const char* argv[]) {
     if (parents)
         futhark_free_i32_1d(ctx.get(), parents);
 
-    if (links)
-        futhark_free_i32_1d(ctx.get(), links);
+    if (data)
+        futhark_free_i32_1d(ctx.get(), data);
 
     if (lex_table)
         futhark_free_opaque_lex_table(ctx.get(), lex_table);

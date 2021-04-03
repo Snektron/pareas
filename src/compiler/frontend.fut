@@ -29,24 +29,29 @@ entry mk_parse_table [n]
     (lengths: [num_tokens][num_tokens]i32): parse_table [n]
     = mk_strtab table offsets lengths
 
+-- Keep in sync with src/compiler/main.fut
+type status_code = u8
+let status_ok: status_code = 0
+let status_parse_error: status_code = 1
+
 entry main [n] [m] [o]
     (input: []u8)
     (lt: lex_table [m])
     (sct: stack_change_table [n])
     (pt: parse_table [o])
     (arities: arity_array)
-    : ([]token.t, []i32, []i32)
-    = let bad: ([]token.t, []i32, []i32) = ([], [], [])
+    : (status_code, []token.t, []i32, []i32)
+    =
     let (tokens, _, _) =
         lexer.lex input lt
         |> filter (\(t, _, _) -> t != token_whitespace && t != token_comment && t != token_binary_minus_whitespace)
         |> unzip3
     -- As the lexer returns an `invalid` token when the input cannot be lexed, which is accepted
     -- by the parser also, pareas_parser.check will fail whenever there is a lexing error.
-    in if !(pareas_parser.check tokens sct) then bad else
+    in if !(pareas_parser.check tokens sct) then (status_parse_error, [], [], []) else
     let types = pareas_parser.parse tokens pt
     let parents = pareas_parser.build_parent_vector types arities
     let (types, parents) = fix_bin_ops types parents
     let parents = remove_marker_nodes types parents
-    let links = compactify parents
-    in (types, parents, links)
+    let data = compactify parents
+    in (status_ok, types, parents, data)
