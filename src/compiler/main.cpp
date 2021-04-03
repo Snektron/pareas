@@ -35,6 +35,7 @@ struct Options {
     bool help;
     bool verbose;
     bool debug;
+    bool dump_dot;
 
     // Options available for the multicore backend
     int threads;
@@ -52,6 +53,7 @@ void print_usage(const char* progname) {
         "-h --help                   Show this message and exit.\n"
         "-v --verbose                Enable Futhark logging.\n"
         "-d --debug                  Enable Futhark debug logging.\n"
+        "--dump-dot                  Dump tree as dot graph.\n"
     #if defined(FUTHARK_BACKEND_multicore)
         "Available backend options:\n"
         "-t --threads <amount>       Set the maximum number of threads that may be used\n"
@@ -78,6 +80,7 @@ bool parse_options(Options* opts, int argc, const char* argv[]) {
         .help = false,
         .verbose = false,
         .debug = false,
+        .dump_dot = false,
         .threads = 0,
         .device_name = nullptr,
         .profile = false,
@@ -125,6 +128,8 @@ bool parse_options(Options* opts, int argc, const char* argv[]) {
             opts->verbose = true;
         } else if (arg == "-d" || arg == "--debug") {
             opts->debug = true;
+        } else if (arg == "--dump-dot") {
+            opts->dump_dot = true;
         } else if (!opts->input_path) {
             opts->input_path = argv[i];
         } else {
@@ -419,7 +424,8 @@ int main(int argc, const char* argv[]) {
 
         if (!err) {
             if (status == Status::OK) {
-                download_and_parse_tree(ctx, types, parents, data);
+                if (opts.dump_dot)
+                    download_and_parse_tree(ctx, types, parents, data);
             } else {
                 fmt::print(std::cerr, "Error: {}\n", status_name(status));
                 err = 1;
