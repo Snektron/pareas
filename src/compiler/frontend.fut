@@ -5,6 +5,8 @@ module g = import "../../gen/pareas_grammar"
 local open g
 module pareas_parser = parser g
 
+import "util"
+
 import "passes/fix_bin_ops"
 import "passes/remove_marker_nodes"
 import "passes/compactify"
@@ -53,5 +55,7 @@ entry main [n] [m] [o]
     let parents = pareas_parser.build_parent_vector types arities
     let (types, parents) = fix_bin_ops types parents
     let parents = remove_marker_nodes types parents
-    let data = compactify parents
-    in (status_ok, types, parents, data)
+    let (parents, old_index) = compactify parents
+    let types = gather types old_index
+    let new_index = make_preorder_ordering parents
+    in (status_ok, types, parents, new_index)

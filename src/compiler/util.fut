@@ -33,3 +33,7 @@ let shift_left [n] 't (x: t) (xs: [n]t): [n]t =
 let exclusive_scan [n] 't (op: t -> t -> t) (ne: t) (as: [n]t): [n]t =
     scan op ne as
     |> shift_right ne
+
+-- | Fetch elements from `xs` according to the indices in `is`.
+let gather [n] 't (xs: []t) (is: [n]i32): [n]t =
+    map (\i -> xs[i]) is
