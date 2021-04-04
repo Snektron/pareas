@@ -424,6 +424,9 @@ int main(int argc, const char* argv[]) {
 
         if (!err) {
             if (status == Status::OK) {
+                int64_t n = futhark_shape_u8_1d(ctx.get(), types)[0];
+                fmt::print(std::cerr, "{} nodes\n", n);
+
                 if (opts.dump_dot)
                     download_and_parse_tree(ctx, types, parents, data);
             } else {

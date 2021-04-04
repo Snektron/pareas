@@ -8,6 +8,7 @@ import "../../../gen/pareas_grammar"
 -- Nodes like prod, sum etc are already removed in the `clean_lists` pass.
 
 local let is_marker = mk_production_mask [
+        production_start,
         production_atom_paren,
         production_compound_stat,
         production_unary_atom

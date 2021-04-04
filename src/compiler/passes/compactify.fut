@@ -20,15 +20,8 @@ local let compute_depths [n] (parents: [n]i32): [n]i32 =
                 let links' = map (\link -> if link == -1 then link else links[link]) links
                 in (links', depths'))
             (parents, replicate n 1i32)
-    -- Fix up depths of invalid nodes and depths being started at one.
-    let depths =
-        map3
-            (\i depth parent ->
-                if i == parent then -1 else depth - 1)
-            (iota n |> map i32.i64)
-            depths
-            parents
-    in depths
+    -- Because we start with an array of all ones, the root node will have depth 1.
+    in map (+ -1) depths
 
 local let right_grandchild [n] (parents: [n]i32) (is_last_child: [n]bool): [n]i32 =
     let (_, rgc) =
@@ -83,7 +76,7 @@ let compactify [n] (parents: [n]i32) =
         |> map (\i -> if i == -1 then -1 else new_index[i])
     in (parents, old_index)
 
-let make_preorder_ordering [n] (parents: [n]i32): [n]i32 =
+let make_preorder_ordering [n] (parents: [n]i32): ([n]i32, [n]i32) =
     -- Assume that at this point, there are no invalid subtrees anymore (as removed by compactify)
     let depths = compute_depths parents
     let max_depth = 1 + reduce i32.max (-1) depths
@@ -143,4 +136,15 @@ let make_preorder_ordering [n] (parents: [n]i32): [n]i32 =
             sorted_post_order
     -- To obtain the new index, simply compute the depth of nodes according to this post order.
     let new_index = compute_depths post_order
-    in new_index
+    -- Compute the inverted array of these indices.
+    let old_index =
+        scatter
+            (replicate n 0i32)
+            (map i64.i32 new_index)
+            (iota n |> map i32.i64)
+    -- Compute the new parents array.
+    let parents =
+        old_index
+        |> gather parents
+        |> map (\i -> if i == -1 then -1 else new_index[i])
+    in (parents, old_index)

@@ -55,7 +55,7 @@ entry main [n] [m] [o]
     let parents = pareas_parser.build_parent_vector types arities
     let (types, parents) = fix_bin_ops types parents
     let parents = remove_marker_nodes types parents
-    let (parents, old_index) = compactify parents
-    let types = gather types old_index
-    let new_index = make_preorder_ordering parents
-    in (status_ok, types, parents, new_index)
+    let (parents, old_old_index) = compactify parents
+    let (parents, old_index) = make_preorder_ordering parents
+    let types = old_index |> gather old_old_index |> gather types
+    in (status_ok, types, parents, old_old_index)
