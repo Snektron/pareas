@@ -40,6 +40,12 @@ local let right_grandchild [n] (parents: [n]i32) (is_last_child: [n]bool): [n]i3
             (parents, iota n |> map i32.i64)
    in rgc
 
+-- | Other passes (for example `fix_bin_ops`@term@"fix_bin_ops") might reorder some nodes, which causes
+-- the tree to no longer be in pre-order, which is required for some subsequent passes. This function
+-- reorders them back into preorder, returning the new parents array, and an array that can be used to
+-- gather any node data into a new array in pre-order.
+-- This function requires that there be no invalid nodes, which are to be removed using the
+-- `compactify`@term@"compactify" pass.
 let make_preorder_ordering [n] (parents: [n]i32): ([n]i32, [n]i32) =
     -- Assume that at this point, there are no invalid subtrees anymore (as removed by compactify)
     let depths = compute_depths parents

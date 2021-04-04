@@ -1,7 +1,84 @@
 import "util"
 import "../../../gen/pareas_grammar"
 
--- This pass processes expression lists into a better form.
+-- Node types which are list intermediates (may appear in list, but neither start nor end).
+local let is_list_intermediate = mk_production_mask [
+        production_logical_or_list,
+
+        production_logical_and_list,
+
+        production_rela_eq,
+        production_rela_neq,
+        production_rela_gt,
+        production_rela_gte,
+        production_rela_lt,
+        production_rela_lte,
+
+        production_bitwise_and,
+        production_bitwise_or,
+        production_bitwise_xor,
+
+        production_shift_lr,
+        production_shift_ar,
+        production_shift_ll,
+
+        production_sum_add,
+        production_sum_sub,
+
+        production_prod_mul,
+        production_prod_div,
+        production_prod_mod
+    ]
+
+-- Node types which are list ends.
+local let is_list_end = mk_production_mask [
+        production_logical_or_end,
+        production_logical_and_end,
+        production_rela_end,
+        production_bitwise_end,
+        production_shift_end,
+        production_sum_end,
+        production_prod_end
+    ]
+
+-- A mapping of node types to an expression type, nodes which may appear in the same expression
+-- list need to have the same type. Otherwise, these values are arbitrary.
+local let expr_list_type = mk_production_array 0i32 [
+        (production_logical_or_list, 1),
+        (production_logical_or_end, 1),
+
+        (production_logical_and_list, 2),
+        (production_logical_and_end, 2),
+
+        (production_rela_eq, 3),
+        (production_rela_neq, 3),
+        (production_rela_gt, 3),
+        (production_rela_gte, 3),
+        (production_rela_lt, 3),
+        (production_rela_lte, 3),
+        (production_rela_end, 3),
+
+        (production_bitwise_and, 4),
+        (production_bitwise_xor, 4),
+        (production_bitwise_or, 4),
+        (production_bitwise_end, 4),
+
+        (production_shift_lr, 5),
+        (production_shift_ar, 5),
+        (production_shift_ll, 5),
+        (production_shift_end, 5),
+
+        (production_sum_add, 6),
+        (production_sum_sub, 6),
+        (production_sum_end, 6),
+
+        (production_prod_mul, 7),
+        (production_prod_div, 7),
+        (production_prod_mod, 7),
+        (production_prod_end, 7)
+    ]
+
+-- | This pass processes expression lists into a better form.
 -- List start out of the form
 --    X
 --    |
@@ -87,80 +164,6 @@ import "../../../gen/pareas_grammar"
 --    0   5
 --   / \
 --  1   3
-
-local let is_list_intermediate = mk_production_mask [
-        production_logical_or_list,
-
-        production_logical_and_list,
-
-        production_rela_eq,
-        production_rela_neq,
-        production_rela_gt,
-        production_rela_gte,
-        production_rela_lt,
-        production_rela_lte,
-
-        production_bitwise_and,
-        production_bitwise_or,
-        production_bitwise_xor,
-
-        production_shift_lr,
-        production_shift_ar,
-        production_shift_ll,
-
-        production_sum_add,
-        production_sum_sub,
-
-        production_prod_mul,
-        production_prod_div,
-        production_prod_mod
-    ]
-
-local let is_list_end = mk_production_mask [
-        production_logical_or_end,
-        production_logical_and_end,
-        production_rela_end,
-        production_bitwise_end,
-        production_shift_end,
-        production_sum_end,
-        production_prod_end
-    ]
-
-local let expr_list_type = mk_production_array 0i32 [
-        (production_logical_or_list, 1),
-        (production_logical_or_end, 1),
-
-        (production_logical_and_list, 2),
-        (production_logical_and_end, 2),
-
-        (production_rela_eq, 3),
-        (production_rela_neq, 3),
-        (production_rela_gt, 3),
-        (production_rela_gte, 3),
-        (production_rela_lt, 3),
-        (production_rela_lte, 3),
-        (production_rela_end, 3),
-
-        (production_bitwise_and, 4),
-        (production_bitwise_xor, 4),
-        (production_bitwise_or, 4),
-        (production_bitwise_end, 4),
-
-        (production_shift_lr, 5),
-        (production_shift_ar, 5),
-        (production_shift_ll, 5),
-        (production_shift_end, 5),
-
-        (production_sum_add, 6),
-        (production_sum_sub, 6),
-        (production_sum_end, 6),
-
-        (production_prod_mul, 7),
-        (production_prod_div, 7),
-        (production_prod_mod, 7),
-        (production_prod_end, 7)
-    ]
-
 let fix_bin_ops [n] (types: [n]production.t) (parents: [n]i32) =
     -- First, move all the parent pointers of nodes that point to list intermediates one up.
     let new_parents =

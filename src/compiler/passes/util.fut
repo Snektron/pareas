@@ -9,10 +9,11 @@ let find_unmarked_parents [n] (parents: [n]i32) (marks: [n]bool): [n]i32 =
         |> map i32.i64
         |> map find_new_parent
 
--- Removes marked nodes by adjusting parent pointers of other nodes
+-- | Removes marked nodes by adjusting parent pointers of other nodes
 -- The parents of the removed nodes are set to their own ID, creating a loop.
 -- Remember, the root node is given by a node which' parent is -1.
 -- Returns a new list of parents for each node.
+-- This function simply iterates linearly.
 let remove_nodes [n] (parents: [n]i32) (remove: [n]bool): [n]i32 =
     -- For each node, walk up the tree as long as the parent contains
     -- a marked node.

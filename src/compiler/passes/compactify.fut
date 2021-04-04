@@ -1,6 +1,11 @@
 import "../util"
 
-let compactify [n] (parents: [n]i32) =
+-- | The parser generates quite some superficial nodes, which can slow the application of other passes
+-- down. These are marked by the `fix_bin_ops`@term@"fix_bin_ops" pass, but not actually removed. Futhermore, the final
+-- output is supposed to be in pre-order, with no invalid nodes.
+-- This pass removes all those invalid nodes, returning the new parents array, and an array
+-- that can be used to gather any node data into a new, compactified array.
+let compactify [n] (parents: [n]i32): ([]i32, []i32) =
     -- TODO: Mark all nodes of deleted subtrees as deleted by setting their parents to themselves.
     -- Make a mask specifying whether a node should be included in the new tree.
     let include_mask =
