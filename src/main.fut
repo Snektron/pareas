@@ -4,9 +4,6 @@ import "instr"
 import "instr_count"
 import "symtab"
 
-let MAX_NODES : i64 = 32
-let MAX_VARS : i64 = 32
-
 let make_node_type (node_type: u8) : NodeType =
     match node_type
     case 0 -> #invalid
@@ -60,10 +57,9 @@ let make_data_type (data_type: u8) : DataType =
     case _ -> #invalid
 
 
-let make_variable (data_type: u8) (global: bool) (offset: u32) : Variable =
+let make_variable (data_type: u8) (offset: u32) : Variable =
     {
         decl_type = make_data_type data_type,
-        global = global,
         offset = offset
     }
 
@@ -77,27 +73,27 @@ let make_node (node_type: u8) (data_type: u8, parent: u32, depth: u32, child_idx
         node_data = node_data
     }
 
-entry make_symtab (data_types: [MAX_VARS]u8) (global: [MAX_VARS]bool) (offsets: [MAX_VARS]u32) : Symtab[MAX_VARS] =
+entry make_symtab [m] (data_types: [m]u8) (offsets: [m]u32) : Symtab[m] =
     {
-        variables = map3 make_variable data_types global offsets
+        variables = map2 make_variable data_types offsets
     }
 
-entry make_tree (max_depth: u32) (node_types: [MAX_NODES]u8) (data_types: [MAX_NODES]u8) (parents: [MAX_NODES]u32)
-                    (depth: [MAX_NODES]u32) (child_idx: [MAX_NODES]u32) (node_data: [MAX_NODES]u32): Tree[MAX_NODES] =
+entry make_tree [n] (max_depth: u32) (node_types: [n]u8) (data_types: [n]u8) (parents: [n]u32)
+                    (depth: [n]u32) (child_idx: [n]u32) (node_data: [n]u32): Tree[n] =
     {
         nodes = zip5 data_types parents depth child_idx node_data |> map2 make_node node_types,
         max_depth = max_depth
     }
 
-entry make_instr_counts (tree: Tree[MAX_NODES]) =
+entry make_instr_counts [n] (tree: Tree[n]) =
     instr_count tree
 
-entry make_function_table (tree: Tree[MAX_NODES]) (instr_offset: [MAX_NODES]u32) =
+entry make_function_table [n] (tree: Tree[n]) (instr_offset: [n]u32) =
     get_function_table tree instr_offset
 
 let split_instr (instr: Instr) =
     (instr.instr, instr.rd, instr.rs1, instr.rs2)
 
-entry main (tree: Tree[MAX_NODES]) (symtab: Symtab[MAX_VARS]) (instr_offset: [MAX_NODES]u32) (max_instrs: i64) =
+entry main [n] [m] (tree: Tree[n]) (symtab: Symtab[m]) (instr_offset: [n]u32) (max_instrs: i64) =
     let instr_offset_i64 = map i64.u32 instr_offset in
     compile_tree tree symtab instr_offset_i64 max_instrs |> map split_instr |> unzip4

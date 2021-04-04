@@ -7,3 +7,7 @@ function a() <- int {
 function b() <- float {
     d <- int = 3;
 }
+
+function c() <- int {
+    
+}

@@ -77,6 +77,8 @@ class ASTNode {
             return this->integer;
         }
 
+        size_t size() const;
+
         void print(std::ostream&, size_t  = 0) const;
         void resolveType();
 };

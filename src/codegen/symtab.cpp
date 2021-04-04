@@ -1,16 +1,10 @@
 #include "codegen/symtab.hpp"
 #include "codegen/exception.hpp"
 
-SymbolTable::SymbolTable(size_t max_vars) : max_vars(max_vars) {
-    this->data_types = new uint8_t[max_vars];
-    this->globals = new bool[max_vars];
-    this->function_offsets = new uint32_t[max_vars];
+SymbolTable::SymbolTable() {
 }
 
 SymbolTable::~SymbolTable() {
-    delete[] this->data_types;
-    delete[] this->globals;
-    delete[] this->function_offsets;
 }
 
 uint32_t SymbolTable::declareSymbol(const std::string& name, DataType type, bool global) {
@@ -19,9 +13,9 @@ uint32_t SymbolTable::declareSymbol(const std::string& name, DataType type, bool
     uint32_t id = this->id_map.size();
     this->id_map[name] = id;
 
-    this->data_types[id] = static_cast<uint8_t>(type);
-    this->globals[id] = global;
-    this->function_offsets[id] = this->function_offset++;
+    this->data_types.push_back(static_cast<uint8_t>(type));
+    this->globals.push_back(global);
+    this->function_offsets.push_back(this->function_offset++);
 
     return id;
 }
@@ -43,7 +37,7 @@ Symbol SymbolTable::resolveSymbol(const std::string& name) const {
     return Symbol{
         .id = id,
         .type = static_cast<DataType>(this->data_types[id]),
-        .global = this->globals[id],
+        .global = (bool)this->globals[id],
         .function_offset = this->function_offsets[id]
     };
 }

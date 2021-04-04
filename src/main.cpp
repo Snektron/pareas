@@ -16,8 +16,8 @@
 #include "codegen/depthtree.hpp"
 #include "codegen/symtab.hpp"
 
-const size_t MAX_NODES = 32;
-const size_t MAX_VARS = 32;
+//const size_t MAX_NODES = 32;
+//const size_t MAX_VARS = 32;
 
 struct Options {
     const char* input_path;
@@ -228,7 +228,7 @@ int main(int argc, const char* argv[]) {
     try {
         std::ifstream input(argv[1]);
         Lexer lexer(input);
-        SymbolTable symtab(MAX_VARS);
+        SymbolTable symtab;
         Parser parser(lexer, symtab);
 
         std::unique_ptr<ASTNode> node(parser.parse());
@@ -239,7 +239,7 @@ int main(int argc, const char* argv[]) {
         node->resolveType();
         std::cout << *node << std::endl;
 
-        DepthTree depth_tree(MAX_NODES, node.get());
+        DepthTree depth_tree(node.get());
         std::cout << depth_tree << std::endl;
 
         auto context = UniqueCPtr<futhark_context, futhark_context_free>(futhark_context_new(config.get()));
@@ -263,18 +263,22 @@ int main(int argc, const char* argv[]) {
 
         auto symtab_types = UniqueFPtr<futhark_u8_1d, futhark_free_u8_1d>(context.get(),
                             futhark_new_u8_1d(context.get(), symtab.getDataTypes(), symtab.maxVars()));
-        auto symtab_global = UniqueFPtr<futhark_bool_1d, futhark_free_bool_1d>(context.get(),
-                            futhark_new_bool_1d(context.get(), symtab.getGlobals(), symtab.maxVars()));
         auto symtab_offsets = UniqueFPtr<futhark_u32_1d, futhark_free_u32_1d>(context.get(),
                             futhark_new_u32_1d(context.get(), symtab.getOffsets(), symtab.maxVars()));
 
         UniqueFPtr<futhark_opaque_Symtab, futhark_free_opaque_Symtab> gpu_symtab(context.get());
         if(!err)
-            err = futhark_entry_make_symtab(context.get(), &gpu_symtab, symtab_types.get(), symtab_global.get(), symtab_offsets.get());
+            err = futhark_entry_make_symtab(context.get(), &gpu_symtab, symtab_types.get(), symtab_offsets.get());
 
         UniqueFPtr<futhark_u32_1d, futhark_free_u32_1d> instr_offsets(context.get());
         if(!err)
             err = futhark_entry_make_instr_counts(context.get(), &instr_offsets, gpu_tree.get());
+
+        UniqueFPtr<futhark_u32_1d, futhark_free_u32_1d> function_ids(context.get());
+        UniqueFPtr<futhark_u32_1d, futhark_free_u32_1d> function_offsets(context.get());
+        UniqueFPtr<futhark_u32_1d, futhark_free_u32_1d> function_sizes(context.get());
+        if(!err)
+            err = futhark_entry_make_function_table(context.get(), &function_ids, &function_offsets, &function_sizes, gpu_tree.get(), instr_offsets.get());
 
         UniqueFPtr<futhark_u32_1d, futhark_free_u32_1d> instr_fut(context.get());
         UniqueFPtr<futhark_i64_1d, futhark_free_i64_1d> rd_fut(context.get());
@@ -292,13 +296,23 @@ int main(int argc, const char* argv[]) {
             return EXIT_FAILURE;
         }
 
-        size_t num_instr_counts = *futhark_shape_u32_1d(context.get(), instr_offsets.get());
+        // size_t num_instr_counts = *futhark_shape_u32_1d(context.get(), instr_offsets.get());
 
-        std::unique_ptr<uint32_t[]> instr_offset_buffer(new uint32_t[num_instr_counts]);
+        // std::unique_ptr<uint32_t[]> instr_offset_buffer(new uint32_t[num_instr_counts]);
+        // if(!err)
+        //     err = futhark_values_u32_1d(context.get(), instr_offsets.get(), instr_offset_buffer.get());
+
+        size_t num_functab_entries = *futhark_shape_u32_1d(context.get(), function_ids.get());
+        std::unique_ptr<uint32_t[]> functab_keys(new uint32_t[num_functab_entries]);
+        std::unique_ptr<uint32_t[]> functab_values(new uint32_t[num_functab_entries]);
+        std::unique_ptr<uint32_t[]> functab_sizes(new uint32_t[num_functab_entries]);
+
         if(!err)
-            err = futhark_values_u32_1d(context.get(), instr_offsets.get(), instr_offset_buffer.get());
-
-
+            err = futhark_values_u32_1d(context.get(), function_ids.get(), functab_keys.get());
+        if(!err)
+            err = futhark_values_u32_1d(context.get(), function_offsets.get(), functab_values.get());
+        if(!err)
+            err = futhark_values_u32_1d(context.get(), function_sizes.get(), functab_sizes.get());
 
         size_t num_values = *futhark_shape_u32_1d(context.get(), instr_fut.get());
 
@@ -320,9 +334,14 @@ int main(int argc, const char* argv[]) {
             return EXIT_FAILURE;
         }
 
-        std::cout << "Instruction offsets:" << std::endl;
-        for(size_t i = 0; i < num_instr_counts; ++i) {
-            std::cout << i << ": " << instr_offset_buffer[i] << std::endl;
+        // std::cout << "Instruction offsets:" << std::endl;
+        // for(size_t i = 0; i < num_instr_counts; ++i) {
+        //     std::cout << i << ": " << instr_offset_buffer[i] << std::endl;
+        // }
+
+        std::cout << "Function offsets: " << std::endl;
+        for(size_t i = 0; i < num_functab_entries; ++i) {
+            std::cout << functab_keys[i] << " -> " << functab_values[i] << ", " << functab_sizes[i] << std::endl;
         }
 
         std::cout << std::endl << "Instructions:" << std::endl;        

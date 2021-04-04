@@ -2,7 +2,6 @@ import "datatypes"
 
 type Variable = {
     decl_type: DataType,
-    global: bool,
     offset: u32
 }
 

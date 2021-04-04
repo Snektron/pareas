@@ -55,6 +55,16 @@ ASTNode::~ASTNode() {
         delete this->children[i];
 }
 
+size_t ASTNode::size() const {
+    size_t result = 1;
+
+    for(const auto* child : this->children) {
+        result += child->size();
+    }
+
+    return result;
+}
+
 void ASTNode::print(std::ostream& os, size_t level) const {
     for(size_t i = 0; i < level; ++i)
         os << "    ";

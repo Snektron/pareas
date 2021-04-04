@@ -8,7 +8,10 @@
 #include <iostream>
 #include <stack>
 
-DepthTree::DepthTree(size_t max_nodes, ASTNode* node) : max_nodes(max_nodes), max_depth(0) {
+DepthTree::DepthTree(ASTNode* node) : max_depth(0) {
+    size_t max_nodes = node->size();
+    this->max_nodes = max_nodes;
+
     this->node_types = new uint8_t[max_nodes];
     this->resulting_types = new uint8_t[max_nodes];
     this->parents = new uint32_t[max_nodes];

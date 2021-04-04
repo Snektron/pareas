@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <string>
 #include <iosfwd>
+#include <vector>
 
 struct Symbol {
     uint32_t id;
@@ -14,6 +15,8 @@ struct Symbol {
     bool global;
     uint32_t function_offset;
 };
+
+static_assert(sizeof(bool) == sizeof(uint8_t));
 
 class SymbolTable {
     private:
@@ -23,11 +26,11 @@ class SymbolTable {
         std::unordered_map<std::string, uint32_t> id_map;
         std::unordered_map<std::string, uint32_t> func_id_map;
 
-        uint8_t* data_types;
-        bool* globals;
-        uint32_t* function_offsets;
+        std::vector<uint8_t> data_types;
+        std::vector<uint8_t> globals;
+        std::vector<uint32_t> function_offsets;
     public:
-        SymbolTable(size_t);
+        SymbolTable();
         ~SymbolTable();
 
         uint32_t declareSymbol(const std::string&, DataType, bool = false);
@@ -38,16 +41,16 @@ class SymbolTable {
         void print(std::ostream&) const;
 
         inline size_t maxVars() const {
-            return this->max_vars;
+            return this->data_types.size();
         }
         inline const uint8_t* getDataTypes() const {
-            return this->data_types;
+            return this->data_types.data();
         }
         inline const bool* getGlobals() const {
-            return this->globals;
+            return reinterpret_cast<const bool*>(this->globals.data());
         }
         inline const uint32_t* getOffsets() const {
-            return this->function_offsets;
+            return this->function_offsets.data();
         }
 };
 

@@ -57,8 +57,22 @@ let instr_count [max_nodes] (tree: Tree[max_nodes]) =
         map2 (\i x -> if i == 0 then 0 else x) (iota max_nodes) |>
         map2 instr_count_fix tree.nodes
 
+let shift_right [n] 't (x: t) (xs: [n]t) : [n]t =
+    xs |>
+    rotate (-1) |>
+    zip (iota n) |>
+    map (\(i, y) -> if i == 0 then x else y)
+
 let get_function_table [max_nodes] (tree: Tree[max_nodes]) (instr_count: [max_nodes]u32) =
-    iota max_nodes |>
+    let (function_ids, offsets) = iota max_nodes |>
         filter (\i -> tree.nodes[i].node_type == #func_decl) |>
         map (\i -> (tree.nodes[i].node_data, instr_count[i])) |>
         unzip2
+    let rotated_offsets =
+        offsets |>
+        shift_right 0
+    let function_sizes =
+        indices function_ids |>
+        map (\i -> if i == 0 then offsets[0] else offsets[i] - offsets[i-1])
+    in
+    (function_ids, rotated_offsets, function_sizes)
