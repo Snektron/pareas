@@ -10,6 +10,7 @@ import "util"
 import "passes/fix_bin_ops"
 import "passes/remove_marker_nodes"
 import "passes/compactify"
+import "passes/preorder"
 
 type~ lex_table [n] = lexer.lex_table [n] token.t
 type~ stack_change_table [n] = pareas_parser.stack_change_table [n]
