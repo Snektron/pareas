@@ -61,7 +61,7 @@ entry main [n] [m] [o]
     let parents = remove_marker_nodes types parents
     let (valid, types, parents) = fix_if_else types parents
     in if !valid then mk_error status_stray_else_error else
-    --  let (parents, old_old_index) = compactify parents
-    --  let (parents, old_index) = make_preorder_ordering parents
-    --  let types = old_index |> gather old_old_index |> gather types
-    (status_ok, types, parents, parents)
+    let (parents, old_old_index) = compactify parents
+    let (parents, old_index) = make_preorder_ordering parents
+    let types = old_index |> gather old_old_index |> gather types
+    in (status_ok, types, parents, old_old_index)
