@@ -2,6 +2,7 @@
 fn = /fn/
 if = /if/
 else = /else/
+elif = /elif/
 while = /while/
 return = /return/
 

@@ -43,7 +43,9 @@ local let is_list_end = mk_production_mask [
 
 -- A mapping of node types to an expression type, nodes which may appear in the same expression
 -- list need to have the same type. Otherwise, these values are arbitrary.
-local let expr_list_type = mk_production_array 0i32 [
+-- The value of 0 is reserved for nodes which are not equal to eachother.
+local let not_in_list = 0i32
+local let expr_list_type = mk_production_array not_in_list [
         (production_logical_or_list, 1),
         (production_logical_or_end, 1),
 
@@ -204,7 +206,7 @@ let fix_bin_ops [n] (types: [n]production.t) (parents: [n]i32) =
         iota n
         |> map i32.i64
         -- Also remove those old list ends here so we don't get any problems down the line.
-        |> map (\i -> new_parents[i] != i && new_parents[i] != -1 && expr_type[i] != 0 && expr_type[i] == expr_type[new_parents[i]])
+        |> map (\i -> new_parents[i] != i && new_parents[i] != -1 && expr_type[i] != not_in_list && expr_type[i] == expr_type[new_parents[i]])
     -- Make the parent of each of the list end nodes the parent of the entire list.
     -- Do this simply by marking the same_type_as_parent nodes, computing the parents, and computing the parents
     -- of those again.

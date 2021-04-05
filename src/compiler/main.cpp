@@ -20,12 +20,14 @@
 enum class Status : uint8_t {
     OK = 0,
     PARSE_ERROR = 1,
+    STRAY_ELSE_ERROR = 2,
 };
 
 const char* status_name(Status s) {
     switch (s) {
         case Status::OK: return "ok";
         case Status::PARSE_ERROR: return "parse error";
+        case Status::STRAY_ELSE_ERROR: return "stray else/elif";
     }
 }
 

@@ -5,19 +5,23 @@ fn_decl_list [fn_decl_list_end] -> ;
 
 fn_decl -> 'fn' compound_stat;
 
-# Statements
+## Statements
 stat [stat_while] -> 'while' expr compound_stat;
 stat [stat_if] -> 'if' expr compound_stat;
 stat [stat_else] -> 'else' compound_stat; # LL(P) doesn't support else statements otherwise
+stat [stat_elif] -> 'elif' expr compound_stat;
 stat [stat_expr] -> expr 'semi';
 stat [stat_compound] -> compound_stat;
+
+# Extra production type that can be used in the fix_if_else stage.
+stat_if_else -> ;
 
 compound_stat -> 'lbrace' stat_list 'rbrace';
 
 stat_list -> stat stat_list;
 stat_list [stat_list_end] -> ;
 
-# Expressions
+## Expressions
 expr -> logical_or;
 
 logical_or -> rela logical_or_list;

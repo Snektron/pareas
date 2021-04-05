@@ -21,24 +21,24 @@ local let compute_depths [n] (parents: [n]i32): [n]i32 =
     -- Because we start with an array of all ones, the root node will have depth 1.
     in map (+ -1) depths
 
-local let right_grandchild [n] (parents: [n]i32) (is_last_child: [n]bool): [n]i32 =
-    let (_, rgc) =
+local let right_descendant [n] (parents: [n]i32) (is_last_child: [n]bool): [n]i32 =
+    let (_, rd) =
         iterate
             (n |> i32.i64 |> bit_width)
-            (\(links, rgc) ->
+            (\(links, rd) ->
                 let is =
                     links
                     |> map (\link-> if link == -1 then -1 else link)
                     |> map i64.i32
-                let rgc' =
+                let rd' =
                     scatter
-                        (copy rgc)
+                        (copy rd)
                         is
-                        rgc
+                        rd
                 let links' = map (\link -> if link == -1 || !is_last_child[link] then -1 else links[link]) links
-                in (links', rgc'))
+                in (links', rd'))
             (parents, iota n |> map i32.i64)
-   in rgc
+   in rd
 
 -- | Other passes (for example `fix_bin_ops`@term@"fix_bin_ops") might reorder some nodes, which causes
 -- the tree to no longer be in pre-order, which is required for some subsequent passes. This function
@@ -70,7 +70,7 @@ let make_preorder_ordering [n] (parents: [n]i32): ([n]i32, [n]i32) =
         |> map (\i -> i == 0 || sorted_parents[i] != sorted_parents[i - 1])
     -- Since we explicitly set the root node as being the first child, the last node will also be set as last child.
     let sorted_is_last_child = rotate 1 sorted_is_first_child
-    -- The sorted_is_last_child array is in order of the nodes sorted by depth, however,the rightmost grandchild
+    -- The sorted_is_last_child array is in order of the nodes sorted by depth, however,the rightmost descendant
     -- computation is easier to perform on the unsorted array, as it requires us to follow parent pointers.
     -- These would otherwise need to be recomputed for the sorted array, which requires 2 scatters.
     let is_last_child =
@@ -78,23 +78,23 @@ let make_preorder_ordering [n] (parents: [n]i32): ([n]i32, [n]i32) =
             (replicate n false)
             (map i64.i32 order)
             sorted_is_last_child
-    let rgc = right_grandchild parents is_last_child
-    let sorted_prev_rgc =
-        map (\i -> rgc[i]) order
-        -- Rotate the sorted grand childen one to the right so that for every non-first-child node it contains
-        -- the right grandchild of the previous child.
+    let rd = right_descendant parents is_last_child
+    let sorted_prev_rd =
+        map (\i -> rd[i]) order
+        -- Rotate the sorted right descendants one to the right so that for every non-first-child node it contains
+        -- the right descendant the previous child.
         |> rotate (-1)
     let sorted_post_order =
-        map3 (\first_child prev_rgc parent ->
+        map3 (\first_child prev_rd parent ->
             -- If this is the first (or only) child of a node, then the next node in
             -- is the parent node.
             -- Note: Because we explicitly set the first node as being the first child, the chain will
             -- end there, as the parent of the root node is of course -1.
             if first_child then parent
-            -- Else, the next node is the right grand child of the left sibling's right grand child
-            else prev_rgc)
+            -- Else, the next node is the right descendant of the left sibling's right descendant
+            else prev_rd)
         sorted_is_first_child
-        sorted_prev_rgc
+        sorted_prev_rd
         sorted_parents
     -- Un-sort the generated post order to obtain, for each node, a pointer to the previous node in post-order.
     -- This is required because we computed the sorted_post_order using the original parents instead of parents
