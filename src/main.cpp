@@ -287,6 +287,11 @@ int main(int argc, const char* argv[]) {
         if(!err)
             err = futhark_entry_main(context.get(), &instr_fut, &rd_fut, &rs1_fut, &rs2_fut, gpu_tree.get(), gpu_symtab.get(),
                             instr_offsets.get(), depth_tree.getInstrCount());
+        
+        UniqueFPtr<futhark_u32_1d, futhark_free_u32_1d> ignore(context.get());
+        if(!err)
+            err = futhark_entry_do_register_alloc(context.get(), &ignore, instr_fut.get(), rd_fut.get(), rs1_fut.get(), rs2_fut.get(),
+                            function_ids.get(), function_offsets.get(), function_sizes.get());
         if (!err)
             err = futhark_context_sync(context.get());
 

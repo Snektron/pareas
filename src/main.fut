@@ -3,6 +3,7 @@ import "datatypes"
 import "instr"
 import "instr_count"
 import "symtab"
+import "register"
 
 let make_node_type (node_type: u8) : NodeType =
     match node_type
@@ -97,3 +98,24 @@ let split_instr (instr: Instr) =
 entry main [n] [m] (tree: Tree[n]) (symtab: Symtab[m]) (instr_offset: [n]u32) (max_instrs: i64) =
     let instr_offset_i64 = map i64.u32 instr_offset in
     compile_tree tree symtab instr_offset_i64 max_instrs |> map split_instr |> unzip4
+
+let make_instr (instr: u32) (rd: i64) (rs1: i64) (rs2: i64) =
+    {
+        instr = instr,
+        rd = rd,
+        rs1 = rs1,
+        rs2 = rs2
+    }
+
+let make_functab (id: u32) (start: u32) (size: u32) =
+    {
+        id = id,
+        start = start,
+        size = size
+    }
+
+entry do_register_alloc [n] [m] (instrs: [n]u32) (rd: [n]i64) (rs1: [n]i64) (rs2: [n]i64) (func_id: [m]u32) (func_start: [m]u32) (func_size: [m]u32) =
+    let instr_data = map4 make_instr instrs rd rs1 rs2
+    let func_tab = map3 make_functab func_id func_start func_size
+    in
+    register_alloc instr_data func_tab

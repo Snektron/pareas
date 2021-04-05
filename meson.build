@@ -21,6 +21,7 @@ futhark_sources = [
     'src/instr.fut',
     'src/instr_count.fut',
     'src/lisp.fut',
+    'src/register.fut',
     'src/symtab.fut',
     'src/tree.fut'
 ]
