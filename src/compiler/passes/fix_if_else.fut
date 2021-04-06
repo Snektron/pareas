@@ -77,10 +77,10 @@ let fix_if_else [n] (types: [n]production.t) (parents: [n]i32): (bool, [n]produc
             (replicate n false)
             is
             (replicate n true)
-        -- Merge that with else nodes
+        -- Merge that with else nodes.
         |> map2
             (||)
             (map (== production_stat_else) new_types)
-        -- And remove all of these
+        -- And remove all of these.
         |> remove_nodes new_parents
     in (valid, new_types, new_parents)

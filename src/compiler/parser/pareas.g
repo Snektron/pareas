@@ -24,9 +24,9 @@ stat_list [stat_list_end] -> ;
 ## Expressions
 expr -> logical_or;
 
-logical_or -> rela logical_or_list;
+logical_or -> logical_and logical_or_list;
 
-logical_or_list -> 'pipe_pipe' rela logical_or_list;
+logical_or_list -> 'pipe_pipe' logical_and logical_or_list;
 logical_or_list [logical_or_end] -> ;
 
 logical_and -> rela logical_and_list;
