@@ -9,6 +9,7 @@ import "util"
 
 import "passes/fix_bin_ops"
 import "passes/fix_if_else"
+import "passes/fn_stuff"
 import "passes/remove_marker_nodes"
 import "passes/compactify"
 import "passes/preorder"
@@ -61,6 +62,8 @@ entry main [n] [m] [o]
     let parents = remove_marker_nodes types parents
     let (valid, types, parents) = fix_if_else types parents
     in if !valid then mk_error status_stray_else_error else
+    let (types, parents) = fix_fn_args types parents
+    let (types, parents) = fix_binds types parents
     let (parents, old_old_index) = compactify parents
     let (parents, old_index) = make_preorder_ordering parents
     let types = old_index |> gather old_old_index |> gather types
