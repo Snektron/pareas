@@ -34,6 +34,7 @@ namespace {
         const char* lexer_src;
         const char* output;
         const char* namesp;
+        bool check;
         bool verbose_lexer;
         bool verbose_grammar;
         bool verbose_sets;
@@ -52,6 +53,7 @@ namespace {
             "--lexer <lexer.lex>         Generate a lexer from <lexer.lex>.\n"
             "-o --output <path>          Basename of generated output files.\n"
             "--namespace <namespace>     Emit c++ definitions under <namespace>\n"
+            "--check                     Don't write output.\n"
             "--verbose-lexer             Dump sizes of lexer tables.\n"
             "--verbose-grammar           Dump parsed grammar to stderr.\n"
             "--verbose-sets              Dump first/last/follow/before sets to stderr.\n"
@@ -60,7 +62,8 @@ namespace {
             "--verbose-llp               Dump LLP table as CSV to stderr.\n"
             "-h --help                   Show this message and exit.\n"
             "\n"
-            "Either or both of --parser and --lexer are required, as well as --output.\n",
+            "Either or both of --parser and --lexer are required, as well as\n"
+            "either --output or --check.\n",
             progname
         );
     }
@@ -71,6 +74,7 @@ namespace {
             .lexer_src = nullptr,
             .output = nullptr,
             .namesp = nullptr,
+            .check = false,
             .verbose_lexer = false,
             .verbose_grammar = false,
             .verbose_sets = false,
@@ -98,6 +102,8 @@ namespace {
             } else if (arg == "--namespace") {
                 ptr = &opts.namesp;
                 argname = "namespace";
+            } else if (arg == "--check") {
+                opts.check = true;
             } else if (arg == "--verbose-lexer") {
                 opts.verbose_lexer = true;
             } else if (arg == "--verbose-grammar") {
@@ -135,8 +141,8 @@ namespace {
             return false;
         }
 
-        if (!opts.output) {
-            fmt::print(std::cerr, "Error: Missing required argument --output\n");
+        if (opts.check == (opts.output != nullptr)) {
+            fmt::print(std::cerr, "Error: Missing required argument --output or --check (but not both)\n");
             return false;
         }
 
@@ -270,6 +276,9 @@ int main(int argc, char* argv[]) {
     // Only do this check here so we can report errors for both parser and lexer construction.
     if ((opts.lexer_src && !lexer.has_value()) || (opts.parser_src && !parser.has_value()))
         return EXIT_FAILURE;
+
+    if (opts.check)
+        return EXIT_SUCCESS;
 
     try {
         auto renderer = pareas::Renderer(opts.namesp, opts.output);
