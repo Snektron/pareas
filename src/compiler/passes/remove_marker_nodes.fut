@@ -5,8 +5,7 @@ import "../../../gen/pareas_grammar"
 local let is_marker = mk_production_mask [
         production_start,
         production_atom_paren,
-        production_compound_stat,
-        production_unary_atom
+        production_compound_stat
     ]
 
 -- | This pass removes 'marker' type nodes, which have no significant semantic information

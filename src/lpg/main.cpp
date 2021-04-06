@@ -63,7 +63,7 @@ namespace {
             "-h --help                   Show this message and exit.\n"
             "\n"
             "Either or both of --parser and --lexer are required, as well as\n"
-            "either --output or --check.\n",
+            "either --output and --namespace, or --check.\n",
             progname
         );
     }
@@ -146,7 +146,7 @@ namespace {
             return false;
         }
 
-        if (!opts.namesp) {
+        if (!opts.check && !opts.namesp) {
             fmt::print(std::cerr, "Error: Missing required argument --namespace\n");
             return false;
         }

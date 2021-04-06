@@ -5,6 +5,10 @@ fn_decl_list [fn_decl_list_end] -> ;
 
 fn_decl -> 'fn' compound_stat;
 
+type [type_int] -> 'int';
+type [type_float] -> 'float';
+type [type_void] -> 'void';
+
 ## Statements
 stat [stat_while] -> 'while' expr compound_stat;
 stat [stat_if] -> 'if' expr compound_stat;
@@ -22,7 +26,12 @@ stat_list -> stat stat_list;
 stat_list [stat_list_end] -> ;
 
 ## Expressions
-expr -> logical_or;
+expr -> assign;
+
+assign -> logical_or assign_list;
+
+assign_list -> 'eq' logical_or assign_list;
+assign_list [assign_end] -> ;
 
 logical_or -> logical_and logical_or_list;
 
@@ -64,18 +73,16 @@ sum_list [sum_add] -> 'plus' prod sum_list;
 sum_list [sum_sub] -> 'binary_minus' prod sum_list;
 sum_list [sum_end] -> ;
 
-prod -> unary prod_list;
+prod -> atom prod_list;
 
-prod_list [prod_mul] -> 'star' unary prod_list;
-prod_list [prod_div] -> 'slash' unary prod_list;
-prod_list [prod_mod] -> 'percent' unary prod_list;
+prod_list [prod_mul] -> 'star' atom prod_list;
+prod_list [prod_div] -> 'slash' atom prod_list;
+prod_list [prod_mod] -> 'percent' atom prod_list;
 prod_list [prod_end] -> ;
 
-unary [unary_neg] -> 'unary_minus' unary;
-unary [unary_bitflip] -> 'tilde' unary;
-unary [unary_not] -> 'exclam' unary;
-unary [unary_atom] -> atom;
-
+atom [atom_unary_neg] -> 'unary_minus' atom;
+atom [atom_unary_bitflip] -> 'tilde' atom;
+atom [atom_unary_not] -> 'exclaim' atom;
 atom [atom_paren] -> 'lparen' logical_or 'rparen';
 atom [atom_id] -> 'id';
 atom [atom_int] -> 'int_literal';

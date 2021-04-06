@@ -32,7 +32,7 @@ gt = />/
 gte = />=/
 lt = /</
 lte = /<=/
-exclam = /!/ #
+exclaim = /!/ #
 tilde = /~/ #
 semi = /;/
 
