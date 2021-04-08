@@ -7,6 +7,7 @@ module pareas_parser = parser g
 
 import "util"
 
+import "passes/tokenize"
 import "passes/fix_bin_ops"
 import "passes/fix_if_else"
 import "passes/fn_stuff"
@@ -40,30 +41,27 @@ let status_ok: status_code = 0
 let status_parse_error: status_code = 1
 let status_stray_else_error: status_code = 2
 
-entry main [n] [m] [o]
+entry main
     (input: []u8)
-    (lt: lex_table [m])
-    (sct: stack_change_table [n])
-    (pt: parse_table [o])
+    (lt: lex_table [])
+    (sct: stack_change_table [])
+    (pt: parse_table [])
     (arities: arity_array)
     : (status_code, []token.t, []i32, []i32)
     =
     let mk_error (code: status_code) = (code, [], [], [])
-    let (tokens, _, _) =
-        lexer.lex input lt
-        |> filter (\(t, _, _) -> t != token_whitespace && t != token_comment && t != token_binary_minus_whitespace)
-        |> unzip3
+    let tokens = tokenize input lt
     -- As the lexer returns an `invalid` token when the input cannot be lexed, which is accepted
     -- by the parser also, pareas_parser.check will fail whenever there is a lexing error.
     in if !(pareas_parser.check tokens sct) then mk_error status_parse_error else
     let types = pareas_parser.parse tokens pt
     let parents = pareas_parser.build_parent_vector types arities
     let (types, parents) = fix_bin_ops types parents
-    let parents = remove_marker_nodes types parents
     let (valid, types, parents) = fix_if_else types parents
     in if !valid then mk_error status_stray_else_error else
     let (types, parents) = fix_fn_args types parents
     let (types, parents) = fix_binds types parents
+    let parents = remove_marker_nodes types parents
     let (parents, old_old_index) = compactify parents
     let (parents, old_index) = make_preorder_ordering parents
     let types = old_index |> gather old_old_index |> gather types

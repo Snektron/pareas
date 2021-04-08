@@ -464,7 +464,7 @@ int main(int argc, const char* argv[]) {
     if (input_array)
         futhark_free_u8_1d(ctx.get(), input_array);
 
-    if (!err && opts.profile) {
+    if (opts.profile) {
         auto report = MallocPtr<char>(futhark_context_report(ctx.get()));
         fmt::print("Profile report:\n{}", report);
     }

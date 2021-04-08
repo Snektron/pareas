@@ -95,6 +95,7 @@ futhark_sources = [
     'src/compiler/parser/bracket_matching.fut',
     'src/compiler/parser/parser.fut',
     'src/compiler/passes/util.fut',
+    'src/compiler/passes/tokenize.fut',
     'src/compiler/passes/fix_bin_ops.fut',
     'src/compiler/passes/fix_if_else.fut',
     'src/compiler/passes/fn_stuff.fut',
