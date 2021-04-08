@@ -49,7 +49,7 @@ local let right_descendant [n] (parents: [n]i32) (is_last_child: [n]bool): [n]i3
 let make_preorder_ordering [n] (parents: [n]i32): ([n]i32, [n]i32) =
     -- Assume that at this point, there are no invalid subtrees anymore (as removed by compactify)
     let depths = compute_depths parents
-    let max_depth = 1 + reduce i32.max (-1) depths
+    let max_depth = 1 + i32.maximum depths
     -- Compute an ordering for nodes according to their depth.
     let order =
         iota n

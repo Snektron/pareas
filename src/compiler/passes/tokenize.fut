@@ -1,114 +1,144 @@
 import "util"
+import "../util"
 import "../../../gen/pareas_grammar"
 import "../../../lib/github.com/diku-dk/sorts/radix_sort"
 module lexer = import "../lexer/lexer"
 
+-- Some useful typedefs so that these don't need to be typed out ever type, cluttering the code.
 local type~ lex_table [n] = lexer.lex_table [n] token.t
+local type tokenref = (token.t, i32, i32)
 
-local let parse_ints [n] (input: []u8) (tokens: [n](token.t, i32, i32)): [n]u32 =
-    let parse_int offset len =
-        -- The lexer guarantees that integers only consist of one or more numbers, so we don't need to check here.
-        -- TODO: Overflow can still occur.
-        loop value = 0u32 for i < len do
-            let c = u32.u8 input[offset + i]
-            in value * 10 - '0' + c
+-- | Parse an integer literal token into an u32. Overflow is not handled.
+-- As integers are not supposed to be very long, the parsing of each itneger is simply done
+-- as a simple loop.
+-- As the lexer guarantees that integer literals are a simple sequence of digits, there is no
+-- check required whether all the characters are integers.
+-- TODO: As an optimization case for very long integers, overflow could be checked and failure
+-- could be returned. This would also yield a static upper bound for the number of loop iterations.
+local let parse_int (input: []u8) ((_, offset, len): tokenref): u32 =
+    loop value = 0u32 for i < len do
+        let c = u32.u8 input[offset + i]
+        in value * 10 - '0' + c
 
-    let (_, offsets, lengths) = unzip3 tokens
-    -- Since ints are usually quite short (a few 10s of characters at most) we can simply do a
-    -- naive while loop for each of them.
-    in map2 parse_int offsets lengths
-
-local let parse_floats [n] (input: []u8) (tokens: [n](token.t, i32, i32)): [n]u32 =
-    let parse_float offset len =
-        -- The lexer guarantees that floats consist of a sequence of one or more numbers, a dot,
-        -- and another sequence of one or more numbers.
-        -- This float parsing routine isn't perfect, but it'll do for now.
-        let (value, significant) =
-            loop (value, significant) = (0f32, 0f32) for i < len do
+-- | Parse a float literal token into a f32. Overflow is not handled, and if literals
+-- are longer than the 8 digits of accuracy floats provide, the parsed literal value
+-- may not be accurate.
+-- Again, float literals should not be very long, so they are parsed simply using a linear loop.
+-- As the lexer guarantees that floats consists of one or more digits, a dot, then another one or
+-- mopre digits, this does not need to handle checking whether the float's format is valid.
+-- TODO: For an optimization case, we could check whether a float is (much) longer than the 8
+-- digits of accuracy the floating point spec manditates.
+local let parse_float (input: []u8) ((_, offset, len): tokenref): f32 =
+    let (value, significant) =
+        loop (value, significant) = (0f32, 0f32) for i < len do
                 let c = input[offset + i]
                 in if c == '.'
                     then (value, 1)
                     else (value * 10 - '0' + f32.u8 c, significant * 10)
-        in value / significant
-    let (_, offsets, lengths) = unzip3 tokens
-    in
-        map2 parse_float offsets lengths
-        |> map f32.to_bits
+    in value / significant
 
-local let string_link [n] (input: []u8) (tokens: [n](token.t, i32, i32)): [n]i32 =
+-- | Given a list of idenfitier tokens, assign a unique ID to every unique identifier. This replaces the need
+-- for annoying string operations further in the compiler, and allows us to simply query and compare the identifiers.
+-- For now, this implementation does a rather simply fixed-length radix sort, as identifiers are not supposed to be
+-- very long. Some optimizations are done though, as identifiers can only consist of a-zA-Z0-9_ (63 characters),
+-- we only need to sort on 5 instead of 8 bits per characters.
+local let ident_link [n] (input: []u8) (tokens: [n]tokenref): [n]u32 =
     let (_, offsets, lengths) = unzip3 tokens
-    let bits_per_char = 5 -- a-z + A-Z + 0-9 + _ is 63, so 5 bits will do.
-    let get_name_char_bit (bit: i32) (c: u8): i32 =
-        let value =
-            if c >= 'a' && c <= 'z' then c - 'a'
-            else if c >= 'A' && c <= 'Z' then c - 'A' + ('z' - 'a' + 1)
-            else if c >= '0' && c <= '0' then c - '0' + ('z' - 'a' + 1) + ('Z' - 'A' + 1)
-            else c - '_' + ('z' - 'a' + 1) + ('Z' - 'A' + 1) + ('9' - '0' + 1)
-        in u8.get_bit bit value
+    -- a-zA-Z0-9_ are 26 + 26 + 10 + 1 = 63 characters, so 5 bits will do.
+    let bits_per_char = 5
+    -- Map characters allowed in a function name to its 5-bit representation.
+    let char_to_value (c: u8): u8 =
+        if c >= 'a' && c <= 'z' then c - 'a'
+        else if c >= 'A' && c <= 'Z' then c - 'A' + ('z' - 'a' + 1)
+        else if c >= '0' && c <= '0' then c - '0' + ('z' - 'a' + 1) + ('Z' - 'A' + 1)
+        else c - '_' + ('z' - 'a' + 1) + ('Z' - 'A' + 1) + ('9' - '0' + 1)
+    -- Get a particular bit in the string at `index`.
     let get_name_bit (bit: i32) (index: i32): i32 =
         let bit_in_char = bit % bits_per_char
         let byte_in_string = bit / bits_per_char
-        in
-            if byte_in_string >= lengths[index] then 0
-            else get_name_char_bit bit_in_char input[offsets[index] + byte_in_string]
-    -- Expect strings to be roughly equal in length (up to a few 10s of chars), so iterating linearly seems justified
-    let str_eq (a: i32) (b: i32) =
-        let off_a = i64.i32 offsets[a]
+        in if byte_in_string >= lengths[index] then 0 else
+        let c = input[offsets[index] + byte_in_string]
+        in u8.get_bit bit_in_char (char_to_value c)
+    -- To finally assign an ID to ever string, we need to know whether it is equal to another string.
+    -- This function performs a simple linear check.
+    let str_eq (a: i32) (b: i32): bool =
         let len_a = i64.i32 lengths[a]
-        let off_b = i64.i32 offsets[b]
         let len_b = i64.i32 lengths[b]
         in if len_a != len_b then false else
+        let off_a = i64.i32 offsets[a]
+        let off_b = i64.i32 offsets[b]
         let str_a = (input[off_a : off_a + len_a]) :> [len_a]u8
         let str_b = (input[off_b : off_b + len_a]) :> [len_a]u8
         in map2 (==) str_a str_b |> reduce (&&) true
-    let longest = reduce i32.max 0 lengths
-    let total_sort_bits = longest * bits_per_char
+    -- Compute the amount of bits we need to perform the radix sort on.
+    let sort_bits = bits_per_char * i32.maximum lengths
+    -- Compute the ordering of the strings by radix sorting. Instead of copying the strings all the time,
+    -- simply perform an argsort.
     let order =
         iota n
         |> map i32.i64
-        |> radix_sort total_sort_bits get_name_bit
-    let vs: [n]i32 =
+        |> radix_sort sort_bits get_name_bit
+    -- Compute the (sorted) IDs for each string.
+    let vs =
         iota n
+        -- First, build a mapping of whether this string is equal to its previous.
         |> map (\i -> if i == 0 then false else str_eq order[i] order[i - 1])
+        -- Invert this mapping, so that we get a mask whether this string is the first of a
+        -- sequence of equal strings.
         |> map (!)
-        |> map i32.bool
+        -- Perform an (exclusive) scan to get the IDs.
+        |> map u32.bool
         |> scan (+) 0
-        |> map (+ -1)
+        |> map (\x -> x - 1)
+    -- Unsort this list of IDs to gain the final ID mapping.
     in scatter
-        (replicate n 0i32)
+        (replicate n 0u32)
         (map i64.i32 order)
         vs
 
-local let get_token_data (input: []u8) (tokens: [](token.t, i32, i32)) =
-    -- Filter out unused tokens
-    let tokens: [](token.t, i32, i32) =
-        tokens
-        |> filter (\(t, _, _) -> t == token_int_literal || t == token_float_literal || t == token_id)
-    -- Partition into different types.
-    -- TODO: merge with above step?
-    let (int_tokens, float_tokens, id_tokens) =
-        tokens
-        |> partition2
-            (\(t, _, _) -> t == token_int_literal)
-            (\(t, _, _) -> t == token_float_literal)
-    let _ = parse_ints input int_tokens
-    let _ = parse_floats input float_tokens
-    let _ = string_link input id_tokens
-    in false
-
 -- | This pass lexes the input file and produces a list of tokens (which are to be
--- fed into the parser), and (TODO) also produces a list of extra token data, which is to be
--- associated with nodes at a later moment.
+-- fed into the parser).
 let tokenize (input: []u8) (lt: lex_table []) =
-    let tokens = lexer.lex input lt
-    let parse_token_types =
-        tokens
-        |> map (.0)
-        |> filter (\t -> t != token_whitespace && t != token_comment && t != token_binary_minus_whitespace)
-    let _ = get_token_data input tokens
-    in parse_token_types
+    lexer.lex input lt
+    -- Filter out tokens whitespace tokens (which should be ignored by the parser).
+    |> filter (\(t, _, _) ->  t != token_whitespace && t != token_comment && t != token_binary_minus_whitespace)
 
-entry main =
-    let str = "1234.567"
-    let floats = parse_floats str [(0u8, 0i32, i32.i64 (length str))]
-    in f32.from_bits floats[0]
+-- | This function builds a data vector for the token types, containing the following elements:
+-- - For each atom_id, a unique 32-bit integer for the name associated to the atom.
+-- - For each atom_int_literal, the int's value as 32-bit integer.
+-- - For each atom_float_literal, the float's value as 32-bit float (reinterpreted as 32-bit int).
+-- As each production is associated with at most one data element,
+-- **warning** This function relies on the property that the relative ordering of each atom_int,
+-- atom_float and atom_id does not change.
+let build_data_vector [n] (types: [n]production.t) (input: []u8) (tokens: []tokenref) =
+    let pairwise op (a1, b1, c1) (a2, b2, c2) = (op a1 a2, op b1 b2, op c1 c2)
+    -- Partition tokens into interesting types.
+    let (int_tokens, float_tokens, id_tokens, _) =
+        tokens
+        |> partition3
+            (\(t, _, _) ->
+                if t == token_int_literal then 0
+                else if t == token_float_literal then 1
+                else if t == token_id then 2
+                else 3)
+    -- Map each token to its semantic value.
+    let ints = map (parse_int input) int_tokens
+    let floats = map (parse_float input) float_tokens |> map f32.to_bits
+    let idents = ident_link input id_tokens
+    -- Now, compute offsets for each type of these tokens in the types array,
+    -- similar to how its done in the partition function.
+    in
+        types
+        |> map (\ty ->
+            if ty == production_atom_int then (1, 0, 0)
+            else if ty == production_atom_float then (0, 1, 0)
+            else if ty == production_atom_id then (0, 0, 1)
+            else (0, 0, 0))
+        |> scan (pairwise (+)) (0, 0, 0)
+        |> map2
+            (\ty (int_off, float_off, ident_off) ->
+                if ty == production_atom_int then ints[int_off - 1]
+                else if ty == production_atom_float then floats[float_off - 1]
+                else if ty == production_atom_id then idents[ident_off - 1]
+                else 0)
+            types

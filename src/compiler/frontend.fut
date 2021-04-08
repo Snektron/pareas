@@ -47,14 +47,15 @@ entry main
     (sct: stack_change_table [])
     (pt: parse_table [])
     (arities: arity_array)
-    : (status_code, []token.t, []i32, []i32)
+    : (status_code, []token.t, []i32, []u32)
     =
     let mk_error (code: status_code) = (code, [], [], [])
     let tokens = tokenize input lt
+    let token_types = map (.0) tokens
     -- As the lexer returns an `invalid` token when the input cannot be lexed, which is accepted
     -- by the parser also, pareas_parser.check will fail whenever there is a lexing error.
-    in if !(pareas_parser.check tokens sct) then mk_error status_parse_error else
-    let types = pareas_parser.parse tokens pt
+    in if !(pareas_parser.check token_types sct) then mk_error status_parse_error else
+    let types = pareas_parser.parse token_types pt
     let parents = pareas_parser.build_parent_vector types arities
     let (types, parents) = fix_bin_ops types parents
     let (valid, types, parents) = fix_if_else types parents
@@ -65,4 +66,6 @@ entry main
     let (parents, old_old_index) = compactify parents
     let (parents, old_index) = make_preorder_ordering parents
     let types = old_index |> gather old_old_index |> gather types
-    in (status_ok, types, parents, old_old_index)
+    -- ints/floats/identifiers should be unchanged, relatively, so this is fine.
+    let data = build_data_vector types input tokens
+    in (status_ok, types, parents, data)
