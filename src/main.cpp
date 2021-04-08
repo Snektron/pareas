@@ -288,9 +288,11 @@ int main(int argc, const char* argv[]) {
             err = futhark_entry_main(context.get(), &instr_fut, &rd_fut, &rs1_fut, &rs2_fut, gpu_tree.get(), gpu_symtab.get(),
                             instr_offsets.get(), depth_tree.getInstrCount());
         
-        UniqueFPtr<futhark_u32_1d, futhark_free_u32_1d> ignore(context.get());
+        UniqueFPtr<futhark_u32_1d, futhark_free_u32_1d> register_instr_offsets(context.get());
+        UniqueFPtr<futhark_u64_1d, futhark_free_u64_1d> lifetime_masks(context.get());
+        UniqueFPtr<futhark_u32_1d, futhark_free_u32_1d> register_deltas(context.get());
         if(!err)
-            err = futhark_entry_do_register_alloc(context.get(), &ignore, instr_fut.get(), rd_fut.get(), rs1_fut.get(), rs2_fut.get(),
+            err = futhark_entry_do_register_alloc(context.get(), &register_instr_offsets, &lifetime_masks, &register_deltas, instr_fut.get(), rd_fut.get(), rs1_fut.get(), rs2_fut.get(),
                             function_ids.get(), function_offsets.get(), function_sizes.get());
         if (!err)
             err = futhark_context_sync(context.get());
@@ -339,6 +341,17 @@ int main(int argc, const char* argv[]) {
             return EXIT_FAILURE;
         }
 
+        std::unique_ptr<uint32_t[]> reg_instr_offsets(new uint32_t[num_values]);
+        std::unique_ptr<uint64_t[]> reg_lifetime_masks(new uint64_t[num_functab_entries]);
+        std::unique_ptr<uint32_t[]> reg_deltas(new uint32_t[num_functab_entries]);
+
+        if(!err)
+            futhark_values_u32_1d(context.get(), register_instr_offsets.get(), reg_instr_offsets.get());
+        if(!err)
+            futhark_values_u64_1d(context.get(), lifetime_masks.get(), reg_lifetime_masks.get());
+        if(!err)
+            futhark_values_u32_1d(context.get(), register_deltas.get(), reg_deltas.get());
+
         // std::cout << "Instruction offsets:" << std::endl;
         // for(size_t i = 0; i < num_instr_counts; ++i) {
         //     std::cout << i << ": " << instr_offset_buffer[i] << std::endl;
@@ -349,9 +362,14 @@ int main(int argc, const char* argv[]) {
             std::cout << functab_keys[i] << " -> " << functab_values[i] << ", " << functab_sizes[i] << std::endl;
         }
 
+        std::cout << "Register allocation data: " << std::endl;
+        for(size_t i = 0; i < num_functab_entries; ++i) {
+            std::cout << "Function " << functab_keys[i] << ": " << std::bitset<64>(reg_lifetime_masks[i]) << " " << reg_deltas[i] << std::endl;
+        }
+
         std::cout << std::endl << "Instructions:" << std::endl;        
         for(size_t i = 0; i < num_values; ++i) {
-            std::cout << i << "\t= " << std::bitset<32>(instr[i]) << " " << rd[i] << " " << rs1[i] << " " << rs2[i] << std::endl;
+            std::cout << i << "+" << reg_instr_offsets[i] << "\t= " << std::bitset<32>(instr[i]) << " " << rd[i] << " " << rs1[i] << " " << rs2[i] << std::endl;
         }
 
 

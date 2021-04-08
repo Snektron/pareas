@@ -142,7 +142,7 @@ let node_get_parent_arg_idx (node: Node) (instr_offset: i64) : i64 =
             -1
 
 let register (instr_no: i64) =
-    instr_no + 32
+    instr_no + 64
 
 let node_get_instr_arg (node_id: i64) (node: Node) (registers: []i64) (arg_no: i64) (instr_no: i64) (instr_offset: i64) : i64 =
     match(node.node_type, arg_no, instr_offset)
