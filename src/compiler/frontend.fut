@@ -61,7 +61,7 @@ entry main
     let (valid, types, parents) = fix_if_else types parents
     in if !valid then mk_error status_stray_else_error else
     let (types, parents) = fix_fn_args types parents
-    let (types, parents) = fix_binds types parents
+    let (types, parents) = squish_binds types parents
     let parents = remove_marker_nodes types parents
     let (parents, old_old_index) = compactify parents
     let (parents, old_index) = make_preorder_ordering parents

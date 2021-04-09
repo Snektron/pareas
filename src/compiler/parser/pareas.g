@@ -29,15 +29,15 @@ stat_list [stat_list_end] -> ;
 ## Expressions
 expr -> assign;
 
-assign -> bind assign_list;
+assign -> logical_or assign_list;
 
-assign_list -> 'eq' bind assign_list;
+assign_list -> 'eq' logical_or assign_list;
 assign_list [assign_end] -> ;
 
-bind -> logical_or maybe_bind;
+# bind -> logical_or maybe_bind;
 
-maybe_bind [binding] -> 'colon' type;
-maybe_bind [no_binding] -> ;
+# maybe_bind [binding] -> 'colon' type;
+# maybe_bind [no_binding] -> ;
 
 logical_or -> logical_and logical_or_list;
 
@@ -90,15 +90,20 @@ atom [atom_unary_neg] -> 'unary_minus' atom;
 atom [atom_unary_bitflip] -> 'tilde' atom;
 atom [atom_unary_not] -> 'exclaim' atom;
 atom [atom_paren] -> 'lparen' logical_or 'rparen';
-atom [atom_id] -> 'id' maybe_app;
+atom [atom_id] -> 'id' maybe_app maybe_bind;
 atom [atom_int] -> 'int_literal';
 atom [atom_float] -> 'float_literal';
 
-# Extra node that atom_id is replaced with if there is an application.
-atom_fn -> ;
+# Some extra nodes useful during the frontend part of the compilation.
+atom_fn_call -> ; # Replaces atom_id if it has an application
+atom_fn_proto -> ; # Replaces atom_fn_call if it has a bind
+atom_decl -> ; # Replaces atom_id if it has a bind (but no call).
 
 maybe_app [app] -> 'lbracket' args 'rbracket';
 maybe_app [no_app] -> ;
+
+maybe_bind [bind] -> 'colon' type;
+maybe_bind [no_bind] -> ;
 
 args -> expr arg_list;
 args [no_args] -> ;

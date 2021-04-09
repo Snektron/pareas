@@ -111,6 +111,11 @@ let tokenize (input: []u8) (lt: lex_table []) =
 -- **warning** This function relies on the property that the relative ordering of each atom_int,
 -- atom_float and atom_id does not change.
 let build_data_vector [n] (types: [n]production.t) (input: []u8) (tokens: []tokenref) =
+    let has_id_token ty =
+        ty == production_atom_id
+        || ty == production_atom_fn_call
+        || ty == production_atom_fn_proto
+        || ty == production_atom_decl
     let pairwise op (a1, b1, c1) (a2, b2, c2) = (op a1 a2, op b1 b2, op c1 c2)
     -- Partition tokens into interesting types.
     let (int_tokens, float_tokens, id_tokens, _) =
@@ -132,13 +137,13 @@ let build_data_vector [n] (types: [n]production.t) (input: []u8) (tokens: []toke
         |> map (\ty ->
             if ty == production_atom_int then (1, 0, 0)
             else if ty == production_atom_float then (0, 1, 0)
-            else if ty == production_atom_id then (0, 0, 1)
+            else if has_id_token ty then (0, 0, 1)
             else (0, 0, 0))
         |> scan (pairwise (+)) (0, 0, 0)
         |> map2
             (\ty (int_off, float_off, ident_off) ->
                 if ty == production_atom_int then ints[int_off - 1]
                 else if ty == production_atom_float then floats[float_off - 1]
-                else if ty == production_atom_id then idents[ident_off - 1]
+                else if has_id_token ty then idents[ident_off - 1]
                 else 0)
             types

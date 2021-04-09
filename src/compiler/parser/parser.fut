@@ -54,7 +54,7 @@ module parser (g: grammar) = {
         -- Early return if there is an error
         in if !bracket_refs_valid then false else
         -- Extract the stack changes from the grammar
-        string.extract_nonempty
+        string.extract
             sct.table
             offsets
             lens
