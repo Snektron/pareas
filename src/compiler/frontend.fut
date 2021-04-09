@@ -58,12 +58,14 @@ entry main
     let types = pareas_parser.parse token_types pt
     let parents = pareas_parser.build_parent_vector types arities
     let (types, parents) = fix_bin_ops types parents
+    let (parents, old_index) = compactify parents |> unzip
+    let types = gather types old_index
     let (valid, types, parents) = fix_if_else types parents
     in if !valid then mk_error status_stray_else_error else
     let (types, parents) = fix_fn_args types parents
     let (types, parents) = squish_binds types parents
     let parents = remove_marker_nodes types parents
-    let (parents, old_old_index) = compactify parents
+    let (parents, old_old_index) = compactify parents |> unzip
     let (parents, old_index) = make_preorder_ordering parents
     let types = old_index |> gather old_old_index |> gather types
     -- ints/floats/identifiers should be unchanged, relatively, so this is fine.

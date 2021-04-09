@@ -5,7 +5,9 @@ import "../util"
 -- output is supposed to be in pre-order, with no invalid nodes.
 -- This pass removes all those invalid nodes, returning the new parents array, and an array
 -- that can be used to gather any node data into a new, compactified array.
-let compactify [n] (parents: [n]i32): ([]i32, []i32) =
+-- This function returns an array of (parent, old_index), which should be unzipped, so that the futhark
+-- compiler can prove that these arrays are of the same length.
+let compactify [n] (parents: [n]i32): [](i32, i32) =
     -- TODO: Mark all nodes of deleted subtrees as deleted by setting their parents to themselves.
     -- Make a mask specifying whether a node should be included in the new tree.
     let include_mask =
@@ -37,4 +39,4 @@ let compactify [n] (parents: [n]i32): ([]i32, []i32) =
         |> gather parents
         -- Find the index into the new array
         |> map (\i -> if i == -1 then -1 else new_index[i])
-    in (parents, old_index)
+    in zip parents old_index
