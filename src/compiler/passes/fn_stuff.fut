@@ -65,22 +65,51 @@ let squish_binds [n] (types: [n]production.t) (parents: [n]i32): ([n]production.
 
 -- | This pass checks whether the structure of function declaration argument lists are correct, and is supposed to
 -- be performed somewhere after `squish_binds`@term, but before `remove_marker_nodes`@term@"remove_marker_nodes".
-let check_fn_params [n] (types: [n]production.t) (parents: [n]i32) =
+let check_fn_params [n] (types: [n]production.t) (parents: [n]i32): bool =
     types
     -- First, build a mask of nodes which appear as an argument list.
     |> map (\ty -> ty == production_arg_list || ty == production_arg_list_end)
-    -- Remvoe these nodes, building a new, flattened, parent vector.
+    -- Remove these nodes, building a new, flattened, parent vector.
+    -- TODO: This operation simply works linear, but it should be fine if argument lists aren't too long.
+    -- Perhaps this computation could be re-used somewhere else?
     |> remove_nodes parents
     -- Fetch the parent, and check if its an `atom_fn_proto` type node.
-    |> map (\parent -> if parent == -1 then false else types[parent] == production_atom_fn_proto)
+    |> map (\parent -> parent != -1 && types[parent] == production_atom_fn_proto)
     -- And this mask with a mask of nodes whose original (unflattened) parent is an argument list.
     |> map2
         (&&)
         -- Build a mask of nodes whose parents are arg lists.
-        (map (\parent -> if parent == -1 then false else types[parent] == production_arg_list) parents)
+        (map (\parent -> parent != -1 && types[parent] == production_arg_list) parents)
     -- The nodes in this mask, children of an arg_list which again is the child of an `atom_fn_proto`,
     -- should all be declarations (`atom_decl`) type nodes.
     |> map2
         (\ty is_param -> if is_param then ty == production_atom_decl else true)
+        types
+    |> reduce (&&) true
+
+-- | This function checks various tree structures related to assignments and declarations:
+-- - The left child of an assign node should be `atom_decl` or `atom_id`.
+-- - The left child of a fn_decl node should be `atom_fn_proto`.
+let check_decls_and_assignments [n] (types: [n]production.t) (parents: [n]i32) =
+    -- First, build a vector of left children. Do this by using reduce_by_index to find the
+    -- child node with the lowest id.
+    reduce_by_index
+        (replicate n (-1i32))
+        -- TODO: Test if its faster to use u32.min here and cast a bunch of arrays?
+        (\a b ->
+            if a < 0 then b
+            else if b < 0 then a
+            else i32.min a b)
+        (-1i32)
+        (map i64.i32 parents)
+        (iota n |> map i32.i64)
+    |> map2
+        (\ty left_child ->
+            let left_child_is_id = left_child != -1 && types[left_child] == production_atom_id
+            let left_child_is_decl = left_child != -1 && types[left_child] == production_atom_decl
+            let left_child_is_proto = left_child != -1 && types[left_child] == production_atom_fn_proto
+            in if ty == production_assign then left_child_is_id || left_child_is_decl
+            else if ty == production_fn_decl then left_child_is_proto
+            else true)
         types
     |> reduce (&&) true

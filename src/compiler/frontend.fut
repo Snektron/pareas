@@ -41,6 +41,7 @@ let status_ok: status_code = 0
 let status_parse_error: status_code = 1
 let status_stray_else_error: status_code = 2
 let status_invalid_params: status_code = 3
+let status_invalid_assign_or_decl: status_code = 4
 
 entry main
     (input: []u8)
@@ -66,6 +67,7 @@ entry main
     let (types, parents) = fix_fn_args types parents
     let (types, parents) = squish_binds types parents
     in if !(check_fn_params types parents) then mk_error status_invalid_params else
+    if !(check_decls_and_assignments types parents) then mk_error status_invalid_assign_or_decl else
     let parents = remove_marker_nodes types parents
     let (parents, old_old_index) = compactify parents |> unzip
     let (parents, old_index) = make_preorder_ordering parents

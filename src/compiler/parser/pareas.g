@@ -32,11 +32,6 @@ expr -> logical_or assign;
 assign -> 'eq' logical_or assign;
 assign [assign_end] -> ;
 
-# bind -> logical_or maybe_bind;
-
-# maybe_bind [binding] -> 'colon' type;
-# maybe_bind [no_binding] -> ;
-
 logical_or -> logical_and logical_or_list;
 
 logical_or_list -> 'pipe_pipe' logical_and logical_or_list;
