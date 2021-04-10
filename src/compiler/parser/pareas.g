@@ -27,12 +27,10 @@ stat_list -> stat stat_list;
 stat_list [stat_list_end] -> ;
 
 ## Expressions
-expr -> assign;
+expr -> logical_or assign;
 
-assign -> logical_or assign_list;
-
-assign_list -> 'eq' logical_or assign_list;
-assign_list [assign_end] -> ;
+assign -> 'eq' logical_or assign;
+assign [assign_end] -> ;
 
 # bind -> logical_or maybe_bind;
 

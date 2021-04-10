@@ -40,6 +40,7 @@ type status_code = u8
 let status_ok: status_code = 0
 let status_parse_error: status_code = 1
 let status_stray_else_error: status_code = 2
+let status_invalid_params: status_code = 3
 
 entry main
     (input: []u8)
@@ -47,9 +48,9 @@ entry main
     (sct: stack_change_table [])
     (pt: parse_table [])
     (arities: arity_array)
-    : (status_code, []token.t, []i32, []u32)
+    : (status_code, []token.t, []i32, []u32, []i32)
     =
-    let mk_error (code: status_code) = (code, [], [], [])
+    let mk_error (code: status_code) = (code, [], [], [], [])
     let tokens = tokenize input lt
     let token_types = map (.0) tokens
     -- As the lexer returns an `invalid` token when the input cannot be lexed, which is accepted
@@ -64,10 +65,11 @@ entry main
     in if !valid then mk_error status_stray_else_error else
     let (types, parents) = fix_fn_args types parents
     let (types, parents) = squish_binds types parents
+    in if !(check_fn_params types parents) then mk_error status_invalid_params else
     let parents = remove_marker_nodes types parents
     let (parents, old_old_index) = compactify parents |> unzip
     let (parents, old_index) = make_preorder_ordering parents
     let types = old_index |> gather old_old_index |> gather types
     -- ints/floats/identifiers should be unchanged, relatively, so this is fine.
     let data = build_data_vector types input tokens
-    in (status_ok, types, parents, data)
+    in (status_ok, types, parents, data, parents)

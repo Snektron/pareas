@@ -3,7 +3,7 @@ import "../../../gen/pareas_grammar"
 
 -- Node types which are list intermediates (may appear in list, but neither start nor end).
 local let is_list_intermediate = mk_production_mask [
-        production_assign_list,
+        production_assign,
 
         production_logical_or_list,
 

@@ -21,6 +21,7 @@ enum class Status : uint8_t {
     OK = 0,
     PARSE_ERROR = 1,
     STRAY_ELSE_ERROR = 2,
+    INVALID_PARAMS = 3,
 };
 
 const char* status_name(Status s) {
@@ -28,6 +29,7 @@ const char* status_name(Status s) {
         case Status::OK: return "ok";
         case Status::PARSE_ERROR: return "parse error";
         case Status::STRAY_ELSE_ERROR: return "stray else/elif";
+        case Status::INVALID_PARAMS: return "Invalid function declaration parameter list";
     }
 }
 
@@ -262,7 +264,7 @@ T* upload_strtab(futhark::Context& ctx, const grammar::StrTab<U>& strtab, F uplo
     return tab;
 }
 
-void dump_parse_tree(size_t n, const grammar::Production* types, const int32_t* parents, const uint32_t* data) {
+void dump_parse_tree(size_t n, const grammar::Production* types, const int32_t* parents, const uint32_t* data, const int32_t* extra) {
     fmt::print("digraph prog {{\n");
 
     for (size_t i = 0; i < n; ++i) {
@@ -271,24 +273,26 @@ void dump_parse_tree(size_t n, const grammar::Production* types, const int32_t* 
         auto* name = grammar::production_name(prod);
 
         if (parent != i) {
+            fmt::print("node{} [label=\"{} {} [{}]", i, name, i, extra[i]);
+
             switch (prod) {
                 case grammar::Production::ATOM_ID:
                 case grammar::Production::ATOM_DECL:
                 case grammar::Production::ATOM_FN_CALL:
                 case grammar::Production::ATOM_FN_PROTO:
-                    fmt::print("node{} [label=\"{} {} (id={})\"]", i, name, i, data[i]);
+                    fmt::print(" (id={})\"]\n", data[i]);
                     break;
                 case grammar::Production::ATOM_INT:
-                    fmt::print("node{} [label=\"{} {} (value={})\"]", i, name, i, data[i]);
+                    fmt::print(" (value={})\"]\n", data[i]);
                     break;
                 case grammar::Production::ATOM_FLOAT:
-                    fmt::print("node{} [label=\"{} {} (value={})\"]", i, name, i, *reinterpret_cast<const float*>(&data[i]));
+                    fmt::print(" (value={})\"]\n", *reinterpret_cast<const float*>(&data[i]));
                     break;
                 default:
                     if (data[i] != 0) {
-                        fmt::print("node{} [label=\"{} {} (junk={})\"]", i, name, i, data[i]);
+                        fmt::print("(junk={})\"]\n", data[i]);
                     } else {
-                        fmt::print("node{} [label=\"{} {}\"]", i, name, i);
+                        fmt::print("\"]\n");
                     }
             }
 
@@ -303,13 +307,14 @@ void dump_parse_tree(size_t n, const grammar::Production* types, const int32_t* 
     fmt::print("}}\n");
 }
 
-void download_and_parse_tree(futhark::Context& ctx, futhark_u8_1d* types, futhark_i32_1d* parents, futhark_u32_1d* data) {
+void download_and_parse_tree(futhark::Context& ctx, futhark_u8_1d* types, futhark_i32_1d* parents, futhark_u32_1d* data, futhark_i32_1d* extra_data) {
     int64_t n = futhark_shape_u8_1d(ctx.get(), types)[0];
     assert(n == futhark_shape_i32_1d(ctx.get(), parents)[0]);
 
     auto host_types = std::make_unique<grammar::Production[]>(n);
     auto host_parents = std::make_unique<int32_t[]>(n);
     auto host_data = std::make_unique<uint32_t[]>(n);
+    auto host_extra_data = std::make_unique<int32_t[]>(n);
 
     int err = futhark_values_u8_1d(
         ctx.get(),
@@ -327,6 +332,11 @@ void download_and_parse_tree(futhark::Context& ctx, futhark_u8_1d* types, futhar
     }
 
     if (futhark_values_u32_1d(ctx.get(), data, host_data.get())) {
+        report_futhark_error(ctx, "Failed to download data");
+        return;
+    }
+
+    if (futhark_values_i32_1d(ctx.get(), extra_data, host_extra_data.get())) {
         report_futhark_error(ctx, "Failed to download extra data");
         return;
     }
@@ -334,7 +344,7 @@ void download_and_parse_tree(futhark::Context& ctx, futhark_u8_1d* types, futhar
     if (futhark_context_sync(ctx.get()))
         report_futhark_error(ctx, "Sync after downloading parse tree kernel failed");
 
-    dump_parse_tree(n, host_types.get(), host_parents.get(), host_data.get());
+    dump_parse_tree(n, host_types.get(), host_parents.get(), host_data.get(), host_extra_data.get());
 }
 
 void download_and_dump_tokens(futhark::Context& ctx, futhark_u8_1d* tokens) {
@@ -415,6 +425,7 @@ int main(int argc, const char* argv[]) {
     futhark_u8_1d* types = nullptr;
     futhark_i32_1d* parents = nullptr;
     futhark_u32_1d* data = nullptr;
+    futhark_i32_1d* extra_data = nullptr;
     Status status;
 
     int err = 0;
@@ -425,6 +436,7 @@ int main(int argc, const char* argv[]) {
             &types,
             &parents,
             &data,
+            &extra_data,
             input_array,
             lex_table,
             sct,
@@ -444,7 +456,7 @@ int main(int argc, const char* argv[]) {
                 fmt::print(std::cerr, "{} nodes\n", n);
 
                 if (opts.dump_dot)
-                    download_and_parse_tree(ctx, types, parents, data);
+                    download_and_parse_tree(ctx, types, parents, data, extra_data);
             } else {
                 fmt::print(std::cerr, "Error: {}\n", status_name(status));
                 err = 1;
@@ -454,14 +466,17 @@ int main(int argc, const char* argv[]) {
         fmt::print(std::cerr, "Error: Failed to upload required data\n");
     }
 
-    if (types)
-        futhark_free_u8_1d(ctx.get(), types);
+    // if (types)
+    //     futhark_free_u8_1d(ctx.get(), types);
 
-    if (parents)
-        futhark_free_i32_1d(ctx.get(), parents);
+    // if (parents)
+    //     futhark_free_i32_1d(ctx.get(), parents);
 
-    if (data)
-        futhark_free_u32_1d(ctx.get(), data);
+    // if (data)
+    //     futhark_free_u32_1d(ctx.get(), data);
+
+    // if (extra_data)
+    //     futhark_free_i32_1d(ctx.get(), extra_data);
 
     if (lex_table)
         futhark_free_opaque_lex_table(ctx.get(), lex_table);

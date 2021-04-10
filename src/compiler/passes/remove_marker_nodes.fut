@@ -4,7 +4,6 @@ import "../../../gen/pareas_grammar"
 -- | The list of node types which should be removed in this pass.
 local let is_marker = mk_production_mask [
         production_start,
-        production_expr,
         production_atom_paren,
         production_compound_stat
     ]

@@ -33,7 +33,7 @@ let fix_fn_args [n] (types: [n]production.t) (parents: [n]i32): ([n]production.t
 -- - If the parent of a bind is an atom_id, it changes into an atom_decl.
 -- - `bind` and `no_bind` type nodes are simply removed after.
 -- This pass should be performed after `fix_fn_args`@term.
-let squish_binds [n] (types: [n]production.t) (parents: [n]i32) =
+let squish_binds [n] (types: [n]production.t) (parents: [n]i32): ([n]production.t, [n]i32) =
     -- First, move up the 'bind-ness' up to the parents
     let is_bind_parent =
         let is =
@@ -62,3 +62,25 @@ let squish_binds [n] (types: [n]production.t) (parents: [n]i32) =
         |> map (\ty -> ty == production_bind || ty == production_no_bind)
         |> remove_nodes parents
     in (new_types, new_parents)
+
+-- | This pass checks whether the structure of function declaration argument lists are correct, and is supposed to
+-- be performed somewhere after `squish_binds`@term, but before `remove_marker_nodes`@term@"remove_marker_nodes".
+let check_fn_params [n] (types: [n]production.t) (parents: [n]i32) =
+    types
+    -- First, build a mask of nodes which appear as an argument list.
+    |> map (\ty -> ty == production_arg_list || ty == production_arg_list_end)
+    -- Remvoe these nodes, building a new, flattened, parent vector.
+    |> remove_nodes parents
+    -- Fetch the parent, and check if its an `atom_fn_proto` type node.
+    |> map (\parent -> if parent == -1 then false else types[parent] == production_atom_fn_proto)
+    -- And this mask with a mask of nodes whose original (unflattened) parent is an argument list.
+    |> map2
+        (&&)
+        -- Build a mask of nodes whose parents are arg lists.
+        (map (\parent -> if parent == -1 then false else types[parent] == production_arg_list) parents)
+    -- The nodes in this mask, children of an arg_list which again is the child of an `atom_fn_proto`,
+    -- should all be declarations (`atom_decl`) type nodes.
+    |> map2
+        (\ty is_param -> if is_param then ty == production_atom_decl else true)
+        types
+    |> reduce (&&) true
