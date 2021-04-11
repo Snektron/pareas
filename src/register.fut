@@ -20,7 +20,7 @@ let deallocate_register (symbol_registers: []u8) (register: i64) (lifetime_mask:
     if register == 0 then
         lifetime_mask
     else if register < NUM_SYSTEM_REGS then
-        lifetime_mask -- TODO
+        lifetime_mask & !(1u64 << u64.i64 register)
     else
         let symb_reg = symbol_registers[register-NUM_SYSTEM_REGS] in
         if symb_reg != INVALID_SYMBOL then
@@ -28,12 +28,22 @@ let deallocate_register (symbol_registers: []u8) (register: i64) (lifetime_mask:
         else
             lifetime_mask
 
+let allocate_register (symbol_registers: []u8) (register: i64) (lifetime_mask: u64) =
+    if register == 0 then
+        (lifetime_mask, INVALID_SYMBOL)
+    else if register < NUM_SYSTEM_REGS then
+        (lifetime_mask | (1u64 << u64.i64 register), u8.i64 register)
+    else
+        let free_reg = u8.i32 (u64.ctz (!lifetime_mask)) --TODO: check if no registers available
+        in
+        (lifetime_mask | (1u64 << u64.u8 free_reg), free_reg)
+
 let lifetime_analyze_valid [n] (instrs: [n]Instr) (symbol_registers: []u8) (instr_offset: u32) (lifetime_mask: u64) (delta: u32) =
     let instr = instrs[i64.u32 instr_offset]
     let new_lifetime_mask_base = lifetime_mask |> deallocate_register symbol_registers instr.rs1 |> deallocate_register symbol_registers instr.rs2
-    let new_lifetime_mask = new_lifetime_mask_base
+    let (new_lifetime_mask, result_register) = new_lifetime_mask_base |> allocate_register symbol_registers instr.rd
     let register_info = [
-        (-1i64, INVALID_SYMBOL),
+        (if is_valid_register symbol_registers instr.rd then instr.rd else -1, result_register),
         (if is_valid_register symbol_registers instr.rs1 then instr.rs1 else -1, INVALID_SYMBOL),
         (if is_valid_register symbol_registers instr.rs2 then instr.rs2 else -1, INVALID_SYMBOL)
     ]
