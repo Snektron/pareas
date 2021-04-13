@@ -19,6 +19,10 @@ NodeType bin_node_type_for(TokenType type) {
             return NodeType::DIV_EXPR;
         case TokenType::MOD:
             return NodeType::MOD_EXPR;
+        case TokenType::EQ:
+            return NodeType::EQ_EXPR;
+        case TokenType::NEQ:
+            return NodeType::NEQ_EXPR;
         default:
             return NodeType::INVALID;
     }
@@ -35,7 +39,7 @@ void Parser::expect(TokenType token_type) {
 }
 
 ASTNode* Parser::parseAssign() {
-    std::unique_ptr<ASTNode> lop(this->parseAdd());
+    std::unique_ptr<ASTNode> lop(this->parseCompare());
 
     Token lookahead = this->lexer.lookahead();
     if(lookahead.type == TokenType::ASSIGN) {
@@ -44,6 +48,22 @@ ASTNode* Parser::parseAssign() {
         std::unique_ptr<ASTNode> rop(this->parseAssign());
         return new ASTNode(NodeType::ASSIGN_EXPR, {lop.release(), rop.release()});
     }
+    return lop.release();
+}
+
+ASTNode* Parser::parseCompare() {
+    std::unique_ptr<ASTNode> lop(this->parseAdd());
+
+    Token lookahead = this->lexer.lookahead();
+    while(lookahead.type == TokenType::EQ || lookahead.type == TokenType::NEQ) {
+        this->lexer.lex();
+
+        std::unique_ptr<ASTNode> rop(this->parseAdd());
+        lop.reset(new ASTNode(bin_node_type_for(lookahead.type), {lop.release(), rop.release()}));
+
+        lookahead = this->lexer.lookahead();
+    }
+
     return lop.release();
 }
 

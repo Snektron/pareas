@@ -4,6 +4,7 @@ import "instr"
 import "instr_count"
 import "symtab"
 import "register"
+import "preprocess"
 
 let make_node_type (node_type: u8) : NodeType =
     match node_type
@@ -84,7 +85,7 @@ entry make_tree [n] (max_depth: u32) (node_types: [n]u8) (data_types: [n]u8) (pa
     {
         nodes = zip5 data_types parents depth child_idx node_data |> map2 make_node node_types,
         max_depth = max_depth
-    }
+    } |> preprocess_tree
 
 entry make_instr_counts [n] (tree: Tree[n]) =
     instr_count tree
@@ -95,7 +96,8 @@ entry make_function_table [n] (tree: Tree[n]) (instr_offset: [n]u32) =
 let split_instr (instr: Instr) =
     (instr.instr, instr.rd, instr.rs1, instr.rs2)
 
-entry main [n] [m] (tree: Tree[n]) (symtab: Symtab[m]) (instr_offset: [n]u32) (max_instrs: i64) =
+entry main [n] [m] (tree: Tree[n]) (symtab: Symtab[m]) (instr_offset: [n]u32) =
+    let max_instrs = if n == 0 then 0 else i64.u32 instr_offset[n-1]
     let instr_offset_i64 = map i64.u32 instr_offset in
     compile_tree tree symtab instr_offset_i64 max_instrs |> map split_instr |> unzip4
 

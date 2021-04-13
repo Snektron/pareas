@@ -41,10 +41,9 @@ DepthTree::~DepthTree() {
     delete[] this->node_data;
 }
 
-void DepthTree::setElement(size_t idx, ASTNode* node, size_t parent, size_t depth, size_t child_idx) {
+void DepthTree::setElement(size_t idx, ASTNode* node, size_t depth, size_t child_idx) {
     this->node_types[idx] = static_cast<uint8_t>(node->getType());
     this->resulting_types[idx] = static_cast<uint8_t>(node->getResultingType());
-    this->parents[idx] = parent;
     this->depth[idx] = depth;
     this->child_idx[idx] = child_idx;
     this->node_data[idx] = node->getInteger();
@@ -54,14 +53,14 @@ void DepthTree::setElement(size_t idx, ASTNode* node, size_t parent, size_t dept
 }
 
 void DepthTree::construct(ASTNode* node) {
-    std::stack<std::tuple<ASTNode*, size_t, size_t, size_t>> dfs_stack;
-    dfs_stack.push(std::tuple<ASTNode*, size_t, size_t, size_t>(node, std::numeric_limits<size_t>::max(), 0, std::numeric_limits<size_t>::max()));
+    std::stack<std::tuple<ASTNode*, size_t, size_t>> dfs_stack;
+    dfs_stack.push(std::tuple<ASTNode*, size_t, size_t>(node, 0, std::numeric_limits<size_t>::max()));
 
     std::unordered_map<ASTNode*, size_t> idx_map;
 
     size_t i = 0;
     while(!dfs_stack.empty()) {
-        auto [n, parent, depth, child_idx] = dfs_stack.top();
+        auto [n, depth, child_idx] = dfs_stack.top();
 
         const std::vector<ASTNode*>& children = n->getChildren();
         
@@ -76,15 +75,27 @@ void DepthTree::construct(ASTNode* node) {
         if(!found) {
             for(size_t j = children.size(); j > 0; --j) {
                 ASTNode* c = children[j-1];
-                dfs_stack.push(std::tuple<ASTNode*, size_t, size_t, size_t>(c, i, depth + 1, j-1));
+                dfs_stack.push(std::tuple<ASTNode*, size_t, size_t>(c, depth + 1, j-1));
             }
         }
         else {
             idx_map[n] = i;
 
-            this->setElement(i, n, parent, depth, child_idx);
+            this->setElement(i, n, depth, child_idx);
             ++i;
             dfs_stack.pop();
+        }
+    }
+
+    for(auto& entry : idx_map) {
+        ASTNode* n = entry.first;
+        size_t offset = entry.second;
+
+        const std::vector<ASTNode*>& children = n->getChildren();
+        for(size_t j = 0; j < children.size(); ++j) {
+            ASTNode* child = children[j];
+            size_t child_idx = idx_map[child];
+            this->parents[child_idx] = offset;
         }
     }
 

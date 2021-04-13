@@ -1,48 +1,52 @@
 import "tree"
+import "datatypes"
 
-let node_type_counts (t: NodeType) : u32 =
-    match(t)
-        case #invalid -> 0
-        case #statement_list -> 0
-        case #empty_stat -> 0
-        case #func_decl -> 0
-        case #expr_stat -> 0
-        case #if_stat -> 0 --Insructions handled separately
-        case #if_else_stat -> 0 --Instructions handled separately
-        case #while_stat -> 0 --Instructions handled separately
-        case #func_call_expr -> 0
-        case #func_call_arg -> 1
-        case #add_expr -> 1
-        case #sub_expr -> 1
-        case #mul_expr -> 1
-        case #div_expr -> 1
-        case #mod_expr -> 1
-        case #bitand_expr -> 1
-        case #bitor_expr -> 1
-        case #bitxor_expr -> 1
-        case #lshift_expr -> 1
-        case #rshift_expr -> 1
-        case #urshift_expr -> 1
-        case #land_expr -> 0 --Instructions handled separately
-        case #lor_expr -> 0 --Instructions handled separately
-        case #eq_expr -> 1
-        case #neq_expr -> 1
-        case #less_expr -> 1
-        case #great_expr -> 1
-        case #lesseq_expr -> 1
-        case #greateq_expr -> 1
-        case #bitnot_expr -> 1
-        case #lnot_expr -> 1
-        case #neg_expr -> 1
-        case #lit_expr -> 2
-        case #cast_expr -> 1
-        case #deref_expr -> 1
-        case #assign_expr -> 2
-        case #decl_expr -> 1
-        case #id_expr -> 1
+let node_type_counts (t: NodeType) (d: DataType) : u32 =
+    match(t, d)
+        case (#invalid, _) -> 0
+        case (#statement_list, _) -> 0
+        case (#empty_stat, _) -> 0
+        case (#func_decl, _) -> 0
+        case (#expr_stat, _) -> 0
+        case (#if_stat, _) -> 0 --Insructions handled separately
+        case (#if_else_stat, _) -> 0 --Instructions handled separately
+        case (#while_stat, _) -> 0 --Instructions handled separately
+        case (#func_call_expr, _) -> 0
+        case (#func_call_arg, _) -> 1
+        case (#add_expr, _) -> 1
+        case (#sub_expr, _) -> 1
+        case (#mul_expr, _) -> 1
+        case (#div_expr, _) -> 1
+        case (#mod_expr, _) -> 1
+        case (#bitand_expr, _) -> 1
+        case (#bitor_expr, _) -> 1
+        case (#bitxor_expr, _) -> 1
+        case (#lshift_expr, _) -> 1
+        case (#rshift_expr, _) -> 1
+        case (#urshift_expr, _) -> 1
+        case (#land_expr, _) -> 0 --Instructions handled separately
+        case (#lor_expr, _) -> 0 --Instructions handled separately
+        case (#eq_expr, #int) -> 2
+        case (#eq_expr, #float) -> 0 -- TODO
+        case (#neq_expr, #int) -> 2
+        case (#neq_expr, #float) -> 1 -- TODO
+        case (#less_expr, _) -> 1 -- TODO
+        case (#great_expr, _) -> 1 -- TODO
+        case (#lesseq_expr, _) -> 1 -- TODO
+        case (#greateq_expr, _) -> 1 -- TODO
+        case (#bitnot_expr, _) -> 1
+        case (#lnot_expr, _) -> 1
+        case (#neg_expr, _) -> 1
+        case (#lit_expr, _) -> 2
+        case (#cast_expr, _) -> 1
+        case (#deref_expr, _) -> 1
+        case (#assign_expr, _) -> 2
+        case (#decl_expr, _) -> 1
+        case (#id_expr, _) -> 1
+        case (_, _) -> 0
 
 let node_counts (n: Node) =
-    node_type_counts n.node_type
+    node_type_counts n.node_type n.resulting_type
 
 let instr_count_fix (node: Node) (instr_offset: u32) =
     if node.node_type == #invalid then

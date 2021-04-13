@@ -19,7 +19,10 @@ enum class TokenType {
 
     ASSIGN,
 
+    NOT,
+
     EQ,
+    NEQ,
     LESS,
     GREATER,
     LESSEQ,

@@ -23,7 +23,7 @@ class DepthTree {
         size_t instr_count = 0;
 
         void construct(ASTNode*);
-        void setElement(size_t, ASTNode*, size_t, size_t, size_t);
+        void setElement(size_t, ASTNode*, size_t, size_t);
         void markOffset(ASTNode*, const std::unordered_map<ASTNode*, size_t>&, size_t&);
     public:
         DepthTree(ASTNode*);

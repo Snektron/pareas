@@ -66,8 +66,10 @@ let node_instr(node_type: NodeType) (data_type: DataType) (instr_offset: i64) : 
     case (#neg_expr, #float, 0) ->      0b0010000_00000_00000_001_00000_1010011 -- FSGNJN.S (ensure same operand twice)
 
     -- Integer comparision
-    case (#eq_expr, #int, _) ->         0b0000000_00000_00000_000_00000_1110011 -- TODO
+    case (#eq_expr, #int, 0) ->         0b0100000_00000_00000_000_00000_0110011 -- SUB
+    case (#eq_expr, #int, 1) ->         0b0000000_00001_00000_011_00000_0010011 -- SLTUI 1
     case (#neq_expr, #int, 0) ->        0b0100000_00000_00000_000_00000_0110011 -- SUB
+    case (#neq_expr, #int, 1) ->        0b0000000_00000_00000_011_00000_0110011 -- SLTU x0, ri
     case (#less_expr, #int, _) ->       0b0000000_00000_00000_000_00000_1110011 -- TODO
     case (#great_expr, #int, _) ->      0b0000000_00000_00000_000_00000_1110011 -- TODO
     case (#lesseq_expr, #int, _) ->     0b0000000_00000_00000_000_00000_1110011 -- TODO
@@ -116,6 +118,8 @@ let has_instr (node_type: NodeType) (instr_offset: i64) : bool =
         case (#func_decl, 0) -> false
         case (#expr_stat, 0) -> false
         
+        case (#eq_expr, 1) -> true
+        case (#neq_expr, 1) -> true
         case (#lit_expr, 1) -> true
         case (#assign_expr, 1) -> true
         case (_, 0) -> true
@@ -129,6 +133,8 @@ let parent_arg_idx (node: Node) : i64 =
 
 let node_get_parent_arg_idx (node: Node) (instr_offset: i64) : i64 =
     match (node.node_type, instr_offset)
+        case (#eq_expr, 0) -> -1
+        case (#neq_expr, 0) -> -1
         case (#lit_expr, 0) -> -1
         case (#assign_expr, 0) -> -1
         case (_, 0) ->
@@ -136,6 +142,9 @@ let node_get_parent_arg_idx (node: Node) (instr_offset: i64) : i64 =
                 parent_arg_idx node
             else
                 -1
+
+        case (#eq_expr, 1) -> parent_arg_idx node
+        case (#neq_expr, 1) -> parent_arg_idx node
         case (#lit_expr, 1) -> parent_arg_idx node
         case (#assign_expr, 1) -> parent_arg_idx node
         case _ ->
@@ -157,16 +166,23 @@ let node_get_instr_arg (node_id: i64) (node: Node) (registers: []i64) (arg_no: i
         case (#lshift_expr, _, 0) -> registers[node_id * PARENT_IDX_PER_NODE + arg_no]
         case (#rshift_expr, _, 0) -> registers[node_id * PARENT_IDX_PER_NODE + arg_no]
         case (#urshift_expr, _, 0) -> registers[node_id * PARENT_IDX_PER_NODE + arg_no]
+        case (#eq_expr, _, 0) -> registers[node_id * PARENT_IDX_PER_NODE + arg_no]
+        case (#neq_expr, _, 0) -> registers[node_id * PARENT_IDX_PER_NODE + arg_no]
+        case (#neq_expr, _, 0) -> registers[node_id * PARENT_IDX_PER_NODE + arg_no]
         case (#assign_expr, _, 0) -> registers[node_id * PARENT_IDX_PER_NODE + arg_no]
         case (#assign_expr, 0, 1) -> registers[node_id * PARENT_IDX_PER_NODE]
         case (#cast_expr, 0, 0) -> registers[node_id * PARENT_IDX_PER_NODE]
         case (#deref_expr, 0, 0) -> registers[node_id * PARENT_IDX_PER_NODE]
 
+        case (#eq_expr, 0, 1) -> register (instr_no - 1)
+        case (#neq_expr, 1, 1) -> register (instr_no - 1)
         case (#lit_expr, 0, 1) -> register (instr_no - 1)
         case _ -> 0
 
 let node_has_output (node: Node) (instr_offset: i64) : bool =
     (node_get_parent_arg_idx node instr_offset) != -1 || match (node.node_type, instr_offset)
+        case (#eq_expr, 0) -> true
+        case (#neq_expr, 0) -> true
         case (#lit_expr, 0) -> true
         case _ -> false
 

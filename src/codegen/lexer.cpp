@@ -153,6 +153,13 @@ Token Lexer::next_token() {
             this->unread(c);
             return Token(TokenType::LESS);
         }
+        case '!': {
+            c = this->read();
+            if(c == '=')
+                return Token(TokenType::NEQ);
+            this->unread(c);
+            return Token(TokenType::NOT);
+        }
 
         case '&': {
             c = this->read();

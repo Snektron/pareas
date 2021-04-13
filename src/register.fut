@@ -39,16 +39,19 @@ let allocate_register (symbol_registers: []u8) (register: i64) (lifetime_mask: u
         (lifetime_mask | (1u64 << u64.u8 free_reg), free_reg)
 
 let lifetime_analyze_valid [n] (instrs: [n]Instr) (symbol_registers: []u8) (instr_offset: u32) (lifetime_mask: u64) (delta: u32) =
-    let instr = instrs[i64.u32 instr_offset]
-    let new_lifetime_mask_base = lifetime_mask |> deallocate_register symbol_registers instr.rs1 |> deallocate_register symbol_registers instr.rs2
-    let (new_lifetime_mask, result_register) = new_lifetime_mask_base |> allocate_register symbol_registers instr.rd
-    let register_info = [
-        (if is_valid_register symbol_registers instr.rd then instr.rd else -1, result_register),
-        (if is_valid_register symbol_registers instr.rs1 then instr.rs1 else -1, INVALID_SYMBOL),
-        (if is_valid_register symbol_registers instr.rs2 then instr.rs2 else -1, INVALID_SYMBOL)
-    ]
-    in
-    (0u32, new_lifetime_mask, 0u32, register_info)
+    if instr_offset == 0xFFFFFFFF then
+        (0u32, lifetime_mask, 0u32, [(-1, INVALID_SYMBOL), (-1, INVALID_SYMBOL), (-1, INVALID_SYMBOL)])
+    else
+        let instr = instrs[i64.u32 instr_offset]
+        let new_lifetime_mask_base = lifetime_mask |> deallocate_register symbol_registers instr.rs1 |> deallocate_register symbol_registers instr.rs2
+        let (new_lifetime_mask, result_register) = new_lifetime_mask_base |> allocate_register symbol_registers instr.rd
+        let register_info = [
+            (if is_valid_register symbol_registers instr.rd then instr.rd else -1, result_register),
+            (if is_valid_register symbol_registers instr.rs1 then instr.rs1 else -1, INVALID_SYMBOL),
+            (if is_valid_register symbol_registers instr.rs2 then instr.rs2 else -1, INVALID_SYMBOL)
+        ]
+        in
+        (0u32, new_lifetime_mask, 0u32, register_info)
 
 let lifetime_analyze [n] (instrs: [n]Instr) (symbol_registers: []u8) (instr_offset: u32) (lifetime_mask: u64) (delta: u32) =
     let register_info = [(-1i64, INVALID_SYMBOL), (-1i64, INVALID_SYMBOL), (-1i64, INVALID_SYMBOL)] in
