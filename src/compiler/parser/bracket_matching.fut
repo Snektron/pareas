@@ -56,7 +56,7 @@ let check_brackets_radix [n] 'b (is_open: b -> bool) (is_pair: b -> b -> bool) (
     -- Compute nesting depth array of the brackets.
     let depths = compute_depths (map is_open brackets)
     -- Compute depth bounds, the max depth will be used to bound the radix sort.
-    let max_depth = reduce (i32.max) 0 depths
+    let max_depth = i32.maximum depths
     -- Early return if the stack size reaches a negative size.
     in if any (< 0) depths then false else
     -- Calculate the amount of bits required to store the depth

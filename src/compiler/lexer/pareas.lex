@@ -2,6 +2,7 @@
 fn = /fn/
 if = /if/
 else = /else/
+elif = /elif/
 while = /while/
 return = /return/
 
@@ -31,9 +32,11 @@ gt = />/
 gte = />=/
 lt = /</
 lte = /<=/
-exclam = /!/ #
+exclaim = /!/ #
 tilde = /~/ #
 semi = /;/
+comma = /,/
+colon = /:/
 
 # The parser cannot differ between unary and binary minus, as it accepts a subset of LL.
 # For this case, we differentiate binary minus from unary minus based on the tokens
