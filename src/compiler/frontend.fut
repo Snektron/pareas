@@ -10,10 +10,11 @@ import "util"
 import "passes/tokenize"
 import "passes/fix_bin_ops"
 import "passes/fix_if_else"
-import "passes/fn_stuff"
+import "passes/fns_and_assigns"
 import "passes/remove_marker_nodes"
 import "passes/compactify"
 import "passes/preorder"
+import "passes/symbol_resolution"
 
 type~ lex_table [n] = lexer.lex_table [n] token.t
 type~ stack_change_table [n] = pareas_parser.stack_change_table [n]
@@ -42,6 +43,7 @@ let status_parse_error: status_code = 1
 let status_stray_else_error: status_code = 2
 let status_invalid_params: status_code = 3
 let status_invalid_assign_or_decl: status_code = 4
+let status_duplicate_fn_or_invalid_call: status_code = 5
 
 entry main
     (input: []u8)
@@ -74,4 +76,6 @@ entry main
     let types = old_index |> gather old_old_index |> gather types
     -- ints/floats/identifiers should be unchanged, relatively, so this is fine.
     let data = build_data_vector types input tokens
-    in (status_ok, types, parents, data, parents)
+    let (valid, data) = resolve_fns types parents data
+    in if !valid then mk_error status_duplicate_fn_or_invalid_call else
+    (status_ok, types, parents, data, parents)

@@ -42,6 +42,7 @@ local let parse_float (input: []u8) ((_, offset, len): tokenref): f32 =
 -- For now, this implementation does a rather simply fixed-length radix sort, as identifiers are not supposed to be
 -- very long. Some optimizations are done though, as identifiers can only consist of a-zA-Z0-9_ (63 characters),
 -- we only need to sort on 5 instead of 8 bits per characters.
+-- IDs are assigned sequentially starting from 0.
 local let ident_link [n] (input: []u8) (tokens: [n]tokenref): [n]u32 =
     let (_, offsets, lengths) = unzip3 tokens
     -- a-zA-Z0-9_ are 26 + 26 + 10 + 1 = 63 characters, so 5 bits will do.
@@ -110,7 +111,7 @@ let tokenize (input: []u8) (lt: lex_table []) =
 -- As each production is associated with at most one data element,
 -- **warning** This function relies on the property that the relative ordering of each atom_int,
 -- atom_float and atom_id does not change.
-let build_data_vector [n] (types: [n]production.t) (input: []u8) (tokens: []tokenref) =
+let build_data_vector [n] (types: [n]production.t) (input: []u8) (tokens: []tokenref): [n]u32 =
     let has_id_token ty =
         ty == production_atom_id
         || ty == production_atom_fn_call

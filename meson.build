@@ -98,10 +98,11 @@ futhark_sources = [
     'src/compiler/passes/tokenize.fut',
     'src/compiler/passes/fix_bin_ops.fut',
     'src/compiler/passes/fix_if_else.fut',
-    'src/compiler/passes/fn_stuff.fut',
+    'src/compiler/passes/fns_and_assigns.fut',
     'src/compiler/passes/remove_marker_nodes.fut',
     'src/compiler/passes/compactify.fut',
     'src/compiler/passes/preorder.fut',
+    'src/compiler/passes/symbol_resolution.fut',
 ]
 
 futhark_compile_command = [
