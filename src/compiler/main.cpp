@@ -269,46 +269,58 @@ T* upload_strtab(futhark::Context& ctx, const grammar::StrTab<U>& strtab, F uplo
 }
 
 void dump_parse_tree(size_t n, const grammar::Production* types, const int32_t* parents, const uint32_t* data, const int32_t* extra) {
-    fmt::print("digraph prog {{\n");
-
-    for (size_t i = 0; i < n; ++i) {
+    for (size_t i = n - 100; i < n; ++i) {
         auto prod = types[i];
         auto parent = parents[i];
-        auto* name = grammar::production_name(prod);
 
-        if (parent != i) {
-            fmt::print("node{} [label=\"{} {} [{}]", i, name, i, extra[i]);
-
-            switch (prod) {
-                case grammar::Production::ATOM_ID:
-                case grammar::Production::ATOM_DECL:
-                case grammar::Production::ATOM_FN_CALL:
-                case grammar::Production::ATOM_FN_PROTO:
-                    fmt::print(" (id={})\"]\n", data[i]);
-                    break;
-                case grammar::Production::ATOM_INT:
-                    fmt::print(" (value={})\"]\n", data[i]);
-                    break;
-                case grammar::Production::ATOM_FLOAT:
-                    fmt::print(" (value={})\"]\n", *reinterpret_cast<const float*>(&data[i]));
-                    break;
-                default:
-                    if (data[i] != 0) {
-                        fmt::print("(junk={})\"]\n", data[i]);
-                    } else {
-                        fmt::print("\"]\n");
-                    }
-            }
-
-            if (parent >= 0) {
-                fmt::print("node{} -> node{};\n", parent, i);
-            } else {
-                fmt::print("start{0} [style=invis];\nstart{0} -> node{0};\n", i);
-            }
-        }
+        fmt::print("{} {} {}\n", i, parent, grammar::production_name(prod));
     }
 
-    fmt::print("}}\n");
+    // fmt::print("digraph prog {{\n");
+
+    // for (size_t i = 0; i < n; ++i) {
+    //     auto prod = types[i];
+    //     auto parent = parents[i];
+    //     auto* name = grammar::production_name(prod);
+
+    //     if (parent != i) {
+    //         fmt::print("node{} [label=\"{} {} [{}]", i, name, i, extra[i]);
+
+    //         switch (prod) {
+    //             case grammar::Production::ATOM_ID:
+    //             case grammar::Production::ATOM_DECL:
+    //             case grammar::Production::ATOM_FN_PROTO:
+    //                 fmt::print(" (name={})\"]\n", data[i]);
+    //                 break;
+    //             case grammar::Production::ATOM_FN_CALL:
+    //                 fmt::print(" (target={})\"]\n", data[i]);
+    //                 break;
+    //             case grammar::Production::ATOM_INT:
+    //                 fmt::print(" (value={})\"]\n", data[i]);
+    //                 break;
+    //             case grammar::Production::ATOM_FLOAT:
+    //                 fmt::print(" (value={})\"]\n", *reinterpret_cast<const float*>(&data[i]));
+    //                 break;
+    //             case grammar::Production::FN_DECL:
+    //                 fmt::print(" (id={})\"]\n", data[i]);
+    //                 break;
+    //             default:
+    //                 if (data[i] != 0) {
+    //                     fmt::print("(junk={})\"]\n", data[i]);
+    //                 } else {
+    //                     fmt::print("\"]\n");
+    //                 }
+    //         }
+
+    //         if (parent >= 0) {
+    //             fmt::print("node{} -> node{};\n", parent, i);
+    //         } else {
+    //             fmt::print("start{0} [style=invis];\nstart{0} -> node{0};\n", i);
+    //         }
+    //     }
+    // }
+
+    // fmt::print("}}\n");
 }
 
 void download_and_parse_tree(futhark::Context& ctx, futhark_u8_1d* types, futhark_i32_1d* parents, futhark_u32_1d* data, futhark_i32_1d* extra_data) {
@@ -453,6 +465,8 @@ int main(int argc, const char* argv[]) {
 
         if ((err = futhark_context_sync(ctx.get())))
             report_futhark_error(ctx, "Sync after main kernel failed");
+
+        // download_and_parse_tree(ctx, types, parents, data, extra_data);
 
         if (!err) {
             if (status == Status::OK) {

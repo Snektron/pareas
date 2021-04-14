@@ -1,3 +1,4 @@
+import "util"
 import "../util"
 import "../../../lib/github.com/diku-dk/sorts/radix_sort"
 
@@ -28,7 +29,7 @@ local let right_descendant [n] (parents: [n]i32) (is_last_child: [n]bool): [n]i3
             (\(links, rd) ->
                 let is =
                     links
-                    |> map (\link-> if link == -1 then -1 else link)
+                    |> map2 (\last_child link-> if link == -1 || !last_child then -1 else link) is_last_child
                     |> map i64.i32
                 let rd' =
                     scatter
