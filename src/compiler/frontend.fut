@@ -51,9 +51,9 @@ entry main
     (sct: stack_change_table [])
     (pt: parse_table [])
     (arities: arity_array)
-    : (status_code, []token.t, []i32, []u32, []i32)
+    : (status_code, []token.t, []i32, []u32)
     =
-    let mk_error (code: status_code) = (code, [], [], [], [])
+    let mk_error (code: status_code) = (code, [], [], [])
     let tokens = tokenize input lt
     let token_types = map (.0) tokens
     -- As the lexer returns an `invalid` token when the input cannot be lexed, which is accepted
@@ -74,8 +74,8 @@ entry main
     let (parents, old_old_index) = compactify parents |> unzip
     let (parents, old_index) = make_preorder_ordering parents
     let types = old_index |> gather old_old_index |> gather types
-    -- ints/floats/identifiers should be unchanged, relatively, so this is fine.
+    -- ints/floats/names should be unchanged, relatively, so this is fine.
     let data = build_data_vector types input tokens
     let (valid, data) = resolve_fns types parents data
     in if !valid then mk_error status_duplicate_fn_or_invalid_call else
-    (status_ok, types, parents, data, parents)
+    (status_ok, types, parents, data)

@@ -37,13 +37,13 @@ local let parse_float (input: []u8) ((_, offset, len): tokenref): f32 =
                     else (value * 10 - '0' + f32.u8 c, significant * 10)
     in value / significant
 
--- | Given a list of idenfitier tokens, assign a unique ID to every unique identifier. This replaces the need
--- for annoying string operations further in the compiler, and allows us to simply query and compare the identifiers.
--- For now, this implementation does a rather simply fixed-length radix sort, as identifiers are not supposed to be
--- very long. Some optimizations are done though, as identifiers can only consist of a-zA-Z0-9_ (63 characters),
+-- | Given a list of name tokens, assign a unique ID to every unique name. This replaces the need
+-- for annoying string operations further in the compiler, and allows us to simply query and compare the IDs.
+-- For now, this implementation does a rather simply fixed-length radix sort, as names are not supposed to be
+-- very long. Some optimizations are done though, as names can only consist of a-zA-Z0-9_ (63 characters),
 -- we only need to sort on 5 instead of 8 bits per characters.
 -- IDs are assigned sequentially starting from 0.
-local let ident_link [n] (input: []u8) (tokens: [n]tokenref): [n]u32 =
+local let link_names [n] (input: []u8) (tokens: [n]tokenref): [n]u32 =
     let (_, offsets, lengths) = unzip3 tokens
     -- a-zA-Z0-9_ are 26 + 26 + 10 + 1 = 63 characters, so 5 bits will do.
     let bits_per_char = 5
@@ -105,32 +105,32 @@ let tokenize (input: []u8) (lt: lex_table []) =
     |> filter (\(t, _, _) ->  t != token_whitespace && t != token_comment && t != token_binary_minus_whitespace)
 
 -- | This function builds a data vector for the token types, containing the following elements:
--- - For each atom_id, a unique 32-bit integer for the name associated to the atom.
+-- - For each atom_name, a unique 32-bit integer for the name associated to the atom.
 -- - For each atom_int_literal, the int's value as 32-bit integer.
 -- - For each atom_float_literal, the float's value as 32-bit float (reinterpreted as 32-bit int).
 -- As each production is associated with at most one data element,
 -- **warning** This function relies on the property that the relative ordering of each atom_int,
--- atom_float and atom_id does not change.
+-- atom_float and atom_name does not change.
 let build_data_vector [n] (types: [n]production.t) (input: []u8) (tokens: []tokenref): [n]u32 =
-    let has_id_token ty =
-        ty == production_atom_id
+    let has_name ty =
+        ty == production_atom_name
         || ty == production_atom_fn_call
         || ty == production_atom_fn_proto
         || ty == production_atom_decl
     let pairwise op (a1, b1, c1) (a2, b2, c2) = (op a1 a2, op b1 b2, op c1 c2)
     -- Partition tokens into interesting types.
-    let (int_tokens, float_tokens, id_tokens, _) =
+    let (int_tokens, float_tokens, name_tokens, _) =
         tokens
         |> partition3
             (\(t, _, _) ->
                 if t == token_int_literal then 0
                 else if t == token_float_literal then 1
-                else if t == token_id then 2
+                else if t == token_name then 2
                 else 3)
     -- Map each token to its semantic value.
     let ints = map (parse_int input) int_tokens
     let floats = map (parse_float input) float_tokens |> map f32.to_bits
-    let idents = ident_link input id_tokens
+    let names = link_names input name_tokens
     -- Now, compute offsets for each type of these tokens in the types array,
     -- similar to how its done in the partition function.
     in
@@ -138,13 +138,13 @@ let build_data_vector [n] (types: [n]production.t) (input: []u8) (tokens: []toke
         |> map (\ty ->
             if ty == production_atom_int then (1, 0, 0)
             else if ty == production_atom_float then (0, 1, 0)
-            else if has_id_token ty then (0, 0, 1)
+            else if has_name ty then (0, 0, 1)
             else (0, 0, 0))
         |> scan (pairwise (+)) (0, 0, 0)
         |> map2
-            (\ty (int_off, float_off, ident_off) ->
+            (\ty (int_off, float_off, name_off) ->
                 if ty == production_atom_int then ints[int_off - 1]
                 else if ty == production_atom_float then floats[float_off - 1]
-                else if has_id_token ty then idents[ident_off - 1]
+                else if has_name ty then names[name_off - 1]
                 else 0)
             types

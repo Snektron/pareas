@@ -1,8 +1,8 @@
 import "util"
 import "../../../gen/pareas_grammar"
 
--- | This pass replaces atom_id which has no application with just atom_id (removes the application)
--- and replaces atom_id with an application with atom_fn_call.
+-- | This pass replaces atom_name which has no application with just atom_name (removes the application)
+-- and replaces atom_name with an application with atom_fn_call.
 -- Also replaces no_args with arg_list_end, and replaces args with arg_list.
 let fix_fn_args [n] (types: [n]production.t) (parents: [n]i32): ([n]production.t, [n]i32) =
     -- First, for every app, scatter atom_fn.
@@ -30,7 +30,7 @@ let fix_fn_args [n] (types: [n]production.t) (parents: [n]i32): ([n]production.t
 
 -- | This pass eliminates `bind` and `no_bind` type nodes by squishing them with their parents:
 -- - If the parent of a bind is an atom_fn, it changes into an atom_fn_proto.
--- - If the parent of a bind is an atom_id, it changes into an atom_decl.
+-- - If the parent of a bind is an atom_name, it changes into an atom_decl.
 -- - `bind` and `no_bind` type nodes are simply removed after.
 -- This pass should be performed after `fix_fn_args`@term.
 let squish_binds [n] (types: [n]production.t) (parents: [n]i32): ([n]production.t, [n]i32) =
@@ -49,10 +49,10 @@ let squish_binds [n] (types: [n]production.t) (parents: [n]i32): ([n]production.
     let new_types =
         map2
             -- Note that bind_parent should not be true for types other than production_atom_fn_call and
-            -- production_atom_id, which should be guaranteed by the grammar and the result of `fix_fn_args`@term.
+            -- production_atom_name, which should be guaranteed by the grammar and the result of `fix_fn_args`@term.
             (\bind_parent ty ->
                 if bind_parent && ty == production_atom_fn_call then production_atom_fn_proto
-                else if bind_parent && ty == production_atom_id then production_atom_decl
+                else if bind_parent && ty == production_atom_name then production_atom_decl
                 else ty)
             is_bind_parent
             types
@@ -88,7 +88,7 @@ let check_fn_params [n] (types: [n]production.t) (parents: [n]i32): bool =
     |> reduce (&&) true
 
 -- | This function checks various tree structures related to assignments and declarations:
--- - The left child of an assign node should be `atom_decl` or `atom_id`.
+-- - The left child of an assign node should be `atom_decl` or `atom_name`.
 -- - The left child of a fn_decl node should be `atom_fn_proto`.
 let check_decls_and_assignments [n] (types: [n]production.t) (parents: [n]i32) =
     -- First, build a vector of left children. Do this by using reduce_by_index to find the
@@ -105,7 +105,7 @@ let check_decls_and_assignments [n] (types: [n]production.t) (parents: [n]i32) =
         (iota n |> map i32.i64)
     |> map2
         (\ty left_child ->
-            let left_child_is_id = left_child != -1 && types[left_child] == production_atom_id
+            let left_child_is_id = left_child != -1 && types[left_child] == production_atom_name
             let left_child_is_decl = left_child != -1 && types[left_child] == production_atom_decl
             let left_child_is_proto = left_child != -1 && types[left_child] == production_atom_fn_proto
             in if ty == production_assign then left_child_is_id || left_child_is_decl

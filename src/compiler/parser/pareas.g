@@ -84,14 +84,14 @@ atom [atom_unary_bitflip] -> 'tilde' atom;
 atom [atom_unary_not] -> 'exclaim' atom;
 atom [atom_cast] -> type 'lparen' expr 'rparen';
 atom [atom_paren] -> 'lparen' expr 'rparen';
-atom [atom_id] -> 'id' maybe_app maybe_bind;
+atom [atom_name] -> 'name' maybe_app maybe_bind;
 atom [atom_int] -> 'int_literal';
 atom [atom_float] -> 'float_literal';
 
 # Some extra nodes useful during the frontend part of the compilation.
-atom_fn_call -> ; # Replaces atom_id if it has an application
+atom_fn_call -> ; # Replaces atom_name if it has an application
 atom_fn_proto -> ; # Replaces atom_fn_call if it has a bind
-atom_decl -> ; # Replaces atom_id if it has a bind (but no call).
+atom_decl -> ; # Replaces atom_name if it has a bind (but no call).
 
 maybe_app [app] -> 'lbracket' args 'rbracket';
 maybe_app [no_app] -> ;
