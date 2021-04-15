@@ -27,13 +27,14 @@ let node_type_counts (t: NodeType) (d: DataType) : u32 =
         case (#land_expr, _) -> 0 --Instructions handled separately
         case (#lor_expr, _) -> 0 --Instructions handled separately
         case (#eq_expr, #int) -> 2
-        case (#eq_expr, #float) -> 0 -- TODO
-        case (#neq_expr, #int) -> 2
-        case (#neq_expr, #float) -> 1 -- TODO
-        case (#less_expr, _) -> 1 -- TODO
-        case (#great_expr, _) -> 1 -- TODO
-        case (#lesseq_expr, _) -> 1 -- TODO
-        case (#greateq_expr, _) -> 1 -- TODO
+        case (#eq_expr, #float) -> 1
+        case (#neq_expr, _) -> 2
+        case (#less_expr, _) -> 1
+        case (#great_expr, _) -> 1
+        case (#lesseq_expr, #int) -> 2
+        case (#lesseq_expr, #float) -> 1
+        case (#greateq_expr, #int) -> 2
+        case (#greateq_expr, #float) -> 1
         case (#bitnot_expr, _) -> 1
         case (#lnot_expr, _) -> 1
         case (#neg_expr, _) -> 1

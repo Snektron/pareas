@@ -23,6 +23,14 @@ NodeType bin_node_type_for(TokenType type) {
             return NodeType::EQ_EXPR;
         case TokenType::NEQ:
             return NodeType::NEQ_EXPR;
+        case TokenType::LESS:
+            return NodeType::LESS_EXPR;
+        case TokenType::GREATER:
+            return NodeType::GREAT_EXPR;
+        case TokenType::LESSEQ:
+            return NodeType::LESSEQ_EXPR;
+        case TokenType::GREATEQ:
+            return NodeType::GREATEQ_EXPR;
         default:
             return NodeType::INVALID;
     }
@@ -55,7 +63,9 @@ ASTNode* Parser::parseCompare() {
     std::unique_ptr<ASTNode> lop(this->parseAdd());
 
     Token lookahead = this->lexer.lookahead();
-    while(lookahead.type == TokenType::EQ || lookahead.type == TokenType::NEQ) {
+    while(lookahead.type == TokenType::EQ || lookahead.type == TokenType::NEQ ||
+            lookahead.type == TokenType::GREATER || lookahead.type == TokenType::LESS ||
+            lookahead.type == TokenType::GREATEQ || lookahead.type == TokenType::LESSEQ) {
         this->lexer.lex();
 
         std::unique_ptr<ASTNode> rop(this->parseAdd());

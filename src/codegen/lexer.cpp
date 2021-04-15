@@ -134,6 +134,10 @@ Token Lexer::next_token() {
             c = this->read();
             if(c == '=')
                 return Token(TokenType::EQ);
+            else if(c == '>')
+                return Token(TokenType::GREATEQ);
+            else if(c == '<')
+                return Token(TokenType::LESSEQ);
             this->unread(c);
             return Token(TokenType::ASSIGN);
         }
