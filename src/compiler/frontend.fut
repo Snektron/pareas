@@ -72,7 +72,7 @@ entry main
     if !(check_decls_and_assignments types parents) then mk_error status_invalid_assign_or_decl else
     let parents = remove_marker_nodes types parents
     let (parents, old_old_index) = compactify parents |> unzip
-    let (parents, old_index) = make_preorder_ordering parents
+    let (parents, old_index, child_index) = make_preorder_ordering parents
     let types = old_index |> gather old_old_index |> gather types
     -- ints/floats/names should be unchanged, relatively, so this is fine.
     let data = build_data_vector types input tokens

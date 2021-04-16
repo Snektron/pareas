@@ -47,7 +47,7 @@ local let right_descendant [n] (parents: [n]i32) (is_last_child: [n]bool): [n]i3
 -- gather any node data into a new array in pre-order.
 -- This function requires that there be no invalid nodes, which are to be removed using the
 -- `compactify`@term@"compactify" pass.
-let make_preorder_ordering [n] (parents: [n]i32): ([n]i32, [n]i32) =
+let make_preorder_ordering [n] (parents: [n]i32): ([n]i32, [n]i32, [n]i32) =
     -- Assume that at this point, there are no invalid subtrees anymore (as removed by compactify)
     let depths = compute_depths parents
     let max_depth = 1 + i32.maximum depths
@@ -118,4 +118,22 @@ let make_preorder_ordering [n] (parents: [n]i32): ([n]i32, [n]i32) =
         old_index
         |> gather parents
         |> map (\i -> if i == -1 then -1 else new_index[i])
-    in (parents, old_index)
+    -- Also compute the child index, which is required for the backend, and is also useful for some subsequent passes.
+    let sorted_child_index =
+        sorted_is_first_child
+        -- First, compute the sorted version, using a segmented scan.
+        --
+        -- Ad-hoc segmented scan implementation, which uses negativeness as flag.
+        -- See https://github.com/diku-dk/segmented/blob/master/lib/github.com/diku-dk/segmented/segmented.fut
+        |> map (\x -> if x then -1 else 1)
+        |> scan (\a b -> if b < 0 then b else a + b) 0
+        |> map (+1)
+    -- Un-sort child index array.
+    -- Note: the result is in order of the _old_ tree, so we need to perform a gather on the result still.
+    -- Note: For some reason the computation of this and the previous value cant be pipelined.
+    let child_index =
+        scatter
+            (replicate n 0i32)
+            (map i64.i32 order)
+            sorted_child_index
+    in (parents, old_index, gather child_index old_index)

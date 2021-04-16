@@ -105,10 +105,10 @@ let check_decls_and_assignments [n] (types: [n]production.t) (parents: [n]i32) =
         (iota n |> map i32.i64)
     |> map2
         (\ty left_child ->
-            let left_child_is_id = left_child != -1 && types[left_child] == production_atom_name
+            let left_child_is_name = left_child != -1 && types[left_child] == production_atom_name
             let left_child_is_decl = left_child != -1 && types[left_child] == production_atom_decl
             let left_child_is_proto = left_child != -1 && types[left_child] == production_atom_fn_proto
-            in if ty == production_assign then left_child_is_id || left_child_is_decl
+            in if ty == production_assign then left_child_is_name || left_child_is_decl
             else if ty == production_fn_decl then left_child_is_proto
             else true)
         types
