@@ -11,6 +11,7 @@ import "passes/tokenize"
 import "passes/fix_bin_ops"
 import "passes/fix_if_else"
 import "passes/fns_and_assigns"
+import "passes/flatten_lists"
 import "passes/remove_marker_nodes"
 import "passes/compactify"
 import "passes/preorder"
@@ -70,10 +71,11 @@ entry main
     let (types, parents) = squish_binds types parents
     in if !(check_fn_params types parents) then mk_error status_invalid_params else
     if !(check_decls_and_assignments types parents) then mk_error status_invalid_assign_or_decl else
+    let (types, parents) = flatten_lists types parents
     let parents = remove_marker_nodes types parents
-    let (parents, old_old_index) = compactify parents |> unzip
+    let (parents, older_index) = compactify parents |> unzip
     let (parents, old_index, child_index) = make_preorder_ordering parents
-    let types = old_index |> gather old_old_index |> gather types
+    let types = old_index |> gather older_index |> gather types
     -- ints/floats/names should be unchanged, relatively, so this is fine.
     let data = build_data_vector types input tokens
     let (valid, data) = resolve_fns types parents data
