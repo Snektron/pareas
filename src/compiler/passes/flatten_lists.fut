@@ -7,6 +7,7 @@ let flatten_lists [n] (types: [n]production.t) (parents: [n]i32): ([n]production
             (\ty ->
                 if ty == production_stat_list_end then production_stat_list
                 else if ty == production_fn_decl_list_end then production_fn_decl_list
+                else if ty == production_arg_list_end then production_arg_list
                 else ty)
             types
     let new_parents =
@@ -16,8 +17,7 @@ let flatten_lists [n] (types: [n]production.t) (parents: [n]i32): ([n]production
                 -- Also don't need to check whether parent points to itself, these nodes are already deleted.
                 (ty == production_stat_list && types[parent] == production_stat_list)
                 || (ty == production_fn_decl_list && types[parent] == production_fn_decl_list)
-                || ty == production_stat_list_end
-                || ty == production_fn_decl_list_end)
+                || (ty == production_arg_list && types[parent] == production_arg_list))
             new_types
             parents
         |> remove_nodes parents
