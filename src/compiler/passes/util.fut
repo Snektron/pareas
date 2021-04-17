@@ -1,5 +1,10 @@
+import "../util"
 import "../../../gen/pareas_grammar"
 
+-- | Given a tree and a marking for each node, computes the first ancestor node which is unmarked.
+-- If the root node is also marked, the new parent is the root node.
+-- Returns a new list of parents for each node.
+-- Note: This implementation is linear, and should be used where small iteration counts are expected.
 let find_unmarked_parents [n] (parents: [n]i32) (marks: [n]bool): [n]i32 =
     let find_new_parent (node: i32): i32 =
         loop current = parents[node] while current != -1 && parents[current] != current && marks[current] do
@@ -13,7 +18,7 @@ let find_unmarked_parents [n] (parents: [n]i32) (marks: [n]bool): [n]i32 =
 -- The parents of the removed nodes are set to their own ID, creating a loop.
 -- Remember, the root node is given by a node which' parent is -1.
 -- Returns a new list of parents for each node.
--- This function simply iterates linearly.
+-- Note: This implementation is linear, and should be used where small iteration counts are expected.
 let remove_nodes [n] (parents: [n]i32) (remove: [n]bool): [n]i32 =
     -- For each node, walk up the tree as long as the parent contains
     -- a marked node.
@@ -28,6 +33,31 @@ let remove_nodes [n] (parents: [n]i32) (remove: [n]bool): [n]i32 =
         iota n
         |> map i32.i64
         |> map find_new_parent
+
+-- | Given a tree, compute for each node the zero-based depth of the node.
+-- This function runs logarithmic parallel time, but does have a quite large overhead
+-- if the tree is very flat.
+let compute_depths [n] (parents: [n]i32): [n]i32 =
+    let (_, depths) =
+        iterate
+            (n |> i32.i64 |> bit_width)
+            (\(links, depths) ->
+                let depths' =
+                    links
+                    |> map (\link -> if link == -1 then 0 else depths[link])
+                    |> map2 (+) depths
+                    |> map2 i32.max depths
+                let links' = map (\link -> if link == -1 then link else links[link]) links
+                in (links', depths'))
+            (parents, replicate n 1i32)
+    -- Because we start with an array of all ones, the root node will have depth 1.
+    in map (+ -1) depths
+
+let find_roots [n] (parents: [n]i32): [n]i32 =
+    iterate
+        (n |> i32.i64 |> bit_width)
+        (\links -> map (\link -> if link == -1 || links[link] == -1 then link else links[link]) links)
+        parents
 
 -- Make a mask-array of a set of productions
 let mk_production_mask [n] (productions: [n]production.t): [num_productions]bool =

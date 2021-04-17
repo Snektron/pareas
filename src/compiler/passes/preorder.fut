@@ -6,51 +6,10 @@ import "../../../lib/github.com/diku-dk/sorts/radix_sort"
 -- so that its no longer in pre-order. This pass servers to compactify such
 -- trees, and really remove any non-active nodes (which point to themselves).
 
-local let compute_depths [n] (parents: [n]i32): [n]i32 =
-    let (_, depths) =
-        iterate
-            (n |> i32.i64 |> bit_width)
-            (\(links, depths) ->
-                let depths' =
-                    links
-                    |> map (\link -> if link == -1 then 0 else depths[link])
-                    |> map2 (+) depths
-                    |> map2 i32.max depths
-                let links' = map (\link -> if link == -1 then link else links[link]) links
-                in (links', depths'))
-            (parents, replicate n 1i32)
-    -- Because we start with an array of all ones, the root node will have depth 1.
-    in map (+ -1) depths
-
-local let right_descendant [n] (parents: [n]i32) (is_last_child: [n]bool): [n]i32 =
-    let (_, rd) =
-        iterate
-            (n |> i32.i64 |> bit_width)
-            (\(links, rd) ->
-                let is =
-                    links
-                    |> map2 (\last_child link-> if link == -1 || !last_child then -1 else link) is_last_child
-                    |> map i64.i32
-                let rd' =
-                    scatter
-                        (copy rd)
-                        is
-                        rd
-                let links' = map (\link -> if link == -1 || !is_last_child[link] then -1 else links[link]) links
-                in (links', rd'))
-            (parents, iota n |> map i32.i64)
-   in rd
-
--- | Other passes (for example `fix_bin_ops`@term@"fix_bin_ops") might reorder some nodes, which causes
--- the tree to no longer be in pre-order, which is required for some subsequent passes. This function
--- reorders them back into preorder, returning the new parents array, and an array that can be used to
--- gather any node data into a new array in pre-order.
--- This function requires that there be no invalid nodes, which are to be removed using the
--- `compactify`@term@"compactify" pass.
-let make_preorder_ordering [n] (parents: [n]i32): ([n]i32, [n]i32, [n]i32) =
+-- | Build an array, with for each node, the index of the previous sibling.
+let build_sibling_vector [n] (parents: [n]i32) (depths: [n]i32): [n]i32 =
     -- Assume that at this point, there are no invalid subtrees anymore (as removed by compactify)
-    let depths = compute_depths parents
-    let max_depth = 1 + i32.maximum depths
+    let max_depth = i32.maximum depths
     -- Compute an ordering for nodes according to their depth.
     let order =
         iota n
@@ -58,82 +17,70 @@ let make_preorder_ordering [n] (parents: [n]i32): ([n]i32, [n]i32, [n]i32) =
         |> radix_sort
             (bit_width max_depth)
             (\bit index -> i32.get_bit bit depths[index])
-    -- Sort the parents array by order.
+    -- Sort the parents array by (depth_ order.
     -- Note: These are still the original parents of course, and _not_ the parent into the sorted nodes array!
-    let sorted_parents = map (\i -> parents[i]) order
+    let parents_ordered = gather parents order
     -- Compute a mask which is true when a node is the first sibling of its parent, which can be done
     -- simply by checking whether its parent and the parent of the previous node are the same.
     -- Note: This works because the radix sort is stable, and because child nodes of some parent node are
     -- supposed to be laid out in memory such that left siblings have a lower index.
     -- Note: Explicitly set the root nodes to be a first child, this will help further down the pipe.
-    let sorted_is_first_child =
-        iota n
-        |> map (\i -> i == 0 || sorted_parents[i] != sorted_parents[i - 1])
-    -- Since we explicitly set the root node as being the first child, the last node will also be set as last child.
-    let sorted_is_last_child = rotate 1 sorted_is_first_child
-    -- The sorted_is_last_child array is in order of the nodes sorted by depth, however,the rightmost descendant
-    -- computation is easier to perform on the unsorted array, as it requires us to follow parent pointers.
-    -- These would otherwise need to be recomputed for the sorted array, which requires 2 scatters.
+    let is_first_child_ordered = tabulate n (\i -> i == 0 || parents_ordered[i] != parents_ordered[i - 1])
+    -- Compute the ordered sibling vector according to the order and the is_first_child mask.
+    -- - If a node is the first child, its sibling should be set to -1.
+    -- - Else, use the order vector to obtain the previous sibling.
+    let siblings_ordered =
+        tabulate
+            n
+            (\i ->
+                if is_first_child_ordered[i] then -1i32
+                else order[i - 1])
+    -- Finally, un-sort this array to obtain the final sibling vector.
+    in
+        scatter
+            (replicate n (-1i32))
+            (map i64.i32 order)
+            siblings_ordered
+
+let build_preorder_ordering [n] (parents: [n]i32) (prev_siblings: [n]i32) =
+    -- First, we're going to compute for every node the index of its right-most descendant, in a few steps.
+    -- First, compute whether this is the last child by scattering (inverting) the prev sibling array.
     let is_last_child =
         scatter
+            (replicate n true)
+            (map i64.i32 prev_siblings)
             (replicate n false)
-            (map i64.i32 order)
-            sorted_is_last_child
-    let rd = right_descendant parents is_last_child
-    let sorted_prev_rd =
-        map (\i -> rd[i]) order
-        -- Rotate the sorted right descendants one to the right so that for every non-first-child node it contains
-        -- the right descendant the previous child.
-        |> rotate (-1)
-    let sorted_post_order =
-        map3 (\first_child prev_rd parent ->
-            -- If this is the first (or only) child of a node, then the next node in
-            -- is the parent node.
-            -- Note: Because we explicitly set the first node as being the first child, the chain will
-            -- end there, as the parent of the root node is of course -1.
-            if first_child then parent
-            -- Else, the next node is the right descendant of the left sibling's right descendant
-            else prev_rd)
-        sorted_is_first_child
-        sorted_prev_rd
-        sorted_parents
-    -- Un-sort the generated post order to obtain, for each node, a pointer to the previous node in post-order.
-    -- This is required because we computed the sorted_post_order using the original parents instead of parents
-    -- for the sorted array.
-    let post_order =
-        scatter
-            (replicate n 0i32)
-            (map i64.i32 order)
-            sorted_post_order
-    -- To obtain the new index, simply compute the depth of nodes according to this post order.
-    let new_index = compute_depths post_order
-    -- Compute the inverted array of these indices.
+    -- Compute a 'last child' vector, by scattering a node's index to the parent _if_ its the last child.
+    let last_childs =
+        let is =
+            map2 (\last_child parent -> if last_child then parent else -1) is_last_child parents
+            |> map i64.i32
+        in scatter
+            (replicate n (-1i32))
+            is
+            (iota n |> map i32.i64)
+    -- Now, to find the rightmost descendant, simply compute for each node a pointer to its root...
+    let rd = find_roots last_childs
+    -- Compute the pre order vector, which for every node indicates the next node in the pre-ordering.
+    let order =
+        map2
+            (\prev_sibling parent ->
+                if prev_sibling == -1 then parent
+                else if rd[prev_sibling] == -1 then prev_sibling
+                else rd[prev_sibling])
+            prev_siblings
+            parents
+    -- Now, to compute the new index of each node, simple compute its depth in this pre-ordering parent vector.
+    let new_index = compute_depths order
+    -- Invert to gain an array which for each node in the new array gives the position of the node in the old array.
     let old_index =
         scatter
             (replicate n 0i32)
             (map i64.i32 new_index)
             (iota n |> map i32.i64)
-    -- Compute the new parents array.
-    let parents =
+    -- Compute the new parents array simply by looking up the new position for each parent.
+    let new_parents =
         old_index
         |> gather parents
         |> map (\i -> if i == -1 then -1 else new_index[i])
-    -- Also compute the child index, which is required for the backend, and is also useful for some subsequent passes.
-    let sorted_child_index =
-        sorted_is_first_child
-        -- First, compute the sorted version, using a segmented scan.
-        --
-        -- Ad-hoc segmented scan implementation, which uses negativeness as flag.
-        -- See https://github.com/diku-dk/segmented/blob/master/lib/github.com/diku-dk/segmented/segmented.fut
-        |> map (\x -> if x then -1 else 1)
-        |> scan (\a b -> if b < 0 then b else a + b) 0
-        |> map (+1)
-    -- Un-sort child index array.
-    -- Note: the result is in order of the _old_ tree, so we need to perform a gather on the result still.
-    -- Note: For some reason the computation of this and the previous value cant be pipelined.
-    let child_index =
-        scatter
-            (replicate n 0i32)
-            (map i64.i32 order)
-            sorted_child_index
-    in (parents, old_index, gather child_index old_index)
+    in (new_parents, old_index)

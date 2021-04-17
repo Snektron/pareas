@@ -299,7 +299,7 @@ void dump_parse_tree(size_t n, const grammar::Production* types, const int32_t* 
                     break;
                 default:
                     if (data[i] != 0) {
-                        fmt::print("(junk={})\"]\n", data[i]);
+                        fmt::print(" (junk={})\"]\n", data[i]);
                     } else {
                         fmt::print("\"]\n");
                     }

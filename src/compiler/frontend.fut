@@ -16,6 +16,7 @@ import "passes/remove_marker_nodes"
 import "passes/compactify"
 import "passes/preorder"
 import "passes/symbol_resolution"
+import "passes/util"
 
 type~ lex_table [n] = lexer.lex_table [n] token.t
 type~ stack_change_table [n] = pareas_parser.stack_change_table [n]
@@ -74,10 +75,13 @@ entry main
     let (types, parents) = flatten_lists types parents
     let parents = remove_marker_nodes types parents
     let (parents, older_index) = compactify parents |> unzip
-    let (parents, old_index, child_index) = make_preorder_ordering parents
-    let types = old_index |> gather older_index |> gather types
-    -- ints/floats/names should be unchanged, relatively, so this is fine.
+    let depths = compute_depths parents
+    let prev_siblings = build_sibling_vector parents depths
+    let (parents, old_index) = build_preorder_ordering parents prev_siblings
+    let types = older_index |> gather types
+    -- Note: depths and prev_siblings don't have the right order now
+    -- ints/floats/names order should be unchanged, relatively, so this is fine.
     let data = build_data_vector types input tokens
     let (valid, data) = resolve_fns types parents data
     in if !valid then mk_error status_duplicate_fn_or_invalid_call else
-    (status_ok, types, parents, data)
+    (status_ok, types, parents, parents |> map u32.i32)
