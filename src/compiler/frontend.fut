@@ -81,12 +81,14 @@ entry main
     let types = gather types old_index
     let depths = compute_depths parents
     let prev_siblings = build_sibling_vector parents depths
+    let (types, parents, prev_siblings) = insert_derefs types parents prev_siblings |> unzip3
+    -- Note: depths invalid from here.
     in if !(check_fn_decls types parents prev_siblings) then mk_error status_invalid_fn_proto
     else if !(check_assignments types parents prev_siblings) then mk_error status_invalid_assign
     else
     let (parents, old_index) = build_preorder_ordering parents prev_siblings
     let types = gather types old_index
-    -- Note: depths and prev_siblings don't have the right order now
+    -- Note: prev_siblings invalid from here.
     -- ints/floats/names order should be unchanged, relatively, so this is fine.
     let data = build_data_vector types input tokens
     let (valid, data) = resolve_fns types parents data

@@ -116,3 +116,87 @@ let check_assignments [n] (types: [n]production.t) (parents: [n]i32) (prev_sibli
         types
     -- Above should hold for all nodes.
     |> reduce (&&) true
+
+-- | The backend needs to explicitly know when an l-value needs to be transformed into an r-value. Unfortunately,
+-- this requires us to insert nodes, which happens in this pass.
+-- Note: In order to prevent a second radix sort, we patch the prev_sibling vector. Sadly, this is harder for the
+-- depths vector, so we'll need to recompute that.
+-- TODO: This can also be implemented by inserting dummy nodes in the grammar and removing those. That would
+-- require a reduce_by_index to check if a node is the first child (as it would need to happen before sibling
+-- array computation), but saves the depth-recomputation and the nasty code to add new nodes.
+let insert_derefs [n] (types: [n]production.t) (parents: [n]i32) (prev_sibling: [n]i32): [](production.t, i32, i32) =
+    -- Technically we need to know the child's index, but all relevant nodes here are binary and thus
+    -- simply knowing the first child from the others is sufficient.
+    let is_first_child = map (== -1) prev_sibling
+    -- Create a mask whether the result of this node is an lvalue-expression.
+    let result_is_lvalue =
+        types
+        -- If functions returning lvalues was accepted, this would be the place to insert it.
+        |> map (\ty -> ty == production_atom_name || ty == production_atom_decl)
+    -- Build a mask of which nodes need a new dereference parent inserted.
+    -- A dereference needs to occur if this node produces an l-value, and it's parent expects an r-value.
+    -- This always happens, except when the node is the left child of an assignment node, or when the parent
+    -- is a statement expression (in which case the result is discarded).
+    let needs_deref =
+        map2
+            (\first_child parent ->
+                parent != -1
+                && !(types[parent] == production_assign && first_child)
+                && !(types[parent] == production_stat_expr)
+                -- TODO: Merge with check_fn_params?
+                && !(types[parent] == production_arg_list && types[parents[parent]] == production_atom_fn_proto))
+            is_first_child
+            parents
+        |> map2 (&&) result_is_lvalue
+    -- Count the number of dereference nodes to insert
+    let m =
+        needs_deref
+        |> map i32.bool
+        |> reduce (+) 0
+        |> i64.i32
+    -- Compute the index in the new new nodes array
+    let additional_nodes_index =
+        needs_deref
+        |> map i32.bool
+        |> scan (+) 0
+        |> map (+ -1)
+        |> map2 (\needs_deref i -> if needs_deref then i else -1) needs_deref
+    -- Extract additional parents.
+    -- We're going to replace the original parents so that prev_sibling pointers remain intact,
+    -- and extract the original parents into a new array which will be concatenated to the old.
+    let additional_parents =
+        scatter
+            (replicate m (-1i32))
+            (map i64.i32 additional_nodes_index)
+            parents
+    let additional_types = replicate m production_atom_unary_deref
+    -- First, update the sibling pointers to the new indices.
+    let prev_sibling =
+        map
+            (\sibling ->
+                if sibling != -1i32 && needs_deref[sibling] then (additional_nodes_index[sibling] + i32.i64 n)
+                else sibling)
+            prev_sibling
+    -- Steal the additional prev sibling from the updated list.
+    let additional_prev_siblings =
+        scatter
+            (replicate m (-1i32))
+            (map i64.i32 additional_nodes_index)
+            prev_sibling
+    -- And update the old nodes' prev sibling pointer. These are all the only child of their new parents.
+    let prev_sibling =
+        map2
+            (\needs_deref prev_sibling -> if needs_deref then -1 else prev_sibling)
+            needs_deref
+            prev_sibling
+    -- Compute new parents array
+    let parents =
+        additional_nodes_index
+        |> map (\i -> if i == -1 then i else i + i32.i64 n)
+        |> map2 (\parent i -> if i == -1 then parent else i) parents
+    let k = m + n
+    -- Zip the return value so futhark can prove theyre all the same size.
+    in zip3
+        ((types ++ additional_types) :> [k]production.t)
+        ((parents ++ additional_parents) :> [k]i32)
+        ((prev_sibling ++ additional_prev_siblings) :> [k]i32)

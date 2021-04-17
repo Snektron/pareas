@@ -1,7 +1,7 @@
 import "util"
 import "../../../gen/pareas_grammar"
 
--- Node types which are list intermediates (may appear in list, but neither start nor end).
+-- | Node types which are list intermediates (may appear in list, but neither start nor end).
 local let is_list_intermediate = mk_production_mask [
         production_assign,
 
@@ -32,7 +32,7 @@ local let is_list_intermediate = mk_production_mask [
         production_prod_mod
     ]
 
--- Node types which are list ends.
+-- | Node types which are list ends.
 local let is_list_end = mk_production_mask [
         production_assign_end,
         production_logical_or_end,
@@ -44,10 +44,10 @@ local let is_list_end = mk_production_mask [
         production_prod_end
     ]
 
--- Node types which are either list intermediates or ends
+-- | Node types which are either list intermediates or ends
 local let is_list_tail = map2 (||) is_list_intermediate is_list_end
 
--- A mapping of node types to an expression type, nodes which may appear in the same expression
+-- | A mapping of node types to an expression type, nodes which may appear in the same expression
 -- list need to have the same type. Otherwise, these values are arbitrary.
 -- The value of 0 is reserved for nodes which are not equal to eachother.
 -- Note that this is only required for left-associative nodes (of which the tree needs to be fixed up),
@@ -88,7 +88,7 @@ local let left_assoc_list_type = mk_production_array not_left_assoc_list [
         (production_prod_end, 7)
     ]
 
--- Also construct a mask for nodes which are left-associative. We can just re-use the
+-- | Also construct a mask for nodes which are left-associative. We can just re-use the
 -- left_assoc_list_type array here.
 let is_left_associative_tail = map (!= not_left_assoc_list) left_assoc_list_type
 

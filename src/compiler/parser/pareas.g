@@ -92,6 +92,7 @@ atom [atom_float] -> 'float_literal';
 atom_fn_call -> ; # Replaces atom_name if it has an application.
 atom_fn_proto -> ; # Replaces atom_fn_call if it has a bind.
 atom_decl -> ; # Replaces atom_name if it has a bind (but no call).
+atom_unary_deref -> ; # Inserted when an l-value needs to be dereferenced.
 
 maybe_app [app] -> 'lbracket' args 'rbracket';
 maybe_app [no_app] -> ;
