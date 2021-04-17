@@ -5,9 +5,9 @@ import "../../../gen/pareas_grammar"
 local let is_list_intermediate = mk_production_mask [
         production_assign,
 
-        production_logical_or_list,
+        production_logical_or,
 
-        production_logical_and_list,
+        production_logical_and,
 
         production_rela_eq,
         production_rela_neq,
@@ -54,10 +54,10 @@ local let is_list_tail = map2 (||) is_list_intermediate is_list_end
 -- so this array doubles as a test whether a list tail is left-associative.
 local let not_left_assoc_list = 0i32
 local let left_assoc_list_type = mk_production_array not_left_assoc_list [
-        (production_logical_or_list, 1),
+        (production_logical_or, 1),
         (production_logical_or_end, 1),
 
-        (production_logical_and_list, 2),
+        (production_logical_and, 2),
         (production_logical_and_end, 2),
 
         (production_rela_eq, 3),

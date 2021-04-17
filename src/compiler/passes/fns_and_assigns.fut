@@ -116,4 +116,3 @@ let check_assignments [n] (types: [n]production.t) (parents: [n]i32) (prev_sibli
         types
     -- Above should hold for all nodes.
     |> reduce (&&) true
-
