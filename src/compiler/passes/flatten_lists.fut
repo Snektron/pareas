@@ -1,6 +1,7 @@
 import "util"
 import "../../../gen/pareas_grammar"
 
+-- | This pass flattens the remaining lists: statement lists, argument lists and function declaration lists.
 let flatten_lists [n] (types: [n]production.t) (parents: [n]i32): ([n]production.t, [n]i32) =
     let new_types =
         map
@@ -20,5 +21,7 @@ let flatten_lists [n] (types: [n]production.t) (parents: [n]i32): ([n]production
                 || (ty == production_arg_list && types[parent] == production_arg_list))
             new_types
             parents
-        |> remove_nodes parents
+        -- These lists can be quite long, as functions can have quite a lot of statements in them of course,
+        -- so use a logarithmic approach here.
+        |> remove_nodes_log parents
     in (new_types, new_parents)

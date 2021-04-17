@@ -231,7 +231,10 @@ let fix_bin_ops [n] (types: [n]production.t) (parents: [n]i32) =
     -- of those again.
     -- This also needs to happen for only left-associative lists, but this is already guarded by the same_type_as_parent array.
     let new_parents =
-        let end_parents = find_unmarked_parents new_parents same_type_as_parent
+        -- TODO: Experiment to see whether the logarithmic approach or linear approach is faster
+        -- Generally, the amount of iterations here is limited by the grammar, which is a chain of empty lists
+        -- limited at 10 or so, which is not very much, but might be on the edge.
+        let end_parents = find_unmarked_parents_lin new_parents same_type_as_parent
         in
             iota n
             -- Careful to not mess up lists that only have the end node here
@@ -257,5 +260,7 @@ let fix_bin_ops [n] (types: [n]production.t) (parents: [n]i32) =
         new_types
         |> map production.to_i64
         |> map (\node -> is_list_end[node])
-        |> remove_nodes new_parents
+        -- We expect there to only be a few of these subsequentially - again, limited by the 10 or so operators
+        -- in the grammar.
+        |> remove_nodes_lin new_parents
     in (new_types, new_parents)

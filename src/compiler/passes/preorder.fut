@@ -66,7 +66,6 @@ let build_preorder_ordering [n] (parents: [n]i32) (prev_siblings: [n]i32) =
         map2
             (\prev_sibling parent ->
                 if prev_sibling == -1 then parent
-                else if rd[prev_sibling] == -1 then prev_sibling
                 else rd[prev_sibling])
             prev_siblings
             parents

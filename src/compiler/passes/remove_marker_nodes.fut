@@ -18,4 +18,7 @@ let remove_marker_nodes [n] (types: [n]production.t) (parents: [n]i32): [n]i32 =
     types
     |> map production.to_i64
     |> map (\ty -> is_marker[ty])
-    |> remove_nodes parents
+    -- We expect only a small amount of subsequent nodes need to be removed:
+    -- `start` nodes appear only once, and nesting parens/nesting compound expressions
+    -- is generally not expected.
+    |> remove_nodes_lin parents

@@ -75,13 +75,15 @@ entry main
     let (types, parents) = flatten_lists types parents
     let parents = remove_marker_nodes types parents
     let (parents, older_index) = compactify parents |> unzip
+    -- Using a logarithmic implementation here is required as a single
+    -- node can have quite many children after the flatten_lists stage.
     let depths = compute_depths parents
     let prev_siblings = build_sibling_vector parents depths
     let (parents, old_index) = build_preorder_ordering parents prev_siblings
-    let types = older_index |> gather types
+    let types = old_index |> gather older_index |> gather types
     -- Note: depths and prev_siblings don't have the right order now
     -- ints/floats/names order should be unchanged, relatively, so this is fine.
     let data = build_data_vector types input tokens
     let (valid, data) = resolve_fns types parents data
     in if !valid then mk_error status_duplicate_fn_or_invalid_call else
-    (status_ok, types, parents, parents |> map u32.i32)
+    (status_ok, types, parents, data)

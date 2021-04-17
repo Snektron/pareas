@@ -25,7 +25,8 @@ let fix_fn_args [n] (types: [n]production.t) (parents: [n]i32): ([n]production.t
     let new_parents =
         new_types
         |> map (\ty -> ty == production_app || ty == production_no_app)
-        |> remove_nodes parents
+        -- These should only be one iteration each.
+        |> remove_nodes_lin parents
     in (new_types, new_parents)
 
 -- | This pass eliminates `bind` and `no_bind` type nodes by squishing them with their parents:
@@ -60,19 +61,20 @@ let squish_binds [n] (types: [n]production.t) (parents: [n]i32): ([n]production.
     let new_parents =
         new_types
         |> map (\ty -> ty == production_bind || ty == production_no_bind)
-        |> remove_nodes parents
+        -- These should only be one iteration each.
+        |> remove_nodes_lin parents
     in (new_types, new_parents)
 
 -- | This pass checks whether the structure of function declaration argument lists are correct, and is supposed to
 -- be performed somewhere after `squish_binds`@term, but before `remove_marker_nodes`@term@"remove_marker_nodes".
+-- TODO: Move this operation to _after_ `flatten_lists`@term@"flatten_lists".
 let check_fn_params [n] (types: [n]production.t) (parents: [n]i32): bool =
     types
     -- First, build a mask of nodes which appear as an argument list.
     |> map (\ty -> ty == production_arg_list || ty == production_arg_list_end)
     -- Remove these nodes, building a new, flattened, parent vector.
-    -- TODO: This operation simply works linear, but it should be fine if argument lists aren't too long.
-    -- Perhaps this computation could be re-used somewhere else?
-    |> remove_nodes parents
+    -- We expect argument lists to not be overly long, so the linear implementation should be used here.
+    |> remove_nodes_lin parents
     -- Fetch the parent, and check if its an `atom_fn_proto` type node.
     |> map (\parent -> parent != -1 && types[parent] == production_atom_fn_proto)
     -- And this mask with a mask of nodes whose original (unflattened) parent is an argument list.

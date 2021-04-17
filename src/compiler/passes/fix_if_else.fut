@@ -15,7 +15,7 @@ let fix_if_else [n] (types: [n]production.t) (parents: [n]i32): (bool, [n]produc
     let is_if_node = map (\ty -> ty == production_stat_if || ty == production_stat_elif) types
     let is_else_node = map (\ty -> ty == production_stat_elif || ty == production_stat_else) types
     -- First, build a vector for each else-type node its corresponding if-type node (which will
-    -- become it.s new parent). This happens in 2 stages: First, for each if-type node, scatter
+    -- become its new parent). This happens in 2 stages: First, for each if-type node, scatter
     -- its index to its parent. Then, for each else-type node, fetch its grandparent in that
     -- array.
     let new_parents =
@@ -82,5 +82,7 @@ let fix_if_else [n] (types: [n]production.t) (parents: [n]i32): (bool, [n]produc
             (||)
             (map (== production_stat_else) new_types)
         -- And remove all of these.
-        |> remove_nodes new_parents
+        -- We expect there only a small amount of subsequent nodes to remove here, as it is limited
+        -- by the length of the longest if-elif-else chain.
+        |> remove_nodes_lin new_parents
     in (valid, new_types, new_parents)
