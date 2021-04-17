@@ -70,17 +70,15 @@ entry main
     in if !valid then mk_error status_stray_else_error else
     let (types, parents) = fix_fn_args types parents
     let (types, parents) = squish_binds types parents
+    let (types, parents) = flatten_lists types parents
     in if !(check_fn_params types parents) then mk_error status_invalid_params else
     if !(check_decls_and_assignments types parents) then mk_error status_invalid_assign_or_decl else
-    let (types, parents) = flatten_lists types parents
     let parents = remove_marker_nodes types parents
     let (parents, older_index) = compactify parents |> unzip
-    -- Using a logarithmic implementation here is required as a single
-    -- node can have quite many children after the flatten_lists stage.
     let depths = compute_depths parents
     let prev_siblings = build_sibling_vector parents depths
     let (parents, old_index) = build_preorder_ordering parents prev_siblings
-    let types = old_index |> gather older_index |> gather types
+    let types = older_index |> gather types
     -- Note: depths and prev_siblings don't have the right order now
     -- ints/floats/names order should be unchanged, relatively, so this is fine.
     let data = build_data_vector types input tokens

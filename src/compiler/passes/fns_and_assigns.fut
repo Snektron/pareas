@@ -67,26 +67,17 @@ let squish_binds [n] (types: [n]production.t) (parents: [n]i32): ([n]production.
 
 -- | This pass checks whether the structure of function declaration argument lists are correct, and is supposed to
 -- be performed somewhere after `squish_binds`@term, but before `remove_marker_nodes`@term@"remove_marker_nodes".
--- TODO: Move this operation to _after_ `flatten_lists`@term@"flatten_lists".
+-- This pass should only be performed _after_` `flatten_lists`@term@"flatten_lists".
 let check_fn_params [n] (types: [n]production.t) (parents: [n]i32): bool =
-    types
-    -- First, build a mask of nodes which appear as an argument list.
-    |> map (\ty -> ty == production_arg_list || ty == production_arg_list_end)
-    -- Remove these nodes, building a new, flattened, parent vector.
-    -- We expect argument lists to not be overly long, so the linear implementation should be used here.
-    |> remove_nodes_lin parents
-    -- Fetch the parent, and check if its an `atom_fn_proto` type node.
-    |> map (\parent -> parent != -1 && types[parent] == production_atom_fn_proto)
-    -- And this mask with a mask of nodes whose original (unflattened) parent is an argument list.
-    |> map2
-        (&&)
-        -- Build a mask of nodes whose parents are arg lists.
-        (map (\parent -> parent != -1 && types[parent] == production_arg_list) parents)
-    -- The nodes in this mask, children of an arg_list which again is the child of an `atom_fn_proto`,
-    -- should all be declarations (`atom_decl`) type nodes.
+    parents
+    -- Check if the grandparent is a `fn_proto`.
+    -- Parents of a production_arg_list should never be -1, so checking directly is fine.
+    |> map (\parent -> parent != -1 && types[parent] == production_arg_list && types[parents[parent]] == production_atom_fn_proto)
+    -- If the grandparent is a `fn_proto` (and the parent is a production_arg_list), then this node should be a declaration.
     |> map2
         (\ty is_param -> if is_param then ty == production_atom_decl else true)
         types
+    -- Should all yield true.
     |> reduce (&&) true
 
 -- | This function checks various tree structures related to assignments and declarations:
