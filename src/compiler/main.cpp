@@ -22,8 +22,9 @@ enum class Status : uint8_t {
     PARSE_ERROR = 1,
     STRAY_ELSE_ERROR = 2,
     INVALID_PARAMS = 3,
-    INVALID_ASSIGN_OR_DECL = 4,
-    DUPLICATE_FN_OR_INVALID_CALL = 5,
+    INVALID_ASSIGN = 4,
+    INVALID_FN_PROTO = 5,
+    DUPLICATE_FN_OR_INVALID_CALL = 6,
 };
 
 const char* status_name(Status s) {
@@ -32,7 +33,8 @@ const char* status_name(Status s) {
         case Status::PARSE_ERROR: return "parse error";
         case Status::STRAY_ELSE_ERROR: return "stray else/elif";
         case Status::INVALID_PARAMS: return "Invalid function proto type parameter list";
-        case Status::INVALID_ASSIGN_OR_DECL: return "Invalid assignment lvalue or (function) declaration";
+        case Status::INVALID_ASSIGN: return "Invalid assignment lvalue";
+        case Status::INVALID_FN_PROTO: return "Stray or invalid function proto type";
         case Status::DUPLICATE_FN_OR_INVALID_CALL: return "Duplicate function declaration or call to undefined function";
     }
 }

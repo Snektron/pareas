@@ -80,29 +80,40 @@ let check_fn_params [n] (types: [n]production.t) (parents: [n]i32): bool =
     -- Should all yield true.
     |> reduce (&&) true
 
--- | This function checks various tree structures related to assignments and declarations:
--- - The left child of an assign node should be `atom_decl` or `atom_name`.
--- - The left child of a fn_decl node should be `atom_fn_proto`.
-let check_decls_and_assignments [n] (types: [n]production.t) (parents: [n]i32) =
-    -- First, build a vector of left children. Do this by using reduce_by_index to find the
-    -- child node with the lowest id.
-    reduce_by_index
-        (replicate n (-1i32))
-        -- TODO: Test if its faster to use u32.min here and cast a bunch of arrays?
-        (\a b ->
-            if a < 0 then b
-            else if b < 0 then a
-            else i32.min a b)
-        (-1i32)
-        (map i64.i32 parents)
-        (iota n |> map i32.i64)
+-- | This function checks whether the left child of all `fn_decl` nodes is an `atom_fn_proto` node,
+-- and also checks whether the parent of `atom_fn_proto` nodes is a `fn_decl`.
+let check_fn_decls [n] (types: [n]production.t) (parents: [n]i32) (prev_sibling: [n]i32): bool =
+    prev_sibling
+    -- First, build a mask of whether this node is the first child of its parent.
+    |> map (== -1)
+    -- If so, check whether the node's parent is a function declaration node.
     |> map2
-        (\ty left_child ->
-            let left_child_is_name = left_child != -1 && types[left_child] == production_atom_name
-            let left_child_is_decl = left_child != -1 && types[left_child] == production_atom_decl
-            let left_child_is_proto = left_child != -1 && types[left_child] == production_atom_fn_proto
-            in if ty == production_assign then left_child_is_name || left_child_is_decl
-            else if ty == production_fn_decl then left_child_is_proto
-            else true)
-        types
+        (\parent first_child -> first_child && parent != -1 && types[parent] == production_fn_decl)
+        parents
+    -- If a node's parent is a function declaration and the node is the left child, it should be a function
+    -- prototype.
+    |> map2
+        (==)
+        (map (== production_atom_fn_proto) types)
+    -- Above should hold for all nodes.
     |> reduce (&&) true
+
+-- | This function checks whether the left child of all `assign` nodes is either an `atom_decl` or an `atom_name`.
+-- Note: Performing this function after `remove_marker_nodes` makes `(a: int) = x` valid, but it saves a
+-- reduce_by_index and so is probably justified.
+let check_assignments [n] (types: [n]production.t) (parents: [n]i32) (prev_sibling: [n]i32): bool =
+    prev_sibling
+    -- First, build a mask of whether this node is the first child of its parent.
+    |> map (== -1)
+    -- Build a new mask which states whether a node is the left child of an assignment.
+    |> map2
+        (\parent first_child -> first_child && parent != -1 && types[parent] == production_assign)
+        parents
+    -- If the parent is an assignment and the node is the left child of its parent, it should be an l-value producing node,
+    -- either variable name or a variable declaration.
+    |> map2
+        (\ty parent_is_assignment -> if parent_is_assignment then ty == production_atom_decl || ty == production_atom_name else true)
+        types
+    -- Above should hold for all nodes.
+    |> reduce (&&) true
+

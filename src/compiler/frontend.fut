@@ -44,8 +44,9 @@ let status_ok: status_code = 0
 let status_parse_error: status_code = 1
 let status_stray_else_error: status_code = 2
 let status_invalid_params: status_code = 3
-let status_invalid_assign_or_decl: status_code = 4
-let status_duplicate_fn_or_invalid_call: status_code = 5
+let status_invalid_assign: status_code = 4
+let status_invalid_fn_proto: status_code = 5
+let status_duplicate_fn_or_invalid_call: status_code = 6
 
 entry main
     (input: []u8)
@@ -60,28 +61,34 @@ entry main
     let token_types = map (.0) tokens
     -- As the lexer returns an `invalid` token when the input cannot be lexed, which is accepted
     -- by the parser also, pareas_parser.check will fail whenever there is a lexing error.
-    in if !(pareas_parser.check token_types sct) then mk_error status_parse_error else
+    in if !(pareas_parser.check token_types sct) then mk_error status_parse_error
+    else
     let types = pareas_parser.parse token_types pt
     let parents = pareas_parser.build_parent_vector types arities
     let (types, parents) = fix_bin_ops types parents
     let (parents, old_index) = compactify parents |> unzip
     let types = gather types old_index
     let (valid, types, parents) = fix_if_else types parents
-    in if !valid then mk_error status_stray_else_error else
+    in if !valid then mk_error status_stray_else_error
+    else
     let (types, parents) = fix_fn_args types parents
     let (types, parents) = squish_binds types parents
     let (types, parents) = flatten_lists types parents
-    in if !(check_fn_params types parents) then mk_error status_invalid_params else
-    if !(check_decls_and_assignments types parents) then mk_error status_invalid_assign_or_decl else
+    in if !(check_fn_params types parents) then mk_error status_invalid_params
+    else
     let parents = remove_marker_nodes types parents
-    let (parents, older_index) = compactify parents |> unzip
+    let (parents, old_index) = compactify parents |> unzip
+    let types = gather types old_index
     let depths = compute_depths parents
     let prev_siblings = build_sibling_vector parents depths
+    in if !(check_fn_decls types parents prev_siblings) then mk_error status_invalid_fn_proto
+    else if !(check_assignments types parents prev_siblings) then mk_error status_invalid_assign
+    else
     let (parents, old_index) = build_preorder_ordering parents prev_siblings
-    let types = older_index |> gather types
+    let types = gather types old_index
     -- Note: depths and prev_siblings don't have the right order now
     -- ints/floats/names order should be unchanged, relatively, so this is fine.
     let data = build_data_vector types input tokens
     let (valid, data) = resolve_fns types parents data
-    in if !valid then mk_error status_duplicate_fn_or_invalid_call else
-    (status_ok, types, parents, data)
+    in if !valid then mk_error status_duplicate_fn_or_invalid_call
+    else (status_ok, types, parents, data)
