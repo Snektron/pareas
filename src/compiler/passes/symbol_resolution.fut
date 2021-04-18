@@ -77,3 +77,75 @@ let resolve_fns [n] (types: [n]production.t) (parents: [n]i32) (data: [n]u32): (
             -- Perform the actual lookup of the called function ID here.
             |> map2 (\is_call data -> if is_call then u32.i32 fn_id_by_name[i32.u32 data] else data) is_fn_call
     in (all_unique && calls_valid, new_data)
+
+let resolve_vars [n] (types: [n]production.t) (parents: [n]i32) (prev_siblings: [n]i32) (right_leafs: [n]i32) (data: [n]u32) =
+    -- This helper function returns the next node in the declaration search order
+    let search_order_next ty parent prev_sibling =
+        let is_first_child = prev_sibling == -1
+        in if parent == -1 then -1
+        else if types[parent] == production_stat_list then
+            -- The first child of a statement list should just point up the tree, to its parent
+            if is_first_child then parent
+            -- Now, we want to either point to the previous sibling or the right leaf of the previous sibling
+            -- (if we also need to search that). The latter is only the case for statement expressions,
+            -- but we also add it for return expressions. Even though these are invalid, there are no checks for them
+            -- as of yet and so `return a: int = 1; a = 2;` might otherwise produce unexpected errors.
+            -- TODO: Maybe implement a check whether return is the last in a statement list.
+            else if types[prev_sibling] == production_stat_expr || types[prev_sibling] == production_stat_return then prev_sibling
+            -- If we don't need to search through the subtree of that previous sibling, just point to the root of it.
+            else prev_sibling
+        else if types[parent] == production_stat_if || types[parent] == production_stat_if_else || types[parent] == production_stat_while then
+            -- For `<keyword> condition block...;` type statements, we want don't want declarations in the condition or children
+            -- to be visible from a node after the statement, but we do want declarations in the condition to be visible in the
+            -- children. We also don't want declarations in child A to be visible in child B, so if the parent of a node is
+            -- such a block, we want to search the condition expression, and should put our pointer to that.
+            -- For if_else, we can just point to the root of the if part, which in turn points to the right leaf of the
+            -- condition.
+            --
+            -- The first child should also go up to the parent
+            if is_first_child then parent
+            -- If this node is the second child, search the first child (the condition).
+            else if prev_siblings[prev_sibling] == -1 then right_leafs[prev_sibling]
+            else prev_sibling
+        -- We don't want to continue searching after we reach a function declaration,
+        -- as global variables are not supported for now.
+        else if ty == production_fn_decl then -1
+        -- These nodes are also not participating in variable lookup, but they shoulnd't ever be reached anyway as lookup
+        -- stops at fn_decl. Set the pointer to end here just for good measure.
+        else if ty == production_fn_decl_list then -1
+        -- Otherwise, in expressions, we just want to search in reversed pre-order.
+        else if is_first_child then parent
+        else right_leafs[prev_sibling]
+    -- Build the declaration search order vector.
+    let search_order =
+        -- Start with the complete search order over all nodes.
+        map3
+            search_order_next
+            types
+            parents
+            prev_siblings
+        -- We don't want to consider nodes which are not declarations, so filter them out here.
+        -- These can be quite many, so we should use the logarithmic implementation here.
+        -- This nicely reduces the number of iterations we need to do in the next step.
+        |> flip
+            find_unmarked_parents_log
+            (map (!= production_atom_decl) types)
+    -- Now to do the actual lookup: For each variable read (atom_name) we're just going to iterate linearly over this list
+    -- and attempt to find the accompanying declaration.
+    let is_var_read = map (== production_atom_name) types
+    -- Just retrieve a pointer to the appropriate declaration.
+    let decl =
+        map3
+            (\start is_var_read name_id ->
+                if !is_var_read then -1
+                else loop current = start while current != -1 && data[current] != name_id do
+                    search_order[current])
+            search_order
+            is_var_read
+            data
+    let valid =
+        decl
+        |> map (!= -1)
+        |> map2 (==) is_var_read
+        |> reduce (&&) true
+    in (valid, decl)

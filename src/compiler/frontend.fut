@@ -47,6 +47,7 @@ let status_invalid_params: status_code = 3
 let status_invalid_assign: status_code = 4
 let status_invalid_fn_proto: status_code = 5
 let status_duplicate_fn_or_invalid_call: status_code = 6
+let status_invalid_variable: status_code = 7
 
 entry main
     (input: []u8)
@@ -86,11 +87,16 @@ entry main
     in if !(check_fn_decls types parents prev_siblings) then mk_error status_invalid_fn_proto
     else if !(check_assignments types parents prev_siblings) then mk_error status_invalid_assign
     else
-    let (parents, old_index) = build_preorder_ordering parents prev_siblings
-    let types = gather types old_index
-    -- Note: prev_siblings invalid from here.
     -- ints/floats/names order should be unchanged, relatively, so this is fine.
     let data = build_data_vector types input tokens
+    let right_leafs = build_right_leaf_vector parents prev_siblings
+    let (valid, _) = resolve_vars types parents prev_siblings right_leafs data
+    in if !valid then mk_error status_invalid_variable
+    else
+    let (parents, old_index) = build_preorder_ordering parents prev_siblings right_leafs
+    -- Note: prev_siblings and right_leafs invalid from here.
+    let types = gather types old_index
+    let data = gather data old_index
     let (valid, data) = resolve_fns types parents data
     in if !valid then mk_error status_duplicate_fn_or_invalid_call
     else (status_ok, types, parents, data)

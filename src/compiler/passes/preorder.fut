@@ -42,8 +42,9 @@ let build_sibling_vector [n] (parents: [n]i32) (depths: [n]i32): [n]i32 =
             (map i64.i32 order)
             siblings_ordered
 
-let build_preorder_ordering [n] (parents: [n]i32) (prev_siblings: [n]i32) =
-    -- First, we're going to compute for every node the index of its right-most descendant, in a few steps.
+-- | This function computes for each node a pointer to its right-most leaf node.
+-- The right most leaf of a leaf node is itself.
+let build_right_leaf_vector [n] (parents: [n]i32) (prev_siblings: [n]i32): [n]i32 =
     -- First, compute whether this is the last child by scattering (inverting) the prev sibling array.
     let is_last_child =
         scatter
@@ -59,14 +60,18 @@ let build_preorder_ordering [n] (parents: [n]i32) (prev_siblings: [n]i32) =
             (replicate n (-1i32))
             is
             (iota n |> map i32.i64)
-    -- Now, to find the rightmost descendant, simply compute for each node a pointer to its root...
-    let rd = find_roots last_childs
+    -- Now, to find the right most leaf, simply compute for each node a pointer to its root...
+    in find_roots last_childs
+
+-- | This function builds a preorder ordering, returning the new parents array and a mapping of new indices to old
+-- indices.
+let build_preorder_ordering [n] (parents: [n]i32) (prev_siblings: [n]i32) (right_leafs: [n]i32): ([n]i32, [n]i32) =
     -- Compute the pre order vector, which for every node indicates the next node in the pre-ordering.
     let order =
         map2
             (\prev_sibling parent ->
                 if prev_sibling == -1 then parent
-                else rd[prev_sibling])
+                else right_leafs[prev_sibling])
             prev_siblings
             parents
     -- Now, to compute the new index of each node, simple compute its depth in this pre-ordering parent vector.
