@@ -190,7 +190,51 @@ ASTNode* Parser::parseExpressionStatement() {
 ASTNode* Parser::parseIfElseStatement() {
     this->expect(TokenType::IF);
     std::unique_ptr<ASTNode> cond(this->parseExpression());
-    //TODO
+    std::unique_ptr<ASTNode> stat(this->parseStatement());
+
+    Token lookahead = this->lexer.lookahead();
+    if(lookahead.type == TokenType::ELSE) {
+        this->expect(TokenType::ELSE);
+        std::unique_ptr<ASTNode> else_stat(this->parseStatement());
+        return new ASTNode(NodeType::IF_ELSE_STAT, {cond.release(), stat.release(), else_stat.release()});
+    }
+    else {
+        return new ASTNode(NodeType::IF_STAT, {cond.release(), stat.release()});
+    }
+}
+
+ASTNode* Parser::parseWhileStatement() {
+    this->expect(TokenType::WHILE);
+    std::unique_ptr<ASTNode> cond(this->parseExpression());
+    std::unique_ptr<ASTNode> stat(this->parseStatement());
+    return new ASTNode(NodeType::WHILE_STAT, {cond.release(), stat.release()});
+}
+
+ASTNode* Parser::parseStatement() {
+    Token lookahead = this->lexer.lookahead();
+
+    switch(lookahead.type) {
+        case TokenType::SEMICOLON:
+            this->expect(TokenType::SEMICOLON);
+            return new ASTNode(NodeType::EMPTY_STAT);
+        case TokenType::IF:
+            return this->parseIfElseStatement();
+        case TokenType::PLUS:
+        case TokenType::MIN:
+        case TokenType::OPEN_PAR:
+        case TokenType::INTEGER:
+        case TokenType::ID:
+            return this->parseExpressionStatement();
+        case TokenType::OPEN_CB: {
+            std::unique_ptr<ASTNode> list(this->parseStatementList());
+            this->expect(TokenType::CLOSE_CB);
+            return list.release();
+        }
+        case TokenType::WHILE:
+            return this->parseWhileStatement();
+        default:
+            throw ParseException("Parsing failed, unexpected token ", lookahead, ", expecting start of statement");
+    }
 }
 
 ASTNode* Parser::parseStatementList() {
@@ -202,18 +246,15 @@ ASTNode* Parser::parseStatementList() {
 
         switch(lookahead.type) {
             case TokenType::SEMICOLON:
-                this->expect(TokenType::SEMICOLON);
-                nodes.emplace_back(new ASTNode(NodeType::EMPTY_STAT));
-                break;
             case TokenType::IF:
-                nodes.emplace_back(this->parseIfElseStatement());
-                break;
             case TokenType::PLUS:
             case TokenType::MIN:
             case TokenType::OPEN_PAR:
             case TokenType::INTEGER:
             case TokenType::ID:
-                nodes.emplace_back(this->parseExpressionStatement());
+            case TokenType::OPEN_CB:
+            case TokenType::WHILE:
+                nodes.emplace_back(this->parseStatement());
                 break;
             default:
                 active = false;

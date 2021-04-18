@@ -133,6 +133,7 @@ void ASTNode::resolveType() {
         case NodeType::IF_ELSE_STAT:
         case NodeType::WHILE_STAT:
             assert_type(0, {DataType::INT});
+            this->return_type = DataType::VOID;
             break;
         case NodeType::ADD_EXPR:
         case NodeType::SUB_EXPR:

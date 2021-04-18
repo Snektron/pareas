@@ -68,13 +68,28 @@ let instr_count_fix (node: Node) (instr_offset: u32) =
     else
         instr_offset
 
+let instr_count_fix_post (nodes: []Node) (node: Node) (instr_offset: u32) =
+    if node.parent == 0xFFFFFFFF then
+        (-1i64, 0)
+    else
+        let parent_type = nodes[i64.u32 node.parent].node_type in
+        if node.child_idx == 0 && (parent_type == #if_stat || parent_type == #if_else_stat || parent_type == #while_stat) then
+            (i64.u32 node.parent, instr_offset + node_type_counts node.node_type node.resulting_type)
+        else
+            (-1i64, 0u32)
 
 let instr_count [max_nodes] (tree: Tree[max_nodes]) =
-    map (node_counts tree.nodes) tree.nodes |>
+    let initial_result = map (node_counts tree.nodes) tree.nodes |>
         scan (+) 0 |>
         rotate (-1) |>
         map2 (\i x -> if i == 0 then 0 else x) (iota max_nodes) |>
         map2 instr_count_fix tree.nodes
+
+    let (fix_idx, fix_offsets) =
+        map2 (instr_count_fix_post tree.nodes) tree.nodes initial_result |>
+        unzip2
+    in
+    scatter initial_result fix_idx fix_offsets
 
 let shift_right [n] 't (x: t) (xs: [n]t) : [n]t =
     xs |>

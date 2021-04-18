@@ -1,3 +1,6 @@
 function a() <- int {
-    a <- int = 1@float < 2@float;
+    if 2
+        3;
+    else
+        4;
 }
