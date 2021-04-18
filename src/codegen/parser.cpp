@@ -187,6 +187,12 @@ ASTNode* Parser::parseExpressionStatement() {
     return new ASTNode(NodeType::EXPR_STAT, {res.release()});
 }
 
+ASTNode* Parser::parseIfElseStatement() {
+    this->expect(TokenType::IF);
+    std::unique_ptr<ASTNode> cond(this->parseExpression());
+    //TODO
+}
+
 ASTNode* Parser::parseStatementList() {
     std::vector<std::unique_ptr<ASTNode>> nodes;
 
@@ -198,6 +204,9 @@ ASTNode* Parser::parseStatementList() {
             case TokenType::SEMICOLON:
                 this->expect(TokenType::SEMICOLON);
                 nodes.emplace_back(new ASTNode(NodeType::EMPTY_STAT));
+                break;
+            case TokenType::IF:
+                nodes.emplace_back(this->parseIfElseStatement());
                 break;
             case TokenType::PLUS:
             case TokenType::MIN:

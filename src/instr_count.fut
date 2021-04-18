@@ -10,7 +10,7 @@ let node_type_counts (t: NodeType) (d: DataType) : u32 =
         case (#expr_stat, _) -> 0
         case (#if_stat, _) -> 0 --Insructions handled separately
         case (#if_else_stat, _) -> 0 --Instructions handled separately
-        case (#while_stat, _) -> 0 --Instructions handled separately
+        case (#while_stat, _) -> 1 --Instructions handled separately
         case (#func_call_expr, _) -> 0
         case (#func_call_arg, _) -> 1
         case (#add_expr, _) -> 1
@@ -46,8 +46,21 @@ let node_type_counts (t: NodeType) (d: DataType) : u32 =
         case (#id_expr, _) -> 1
         case (_, _) -> 0
 
-let node_counts (n: Node) =
-    node_type_counts n.node_type n.resulting_type
+let node_counts (nodes: []Node) (n: Node) =
+    let base_count = node_type_counts n.node_type n.resulting_type
+    let delta = if n.parent == 0xFFFFFFFF then
+        0
+    else
+        let parent_type = nodes[i64.u32 n.parent].node_type
+        in
+        if n.child_idx == 0 && (parent_type == #if_stat || parent_type == #if_else_stat || parent_type == #while_stat) then
+            1
+        else if n.child_idx == 1 && (parent_type == #if_else_stat) then
+            1
+        else
+            0
+    in
+    base_count + delta
 
 let instr_count_fix (node: Node) (instr_offset: u32) =
     if node.node_type == #invalid then
@@ -55,8 +68,9 @@ let instr_count_fix (node: Node) (instr_offset: u32) =
     else
         instr_offset
 
+
 let instr_count [max_nodes] (tree: Tree[max_nodes]) =
-    map node_counts tree.nodes |>
+    map (node_counts tree.nodes) tree.nodes |>
         scan (+) 0 |>
         rotate (-1) |>
         map2 (\i x -> if i == 0 then 0 else x) (iota max_nodes) |>

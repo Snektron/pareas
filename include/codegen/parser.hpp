@@ -22,6 +22,7 @@ class Parser {
         ASTNode* parseAtom();
         ASTNode* parseExpression();
         ASTNode* parseExpressionStatement();
+        ASTNode* parseIfElseStatement();
         ASTNode* parseStatementList();
         ASTNode* parseFunction();
         ASTNode* parseFunctionList();
