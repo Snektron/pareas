@@ -130,22 +130,53 @@ let resolve_vars [n] (types: [n]production.t) (parents: [n]i32) (prev_siblings: 
         |> flip
             find_unmarked_parents_log
             (map (!= production_atom_decl) types)
+    -- Build a mapping of `atom_decl` to a declaration ID, which is also its offset in the function stack.
+    -- Note: indices other than those associated with `atom_decl` are invalid.
+    let decl_offset =
+        types
+        -- Ad-hoc segmented scan implementation, where we represent flags with negative numbers.
+        -- https://github.com/diku-dk/segmented/blob/master/lib/github.com/diku-dk/segmented/segmented.fut
+        --
+        -- Function declaration nodes are mapped to -1, to reset the counter. Variable declarations are mapped to 1,
+        -- so as to increase the counter there, and all other nodes are mapped to 0.
+        --
+        -- **warning** This works because `fn_decl` and `atom_decl` nodes never change relative order, so this is valid even
+        -- after `insert_derefs`@term@"fns_and_assigns".
+        |> map (\ty ->
+            if ty == production_fn_decl then -1i32
+            else if ty == production_atom_decl then 1
+            else 0)
+        |> scan (\a b -> if b < 0 then b else a + b) 0
+        |> map u32.i32
+    -- Helper function to find the declaration for a particular variable name, starting at `start`.
+    -- Returns the node index of the declaration, or -1 if there was none that matched the name id.
+    let find_decl start name_id =
+        loop current = start while current != -1 && data[current] != name_id do
+            search_order[current]
     -- Now to do the actual lookup: For each variable read (atom_name) we're just going to iterate linearly over this list
     -- and attempt to find the accompanying declaration.
-    let is_var_read = map (== production_atom_name) types
-    -- Just retrieve a pointer to the appropriate declaration.
+    let is_name_atom = map (== production_atom_name) types
     let decl =
         map3
-            (\start is_var_read name_id ->
-                if !is_var_read then -1
-                else loop current = start while current != -1 && data[current] != name_id do
-                    search_order[current])
+            (\start is_name name_id -> if is_name then find_decl start name_id else -1)
             search_order
-            is_var_read
+            is_name_atom
             data
+    -- Check if the source is valid simply by checking whether all names have a declaration associated with them.
     let valid =
         decl
         |> map (!= -1)
-        |> map2 (==) is_var_read
+        |> map2 (==) is_name_atom
         |> reduce (&&) true
-    in (valid, decl)
+    -- Finally, build the new data vector by replacing the name_id of `atom_decl` and `atom_name` with their offsets.
+    let new_data =
+        map4
+            (\ty decl offset data ->
+                if ty == production_atom_decl then offset
+                else if ty == production_atom_name && decl != -1 then decl_offset[decl]
+                else data)
+            types
+            decl
+            decl_offset
+            data
+    in (valid, new_data)

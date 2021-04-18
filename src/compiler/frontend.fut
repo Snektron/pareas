@@ -90,7 +90,7 @@ entry main
     -- ints/floats/names order should be unchanged, relatively, so this is fine.
     let data = build_data_vector types input tokens
     let right_leafs = build_right_leaf_vector parents prev_siblings
-    let (valid, _) = resolve_vars types parents prev_siblings right_leafs data
+    let (valid, data) = resolve_vars types parents prev_siblings right_leafs data
     in if !valid then mk_error status_invalid_variable
     else
     let (parents, old_index) = build_preorder_ordering parents prev_siblings right_leafs

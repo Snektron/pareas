@@ -285,7 +285,11 @@ void dump_parse_tree(size_t n, const grammar::Production* types, const int32_t* 
 
             switch (prod) {
                 case grammar::Production::ATOM_NAME:
+                    fmt::print(" (decl={})\"]\n", data[i]);
+                    break;
                 case grammar::Production::ATOM_DECL:
+                    fmt::print(" (offset={})\"]\n", data[i]);
+                    break;
                 case grammar::Production::ATOM_FN_PROTO:
                     fmt::print(" (name={})\"]\n", data[i]);
                     break;
