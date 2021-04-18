@@ -91,7 +91,7 @@ let resolve_vars [n] (types: [n]production.t) (parents: [n]i32) (prev_siblings: 
             -- but we also add it for return expressions. Even though these are invalid, there are no checks for them
             -- as of yet and so `return a: int = 1; a = 2;` might otherwise produce unexpected errors.
             -- TODO: Maybe implement a check whether return is the last in a statement list.
-            else if types[prev_sibling] == production_stat_expr || types[prev_sibling] == production_stat_return then prev_sibling
+            else if types[prev_sibling] == production_stat_expr || types[prev_sibling] == production_stat_return then right_leafs[prev_sibling]
             -- If we don't need to search through the subtree of that previous sibling, just point to the root of it.
             else prev_sibling
         else if types[parent] == production_stat_if || types[parent] == production_stat_if_else || types[parent] == production_stat_while then
