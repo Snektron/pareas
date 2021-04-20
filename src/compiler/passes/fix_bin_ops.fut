@@ -178,7 +178,7 @@ let is_left_associative_tail = map (!= not_left_assoc_list) left_assoc_list_type
 --    0   5
 --   / \
 --  1   3
-let fix_bin_ops [n] (types: [n]production.t) (parents: [n]i32) =
+let fix_bin_ops [n] (node_types: [n]production.t) (parents: [n]i32) =
     -- First, move all the parent pointers of nodes that point to list intermediates one up.
     -- This step only needs to happen for lists of left-associative operators.
     let new_parents =
@@ -189,8 +189,8 @@ let fix_bin_ops [n] (types: [n]production.t) (parents: [n]i32) =
                 -- removed yet, so a left child of a list can't ever be a list tail.
                 !is_list_tail[production.to_i64 ty]
                 && parent != -1
-                && is_left_associative_tail[production.to_i64 types[parent]])
-            types
+                && is_left_associative_tail[production.to_i64 node_types[parent]])
+            node_types
             parents
         |> map2
             (\parent im -> if im then parents[parent] else parent)
@@ -199,12 +199,12 @@ let fix_bin_ops [n] (types: [n]production.t) (parents: [n]i32) =
         |> map3
             (\i ty parent -> if is_list_end[ty] && is_left_associative_tail[ty] then i else parent)
             (iota n |> map i32.i64)
-            (types |> map production.to_i64)
+            (node_types |> map production.to_i64)
     -- Compute new nodes by moving all list intermediate/end nodes one up.
     -- This needs to happen for both left- and right-associative operators.
-    let new_types =
+    let new_node_types =
         let is =
-            types
+            node_types
             |> map production.to_i64
             |> map (\ty -> is_list_tail[ty])
             -- Generate the new nodes list simply by scattering. To avoid a filter here, simply set the scatter target
@@ -214,10 +214,10 @@ let fix_bin_ops [n] (types: [n]production.t) (parents: [n]i32) =
             |> map2 (\parent is_tail_node -> if is_tail_node then parent else -1) parents
             |> map i64.i32
         in scatter
-            (copy types)
+            (copy node_types)
             is
-            types
-    let expr_type = map (\ty -> left_assoc_list_type[production.to_i64 ty]) new_types
+            node_types
+    let expr_type = map (\ty -> left_assoc_list_type[production.to_i64 ty]) new_node_types
     -- Compute whether this node's expression type is the same as that of the parent and whether its left-associative
     -- - and thus whether their pointers need to be flipped.
     let same_type_as_parent =
@@ -237,7 +237,7 @@ let fix_bin_ops [n] (types: [n]production.t) (parents: [n]i32) =
         in
             iota n
             -- Careful to not mess up lists that only have the end node here
-            |> map2 (\node i -> is_list_end[production.to_i64 node] && same_type_as_parent[i]) new_types
+            |> map2 (\node i -> is_list_end[production.to_i64 node] && same_type_as_parent[i]) new_node_types
             |> map3
                 (\parent end_parent is_end -> if is_end then new_parents[end_parent] else parent)
                 new_parents
@@ -256,10 +256,10 @@ let fix_bin_ops [n] (types: [n]production.t) (parents: [n]i32) =
     -- Finally, just remove all the list end markers.
     -- This needs to happen for both left- and right-associative list ends.
     let new_parents =
-        new_types
+        new_node_types
         |> map production.to_i64
         |> map (\node -> is_list_end[node])
         -- We expect there to only be a few of these subsequentially - again, limited by the 10 or so operators
         -- in the grammar.
         |> remove_nodes_lin new_parents
-    in (new_types, new_parents)
+    in (new_node_types, new_parents)

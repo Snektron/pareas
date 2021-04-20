@@ -14,8 +14,8 @@ local let is_marker = mk_production_mask [
 -- in the right location in a parent tree). Nodes like parenthesis and compound statements.
 -- Nodes like prod, sum etc are already removed in the `fix_bin_ops`. pass.
 -- Returns the new parents array.
-let remove_marker_nodes [n] (types: [n]production.t) (parents: [n]i32): [n]i32 =
-    types
+let remove_marker_nodes [n] (node_types: [n]production.t) (parents: [n]i32): [n]i32 =
+    node_types
     |> map production.to_i64
     |> map (\ty -> is_marker[ty])
     -- We expect only a small amount of subsequent nodes need to be removed:

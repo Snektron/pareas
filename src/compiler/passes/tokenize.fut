@@ -4,7 +4,7 @@ import "../../../gen/pareas_grammar"
 import "../../../lib/github.com/diku-dk/sorts/radix_sort"
 module lexer = import "../lexer/lexer"
 
--- Some useful typedefs so that these don't need to be typed out ever type, cluttering the code.
+-- Some useful typedefs so that these don't need to be kindped out ever type, cluttering the code.
 local type~ lex_table [n] = lexer.lex_table [n] token.t
 local type tokenref = (token.t, i32, i32)
 
@@ -111,7 +111,7 @@ let tokenize (input: []u8) (lt: lex_table []) =
 -- As each production is associated with at most one data element,
 -- **warning** This function relies on the property that the relative ordering of each atom_int,
 -- atom_float and atom_name does not change.
-let build_data_vector [n] (types: [n]production.t) (input: []u8) (tokens: []tokenref): [n]u32 =
+let build_data_vector [n] (node_types: [n]production.t) (input: []u8) (tokens: []tokenref): [n]u32 =
     let has_name ty =
         ty == production_atom_name
         || ty == production_atom_fn_call
@@ -134,7 +134,7 @@ let build_data_vector [n] (types: [n]production.t) (input: []u8) (tokens: []toke
     -- Now, compute offsets for each type of these tokens in the types array,
     -- similar to how its done in the partition function.
     in
-        types
+        node_types
         |> map (\ty ->
             if ty == production_atom_int then (1, 0, 0)
             else if ty == production_atom_float then (0, 1, 0)
@@ -147,4 +147,4 @@ let build_data_vector [n] (types: [n]production.t) (input: []u8) (tokens: []toke
                 else if ty == production_atom_float then floats[float_off - 1]
                 else if has_name ty then names[name_off - 1]
                 else 0)
-            types
+            node_types

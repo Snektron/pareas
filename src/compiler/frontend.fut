@@ -64,41 +64,41 @@ entry main
     -- by the parser also, pareas_parser.check will fail whenever there is a lexing error.
     in if !(pareas_parser.check token_types sct) then mk_error status_parse_error
     else
-    let types = pareas_parser.parse token_types pt
-    let parents = pareas_parser.build_parent_vector types arities
-    let (types, parents) = fix_bin_ops types parents
+    let node_types = pareas_parser.parse token_types pt
+    let parents = pareas_parser.build_parent_vector node_types arities
+    let (node_types, parents) = fix_bin_ops node_types parents
     let (parents, old_index) = compactify parents |> unzip
-    let types = gather types old_index
-    let (valid, types, parents) = fix_if_else types parents
+    let node_types = gather node_types old_index
+    let (valid, node_types, parents) = fix_if_else node_types parents
     in if !valid then mk_error status_stray_else_error
     else
-    let (types, parents) = fix_fn_args types parents
-    let (types, parents) = squish_binds types parents
-    let (types, parents) = flatten_lists types parents
-    in if !(check_fn_params types parents) then mk_error status_invalid_params
+    let (node_types, parents) = fix_fn_args node_types parents
+    let (node_types, parents) = squish_binds node_types parents
+    let (node_types, parents) = flatten_lists node_types parents
+    in if !(check_fn_params node_types parents) then mk_error status_invalid_params
     else
-    let parents = remove_marker_nodes types parents
+    let parents = remove_marker_nodes node_types parents
     let (parents, old_index) = compactify parents |> unzip
-    let types = gather types old_index
+    let node_types = gather node_types old_index
     let depths = compute_depths parents
     let prev_siblings = build_sibling_vector parents depths
-    let (types, parents, prev_siblings) = insert_derefs types parents prev_siblings |> unzip3
+    let (node_types, parents, prev_siblings) = insert_derefs node_types parents prev_siblings |> unzip3
     -- Note: depths invalid from here.
-    in if !(check_fn_decls types parents prev_siblings) then mk_error status_invalid_fn_proto
-    else if !(check_assignments types parents prev_siblings) then mk_error status_invalid_assign
+    in if !(check_fn_decls node_types parents prev_siblings) then mk_error status_invalid_fn_proto
+    else if !(check_assignments node_types parents prev_siblings) then mk_error status_invalid_assign
     else
     -- ints/floats/names order should be unchanged, relatively, so this is fine.
-    let data = build_data_vector types input tokens
+    let data = build_data_vector node_types input tokens
     let right_leafs = build_right_leaf_vector parents prev_siblings
-    let (vars_valid, data) = resolve_vars types parents prev_siblings right_leafs data
+    let (vars_valid, data) = resolve_vars node_types parents prev_siblings right_leafs data
     in if !vars_valid then mk_error status_invalid_variable
     else
-    let (calls_valid, data) = resolve_fns types parents data
+    let (calls_valid, data) = resolve_fns node_types parents data
     in if !calls_valid then mk_error status_duplicate_fn_or_invalid_call
     else
     let left_leafs = build_left_leaf_vector parents prev_siblings
     let (parents, old_index) = build_postorder_ordering parents prev_siblings left_leafs
     -- Note: prev_siblings, right_leafs and left_leafs invalid from here.
-    let types = gather types old_index
+    let node_types = gather node_types old_index
     let data = gather data old_index
-    in (status_ok, types, parents, data)
+    in (status_ok, node_types, parents, data)

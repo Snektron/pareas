@@ -11,7 +11,7 @@ import "../../../gen/pareas_grammar"
 -- - The name ID of each `fn_call` node is replaced with the function ID of the called function.
 -- A bool specifying whether the program is valid according to above constraints and the new data
 -- array is returned.
-let resolve_fns [n] (types: [n]production.t) (parents: [n]i32) (data: [n]u32): (bool, [n]u32) =
+let resolve_fns [n] (node_types: [n]production.t) (parents: [n]i32) (data: [n]u32): (bool, [n]u32) =
     -- The program is only valid if all functions are unique, and so we must check whether all
     -- elements in the data array corresponding with atom_fn_proto are unique. There are multiple
     -- ways to do this:
@@ -25,8 +25,8 @@ let resolve_fns [n] (types: [n]production.t) (parents: [n]i32) (data: [n]u32): (
     --   and as any filtering on function nodes requires us to make this array anyway, it seems justified.
     -- TODO: Maybe merge fn_id_by_name and the computation of all_unique?
     -- TODO: Maybe merge `fn_decl` and `atom_fn_proto` in some stage before this?
-    let is_fn_proto = map (== production_atom_fn_proto) types
-    let is_fn_call = map (== production_atom_fn_call) types
+    let is_fn_proto = map (== production_atom_fn_proto) node_types
+    let is_fn_call = map (== production_atom_fn_call) node_types
     let fn_id =
         is_fn_proto
         |> map i32.bool
@@ -79,12 +79,12 @@ let resolve_fns [n] (types: [n]production.t) (parents: [n]i32) (data: [n]u32): (
     in (all_unique && calls_valid, new_data)
 
 -- | This function resolves variable declarations and reads.
-let resolve_vars [n] (types: [n]production.t) (parents: [n]i32) (prev_siblings: [n]i32) (right_leafs: [n]i32) (data: [n]u32): (bool, [n]u32) =
+let resolve_vars [n] (node_types: [n]production.t) (parents: [n]i32) (prev_siblings: [n]i32) (right_leafs: [n]i32) (data: [n]u32): (bool, [n]u32) =
     -- This helper function returns the next node in the declaration search order
     let search_order_next ty parent prev_sibling =
         let is_first_child = prev_sibling == -1
         in if parent == -1 then -1
-        else if types[parent] == production_stat_list then
+        else if node_types[parent] == production_stat_list then
             -- The first child of a statement list should just point up the tree, to its parent
             if is_first_child then parent
             -- Now, we want to either point to the previous sibling or the right leaf of the previous sibling
@@ -92,10 +92,10 @@ let resolve_vars [n] (types: [n]production.t) (parents: [n]i32) (prev_siblings: 
             -- but we also add it for return expressions. Even though these are invalid, there are no checks for them
             -- as of yet and so `return a: int = 1; a = 2;` might otherwise produce unexpected errors.
             -- TODO: Maybe implement a check whether return is the last in a statement list.
-            else if types[prev_sibling] == production_stat_expr || types[prev_sibling] == production_stat_return then right_leafs[prev_sibling]
+            else if node_types[prev_sibling] == production_stat_expr || node_types[prev_sibling] == production_stat_return then right_leafs[prev_sibling]
             -- If we don't need to search through the subtree of that previous sibling, just point to the root of it.
             else prev_sibling
-        else if types[parent] == production_stat_if || types[parent] == production_stat_if_else || types[parent] == production_stat_while then
+        else if node_types[parent] == production_stat_if || node_types[parent] == production_stat_if_else || node_types[parent] == production_stat_while then
             -- For `<keyword> condition block...;` type statements, we want don't want declarations in the condition or children
             -- to be visible from a node after the statement, but we do want declarations in the condition to be visible in the
             -- children. We also don't want declarations in child A to be visible in child B, so if the parent of a node is
@@ -122,7 +122,7 @@ let resolve_vars [n] (types: [n]production.t) (parents: [n]i32) (prev_siblings: 
         -- Start with the complete search order over all nodes.
         map3
             search_order_next
-            types
+            node_types
             parents
             prev_siblings
         -- We don't want to consider nodes which are not declarations, so filter them out here.
@@ -130,11 +130,11 @@ let resolve_vars [n] (types: [n]production.t) (parents: [n]i32) (prev_siblings: 
         -- This nicely reduces the number of iterations we need to do in the next step.
         |> flip
             find_unmarked_parents_log
-            (map (!= production_atom_decl) types)
+            (map (!= production_atom_decl) node_types)
     -- Build a mapping of `atom_decl` to a declaration ID, which is also its offset in the function stack.
     -- Note: indices other than those associated with `atom_decl` are invalid.
     let decl_offset =
-        types
+        node_types
         -- Ad-hoc segmented scan implementation, where we represent flags with negative numbers.
         -- https://github.com/diku-dk/segmented/blob/master/lib/github.com/diku-dk/segmented/segmented.fut
         --
@@ -156,7 +156,7 @@ let resolve_vars [n] (types: [n]production.t) (parents: [n]i32) (prev_siblings: 
             search_order[current]
     -- Now to do the actual lookup: For each variable read (atom_name) we're just going to iterate linearly over this list
     -- and attempt to find the accompanying declaration.
-    let is_name_atom = map (== production_atom_name) types
+    let is_name_atom = map (== production_atom_name) node_types
     let decl =
         map3
             (\start is_name name_id -> if is_name then find_decl start name_id else -1)
@@ -176,7 +176,7 @@ let resolve_vars [n] (types: [n]production.t) (parents: [n]i32) (prev_siblings: 
                 if ty == production_atom_decl then offset
                 else if ty == production_atom_name && decl != -1 then decl_offset[decl]
                 else data)
-            types
+            node_types
             decl
             decl_offset
             data
