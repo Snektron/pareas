@@ -90,15 +90,15 @@ entry main
     -- ints/floats/names order should be unchanged, relatively, so this is fine.
     let data = build_data_vector node_types input tokens
     let right_leafs = build_right_leaf_vector parents prev_siblings
-    let (vars_valid, data) = resolve_vars node_types parents prev_siblings right_leafs data
+    let (vars_valid, var_resolution) = resolve_vars node_types parents prev_siblings right_leafs data
     in if !vars_valid then mk_error status_invalid_variable
     else
-    let (calls_valid, data) = resolve_fns node_types parents data
+    let (calls_valid, fn_resolution) = resolve_fns node_types parents data
     in if !calls_valid then mk_error status_duplicate_fn_or_invalid_call
     else
-    let left_leafs = build_left_leaf_vector parents prev_siblings
-    let (parents, old_index) = build_postorder_ordering parents prev_siblings left_leafs
+    --  let left_leafs = build_left_leaf_vector parents prev_siblings
+    --  let (parents, old_index) = build_postorder_ordering parents prev_siblings left_leafs
     -- Note: prev_siblings, right_leafs and left_leafs invalid from here.
-    let node_types = gather node_types old_index
-    let data = gather data old_index
-    in (status_ok, node_types, parents, data)
+    --  let node_types = gather node_types old_index
+    --  let data = gather data old_index
+    (status_ok, node_types, parents, var_resolution |> map u32.i32)

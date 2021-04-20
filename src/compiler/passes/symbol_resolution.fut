@@ -1,5 +1,11 @@
 import "util"
+import "../util"
 import "../../../gen/pareas_grammar"
+
+-- | Utility function to merge two resolution vectors. The values in these should be mutually
+-- exclusively larger than zero.
+let merge_resolutions [n] (a: [n]i32) (b: [n]i32) =
+    map2 i32.max a b
 
 -- | This function resolves function calls and checks declarations:
 -- - Function declarations are all on global scope (the parser makes sure of this), but should all
@@ -11,12 +17,12 @@ import "../../../gen/pareas_grammar"
 -- - The name ID of each `fn_call` node is replaced with the function ID of the called function.
 -- A bool specifying whether the program is valid according to above constraints and the new data
 -- array is returned.
-let resolve_fns [n] (node_types: [n]production.t) (parents: [n]i32) (data: [n]u32): (bool, [n]u32) =
+let resolve_fns [n] (node_types: [n]production.t) (parents: [n]i32) (data: [n]u32): (bool, [n]i32) =
     -- The program is only valid if all functions are unique, and so we must check whether all
     -- elements in the data array corresponding with atom_fn_proto are unique. There are multiple
     -- ways to do this:
-    -- - Use the fn_id to extract all function name IDs (the value in data) and then perform
-    --   a radix sort and checking adjacent values for uniqueness.
+    -- - Extract all function name IDs (the value in data) and then perform a radix sort and checking
+    --   adjacent values for uniqueness.
     -- - Use reduce_by_index over the function name IDs to count the amounts of functions with the samen ame
     --   and check if they are all <= 1. This requires more auxillary data, but should be a little
     --   faster when there are many functions that have a different name (which is assumed to be the
@@ -27,15 +33,12 @@ let resolve_fns [n] (node_types: [n]production.t) (parents: [n]i32) (data: [n]u3
     -- TODO: Maybe merge `fn_decl` and `atom_fn_proto` in some stage before this?
     let is_fn_proto = map (== production_atom_fn_proto) node_types
     let is_fn_call = map (== production_atom_fn_call) node_types
-    let fn_id =
-        is_fn_proto
-        |> map i32.bool
-        |> scan (+) 0
-        |> map (+ -1)
+    -- Build an index vector which scatters a node to a location corresponding to its name ID.
     let is =
         data
-        |> map i64.u32
+        |> map i32.u32
         |> map2 (\is_fn_proto name_id -> if is_fn_proto then name_id else -1) is_fn_proto
+    -- To check if they're all unique, just count the occurances.
     let all_unique =
         reduce_by_index
             -- n is quite a large upper bound here (we know the maximum function name ID
@@ -49,37 +52,30 @@ let resolve_fns [n] (node_types: [n]production.t) (parents: [n]i32) (data: [n]u3
             (replicate n 0i32)
             (+)
             0
-            is
+            (map i64.i32 is)
             (replicate n 1i32)
         |> all (<= 1)
-    let fn_id_by_name =
-        scatter
-            (replicate n (-1i32))
-            is
-            fn_id
-    let calls_valid =
+    -- Build a vector which, for each name, points to the function that declares it.
+    let fn_decl_by_name =
+        -- First, build a vector which points to the proto that declares it.
+        invert is
+        -- And get their parents.
+        |> map (\i -> if i == -1 then -1 else parents[i])
+    -- Now do the actual resolution by, for each `fn_call` node, simply looking in the fn_decl_by_name array.
+    let resolution =
         data
         |> map i32.u32
-        |> map2 (\is_call name_id -> if is_call then fn_id_by_name[name_id] != -1 else true) is_fn_call
+        |> map2 (\is_call name_id -> if is_call then copy fn_decl_by_name[name_id] else -1) is_fn_call
+    -- These must all yield something other than -1.
+    let calls_valid =
+        resolution
+        |> map (!= -1)
+        |> map2 (==) is_fn_call
         |> reduce (&&) true
-    -- Compute the new data vector
-    let new_data =
-        -- First, scatter the fn_id's to their appropriate fn_decl position
-        let is =
-            is_fn_proto
-            |> map2 (\parent is_proto -> if is_proto then parent else -1) parents
-            |> map i64.i32
-        in
-            scatter
-                (copy data)
-                is
-                (fn_id |> map u32.i32)
-            -- Perform the actual lookup of the called function ID here.
-            |> map2 (\is_call data -> if is_call then u32.i32 fn_id_by_name[i32.u32 data] else data) is_fn_call
-    in (all_unique && calls_valid, new_data)
+    in (all_unique && calls_valid, resolution)
 
 -- | This function resolves variable declarations and reads.
-let resolve_vars [n] (node_types: [n]production.t) (parents: [n]i32) (prev_siblings: [n]i32) (right_leafs: [n]i32) (data: [n]u32): (bool, [n]u32) =
+let resolve_vars [n] (node_types: [n]production.t) (parents: [n]i32) (prev_siblings: [n]i32) (right_leafs: [n]i32) (data: [n]u32): (bool, [n]i32) =
     -- This helper function returns the next node in the declaration search order
     let search_order_next ty parent prev_sibling =
         let is_first_child = prev_sibling == -1
@@ -131,24 +127,6 @@ let resolve_vars [n] (node_types: [n]production.t) (parents: [n]i32) (prev_sibli
         |> flip
             find_unmarked_parents_log
             (map (!= production_atom_decl) node_types)
-    -- Build a mapping of `atom_decl` to a declaration ID, which is also its offset in the function stack.
-    -- Note: indices other than those associated with `atom_decl` are invalid.
-    let decl_offset =
-        node_types
-        -- Ad-hoc segmented scan implementation, where we represent flags with negative numbers.
-        -- https://github.com/diku-dk/segmented/blob/master/lib/github.com/diku-dk/segmented/segmented.fut
-        --
-        -- Function declaration nodes are mapped to -1, to reset the counter. Variable declarations are mapped to 1,
-        -- so as to increase the counter there, and all other nodes are mapped to 0.
-        --
-        -- **warning** This works because `fn_decl` and `atom_decl` nodes never change relative order, so this is valid even
-        -- after `insert_derefs`@term@"fns_and_assigns".
-        |> map (\ty ->
-            if ty == production_fn_decl then -1i32
-            else if ty == production_atom_decl then 1
-            else 0)
-        |> scan (\a b -> if b < 0 then b else a + b) 0
-        |> map u32.i32
     -- Helper function to find the declaration for a particular variable name, starting at `start`.
     -- Returns the node index of the declaration, or -1 if there was none that matched the name id.
     let find_decl start name_id =
@@ -157,7 +135,7 @@ let resolve_vars [n] (node_types: [n]production.t) (parents: [n]i32) (prev_sibli
     -- Now to do the actual lookup: For each variable read (atom_name) we're just going to iterate linearly over this list
     -- and attempt to find the accompanying declaration.
     let is_name_atom = map (== production_atom_name) node_types
-    let decl =
+    let resolution =
         map3
             (\start is_name name_id -> if is_name then find_decl start name_id else -1)
             search_order
@@ -165,19 +143,9 @@ let resolve_vars [n] (node_types: [n]production.t) (parents: [n]i32) (prev_sibli
             data
     -- Check if the source is valid simply by checking whether all names have a declaration associated with them.
     let valid =
-        decl
+        resolution
         |> map (!= -1)
         |> map2 (==) is_name_atom
         |> reduce (&&) true
     -- Finally, build the new data vector by replacing the name_id of `atom_decl` and `atom_name` with their offsets.
-    let new_data =
-        map4
-            (\ty decl offset data ->
-                if ty == production_atom_decl then offset
-                else if ty == production_atom_name && decl != -1 then decl_offset[decl]
-                else data)
-            node_types
-            decl
-            decl_offset
-            data
-    in (valid, new_data)
+    in (valid, resolution)

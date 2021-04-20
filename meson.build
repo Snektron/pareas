@@ -89,6 +89,7 @@ futhark_sources = [
     'lib/github.com/diku-dk/sorts/radix_sort.fut',
     'src/compiler/string.fut',
     'src/compiler/util.fut',
+    'src/compiler/datatypes.fut',
     'src/compiler/frontend.fut',
     'src/compiler/lexer/lexer.fut',
     'src/compiler/parser/binary_tree.fut',
@@ -104,6 +105,7 @@ futhark_sources = [
     'src/compiler/passes/compactify.fut',
     'src/compiler/passes/reorder.fut',
     'src/compiler/passes/symbol_resolution.fut',
+    'src/compiler/passes/type_checking.fut',
 ]
 
 futhark_compile_command = [
