@@ -104,6 +104,15 @@ let find_roots [n] (parents: [n]i32): [n]i32 =
     -- Adjust for if the initial node was the root.
     |> map2 (\i p -> if p == -1 then i32.i64 i else p) (iota n)
 
+-- | A small helper function to invert the pointers making up a forest of
+-- linked list. This function is not applicable for trees in general, as nodes with
+-- multiple children would produce an undefined result.
+let invert [n] (parents: [n]i32): [n]i32 =
+    scatter
+        (replicate n (-1i32))
+        (parents |> map i64.i32)
+        (iota n |> map i32.i64)
+
 -- | Make a mask-array of a set of productions
 let mk_production_mask [n] (productions: [n]production.t): [num_productions]bool =
     scatter

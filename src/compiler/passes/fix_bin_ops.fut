@@ -182,7 +182,6 @@ let fix_bin_ops [n] (types: [n]production.t) (parents: [n]i32) =
     -- First, move all the parent pointers of nodes that point to list intermediates one up.
     -- This step only needs to happen for lists of left-associative operators.
     let new_parents =
-        --  iota n
         map2
             -- This complicated map checks whether a node is a non-list child of a list.
             (\ty parent ->

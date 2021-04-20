@@ -45,42 +45,32 @@ let build_sibling_vector [n] (parents: [n]i32) (depths: [n]i32): [n]i32 =
 -- | This function computes for each node a pointer to its right-most leaf node.
 -- The right most leaf of a leaf node is itself.
 let build_right_leaf_vector [n] (parents: [n]i32) (prev_siblings: [n]i32): [n]i32 =
-    let is =
-        -- First, compute whether this is the last child by scattering (inverting) the prev sibling array.
-        scatter
-            (replicate n true)
-            (map i64.i32 prev_siblings)
-            (replicate n false)
-        |>  map2 (\parent is_last_child -> if is_last_child then parent else -1) parents
-        |> map i64.i32
+    -- First, compute whether this is the last child by scattering (inverting) the prev sibling array.
+    scatter
+        (replicate n true)
+        (map i64.i32 prev_siblings)
+        (replicate n false)
     -- Compute a 'last child' vector, by scattering a node's index to the parent _if_ its the last child.
-    let last_childs =
-        scatter
-            (replicate n (-1i32))
-            is
-            (iota n |> map i32.i64)
-    -- Now, to find the right most leaf, simply compute for each node a pointer to its root...
-    in find_roots last_childs
+    |>  map2 (\parent is_last_child -> if is_last_child then parent else -1) parents
+    |> invert
+    -- Now, to find the right most leaf, simply compute for each node a pointer to its root.
+    |> find_roots
 
 -- | This function builds a preorder ordering, returning the new parents array and a mapping of new indices to old
 -- indices.
 let build_preorder_ordering [n] (parents: [n]i32) (prev_siblings: [n]i32) (right_leafs: [n]i32): ([n]i32, [n]i32) =
-    -- Compute the pre order vector, which for every node indicates the next node in the pre-ordering.
-    let order =
-        map2
-            (\prev_sibling parent ->
+    let new_index =
+        prev_siblings
+        -- Compute the pre-order vector, which for every node indicates the next node in the pre-ordering.
+        |> map2
+            (\parent prev_sibling ->
                 if prev_sibling == -1 then parent
                 else right_leafs[prev_sibling])
-            prev_siblings
             parents
-    -- Now, to compute the new index of each node, simple compute its depth in this pre-ordering parent vector.
-    let new_index = compute_depths order
+        -- Now, to compute the new index of each node, simple compute its depth in this pre-ordering parent vector.
+        |> compute_depths
     -- Invert to gain an array which for each node in the new array gives the position of the node in the old array.
-    let old_index =
-        scatter
-            (replicate n 0i32)
-            (map i64.i32 new_index)
-            (iota n |> map i32.i64)
+    let old_index = invert new_index
     -- Compute the new parents array simply by looking up the new position for each parent.
     let new_parents =
         old_index
@@ -92,54 +82,34 @@ let build_preorder_ordering [n] (parents: [n]i32) (prev_siblings: [n]i32) (right
 -- The right most leaf of a leaf node is itself.
 -- This function is basically the same as `build_right_leaf_vector`, but Marcel fucked up the defintiions of pre- and post order.
 let build_left_leaf_vector [n] (parents: [n]i32) (prev_siblings: [n]i32): [n]i32 =
-    let is =
-        prev_siblings
-        -- First, compute a mask of whether this child is the first of its parent.
-        |> map (== -1)
-        -- If its the first, set its index to its parent's.
-        |> map2 (\parent is_first_child -> if is_first_child then parent else -1) parents
-        |> map i64.i32
+    prev_siblings
+    -- First, compute a mask of whether this child is the first of its parent.
+    |> map (== -1)
     -- Compute a 'first child' vector, by scattering a node's index to the parent _if_ its the first child.
-    let first_childs =
-        scatter
-            (replicate n (-1i32))
-            is
-            (iota n |> map i32.i64)
-    -- Now, to find the left most leaf, simply compute for each node a pointer to its root...
-    in find_roots first_childs
+    |> map2 (\parent is_first_child -> if is_first_child then parent else -1) parents
+    |> invert
+    -- Now, to find the left most leaf, simply compute for each node a pointer to its root.
+    |> find_roots
 
 -- | This function builds a postorder ordering, returning the new parents array and a mapping of new indices to old
 -- indices.
 -- This function is basically the same as `build_preorder_ordering`, but Marcel fucked up the defintions of pre- and post order.
 let build_postorder_ordering [n] (parents: [n]i32) (prev_siblings: [n]i32) (left_leafs: [n]i32): ([n]i32, [n]i32) =
-    -- First, invert the prev_siblings array so that we get a next sibling array.
-    let next_siblings =
-        scatter
-            (replicate n (-1i32))
-            (prev_siblings |> map i64.i32)
-            (iota n |> map i32.i64)
-    -- Compute the (reversed) post order vector, which for every node indicates the next node in the post-ordering.
-    let reverse_order =
-        map2
-            (\next_sibling parent ->
+    let new_index =
+        -- First, invert the prev_siblings array so that we get a next sibling array.
+        invert prev_siblings
+        -- Compute the (inverted) post order vector, which for every node indicates the next node in the post-ordering.
+        |> map2
+            (\parent next_sibling ->
                 if next_sibling == -1 then parent
                 else left_leafs[next_sibling])
-            next_siblings
             parents
-    -- Invert the ordering to obtain the final order
-    let order =
-        scatter
-            (replicate n (-1i32))
-            (reverse_order |> map i64.i32)
-            (iota n |> map i32.i64)
-    -- Now, to compute the new index of each node, simple compute its depth in this pre-ordering parent vector.
-    let new_index = compute_depths order
+        -- Invert the ordering to obtain the final order
+        |> invert
+        -- Now, to compute the new index of each node, simplu compute it's depth in this post-ordering parent vector.
+        |> compute_depths
     -- Invert to gain an array which for each node in the new array gives the position of the node in the old array.
-    let old_index =
-        scatter
-            (replicate n 0i32)
-            (map i64.i32 new_index)
-            (iota n |> map i32.i64)
+    let old_index = invert new_index
     -- Compute the new parents array simply by looking up the new position for each parent.
     let new_parents =
         old_index

@@ -20,17 +20,12 @@ let fix_if_else [n] (types: [n]production.t) (parents: [n]i32): (bool, [n]produc
     -- array.
     let new_parents =
         -- Compute the list of indices to scatter to.
-        let is =
-            map2 (\if_node parent -> if if_node then parent else -1) is_if_node parents
-            |> map i64.i32
-        -- Scatter node indices to these indices. Remember, if- and else-type nodes should be
-        -- child of a stat_list.
-        -- Set the if-index of nodes which don't have such a child to -1.
         let stat_list_if_children =
-            scatter
-                (replicate n (-1i32))
-                is
-                (iota n |> map i32.i64)
+            map2 (\if_node parent -> if if_node then parent else -1) is_if_node parents
+            -- Scatter node indices to these indices. Remember, if- and else-type nodes should be
+            -- child of a stat_list.
+            -- Set the if-index of nodes which don't have such a child to -1.
+            |> invert
         -- Finally, gather the new parent by first computing the grandparent and then fetching in the
         -- stat_list_if_children array.
         in
