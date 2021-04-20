@@ -102,7 +102,7 @@ futhark_sources = [
     'src/compiler/passes/flatten_lists.fut',
     'src/compiler/passes/remove_marker_nodes.fut',
     'src/compiler/passes/compactify.fut',
-    'src/compiler/passes/preorder.fut',
+    'src/compiler/passes/reorder.fut',
     'src/compiler/passes/symbol_resolution.fut',
 ]
 

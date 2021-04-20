@@ -78,7 +78,8 @@ let resolve_fns [n] (types: [n]production.t) (parents: [n]i32) (data: [n]u32): (
             |> map2 (\is_call data -> if is_call then u32.i32 fn_id_by_name[i32.u32 data] else data) is_fn_call
     in (all_unique && calls_valid, new_data)
 
-let resolve_vars [n] (types: [n]production.t) (parents: [n]i32) (prev_siblings: [n]i32) (right_leafs: [n]i32) (data: [n]u32) =
+-- | This function resolves variable declarations and reads.
+let resolve_vars [n] (types: [n]production.t) (parents: [n]i32) (prev_siblings: [n]i32) (right_leafs: [n]i32) (data: [n]u32): (bool, [n]u32) =
     -- This helper function returns the next node in the declaration search order
     let search_order_next ty parent prev_sibling =
         let is_first_child = prev_sibling == -1

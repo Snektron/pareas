@@ -14,7 +14,7 @@ import "passes/fns_and_assigns"
 import "passes/flatten_lists"
 import "passes/remove_marker_nodes"
 import "passes/compactify"
-import "passes/preorder"
+import "passes/reorder"
 import "passes/symbol_resolution"
 import "passes/util"
 
@@ -90,13 +90,15 @@ entry main
     -- ints/floats/names order should be unchanged, relatively, so this is fine.
     let data = build_data_vector types input tokens
     let right_leafs = build_right_leaf_vector parents prev_siblings
-    let (valid, data) = resolve_vars types parents prev_siblings right_leafs data
-    in if !valid then mk_error status_invalid_variable
+    let (vars_valid, data) = resolve_vars types parents prev_siblings right_leafs data
+    in if !vars_valid then mk_error status_invalid_variable
     else
-    let (parents, old_index) = build_preorder_ordering parents prev_siblings right_leafs
-    -- Note: prev_siblings and right_leafs invalid from here.
+    let (calls_valid, data) = resolve_fns types parents data
+    in if !calls_valid then mk_error status_duplicate_fn_or_invalid_call
+    else
+    let left_leafs = build_left_leaf_vector parents prev_siblings
+    let (parents, old_index) = build_postorder_ordering parents prev_siblings left_leafs
+    -- Note: prev_siblings, right_leafs and left_leafs invalid from here.
     let types = gather types old_index
     let data = gather data old_index
-    let (valid, data) = resolve_fns types parents data
-    in if !valid then mk_error status_duplicate_fn_or_invalid_call
-    else (status_ok, types, parents, data)
+    in (status_ok, types, parents, data)
