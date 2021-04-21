@@ -93,6 +93,7 @@ let compute_depths [n] (parents: [n]i32): [n]i32 =
 -- | Given a tree, find for each node the root node.
 -- Note: This implementation is logarithmic in parallel time, but has an overhead when only a small amount of
 -- iterations is expected.
+-- This algorithm is from 'Data Parallel Algorithms' from Hillis & Steele: Finding the End of a Linked List.
 let find_roots [n] (parents: [n]i32): [n]i32 =
     iterate
         (n |> i32.i64 |> bit_width)
@@ -113,6 +114,11 @@ let invert [n] (parents: [n]i32): [n]i32 =
         (parents |> map i64.i32)
         (iota n |> map i32.i64)
 
+-- | This function matches two forests of linked lists, filling in the `friends` array.
+-- This array must be initialized by setting the initial friends, after which the remaining
+-- friends in each list will be filled in. If this friend is only initialized one way,
+-- the `friends` list will also only be filled in one way.
+-- This algorithm is from 'Data Parallel Algorithms' from Hillis & Steele: Matching Up Elements of Two Linked Lists.
 let match_lists [n] (parents: [n]i32) (friends: [n]i32): [n]i32 =
     let (_, friends) =
         iterate

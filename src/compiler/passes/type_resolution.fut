@@ -70,15 +70,21 @@ local let predetermined_result_types = mk_production_array data_type.invalid [
         (production_rela_lte, data_type.int)
     ]
 
+-- | Translate a node type (such as type_int) into a data type. If its not a `type`-type node,
+-- the invalid data type is returned.
 local let node_type_to_data_type (nt: production.t): data_type =
     if nt == production_type_void then data_type.void
     else if nt == production_type_int then data_type.int
     else if nt == production_type_float then data_type.float
     else data_type.invalid
 
+-- | A small helper function that checks if a node produces a reference type.
 local let node_produces_reference (nt: production.t): bool =
     nt == production_atom_decl || nt == production_atom_name
 
+-- | This function resolves inherits by following linked-list pointer chains, skipping nodes marked in `skip`
+-- in the process. This function is mostly the same as `find_unmarked_parents_log`, except that it also checks
+-- whether a pointer passed a dereference-type node (given by `is_deref`).
 local let resolve_inherits [n] (parents: [n]i32) (skip: [n]bool) (is_deref: [n]bool): ([n]i32, [n]bool) =
     iterate
         (n |> i32.i64 |> bit_width)
@@ -94,6 +100,7 @@ local let resolve_inherits [n] (parents: [n]i32) (skip: [n]bool) (is_deref: [n]b
             in (links', loses_reference'))
         (parents, is_deref)
 
+-- | This pass resolves (but not checks!) a type for each expression-type node.
 let resolve_types [n] (node_types: [n]production.t) (parents: [n]i32) (prev_siblings: [n]i32) (resolution: [n]i32) =
     -- Initialize the type resolution vector with nodes which inherit their results from their 'type' children.
     -- These include (function prototype) declarations and cast nodes.
