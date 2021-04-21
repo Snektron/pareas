@@ -6,6 +6,7 @@ local open g
 module pareas_parser = parser g
 
 import "util"
+import "datatypes"
 
 import "passes/tokenize"
 import "passes/fix_bin_ops"
@@ -16,6 +17,7 @@ import "passes/remove_marker_nodes"
 import "passes/compactify"
 import "passes/reorder"
 import "passes/symbol_resolution"
+import "passes/type_resolution"
 import "passes/util"
 
 type~ lex_table [n] = lexer.lex_table [n] token.t
@@ -56,9 +58,9 @@ entry main
     (sct: stack_change_table [])
     (pt: parse_table [])
     (arities: arity_array)
-    : (status_code, []token.t, []i32, []u32)
+    : (status_code, []token.t, []i32, []u32, []data_type)
     =
-    let mk_error (code: status_code) = (code, [], [], [])
+    let mk_error (code: status_code) = (code, [], [], [], [])
     let tokens = tokenize input lt
     let token_types = map (.0) tokens
     -- As the lexer returns an `invalid` token when the input cannot be lexed, which is accepted
@@ -105,9 +107,11 @@ entry main
     let resolution = merge_resolutions resolution arg_resolution
     in if !valid then mk_error status_invalid_arg_count
     else
+    let data_types = resolve_types node_types parents prev_siblings resolution
     let left_leafs = build_left_leaf_vector parents prev_siblings
     let (parents, old_index) = build_postorder_ordering parents prev_siblings left_leafs
-     --  Note: prev_siblings, right_leafs and left_leafs invalid from here.
+    -- Note: prev_siblings, right_leafs and left_leafs invalid from here.
     let node_types = gather node_types old_index
     let data = gather data old_index
-    in (status_ok, node_types, parents, data)
+    let data_types = gather data_types old_index
+    in (status_ok, node_types, parents, data, data_types)

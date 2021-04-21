@@ -87,6 +87,14 @@ let resolve_vars [n] (node_types: [n]production.t) (parents: [n]i32) (prev_sibli
             else if node_types[prev_sibling] == production_stat_expr || node_types[prev_sibling] == production_stat_return then right_leafs[prev_sibling]
             -- If we don't need to search through the subtree of that previous sibling, just point to the root of it.
             else prev_sibling
+        else if node_types[parent] == production_stat_while then
+            -- Special case for Marcel: While loops have a dummy child which is useful for code generation. We want to skip that,
+            -- and we want the third child (the statement list) to point to the second child.
+            if is_first_child then -1
+            -- Second child; point to parent
+            else if prev_siblings[prev_sibling] == -1 then parent
+            -- Else point to the right leaf of the second sibling, which is the condition
+            else right_leafs[prev_sibling]
         else if node_types[parent] == production_stat_if || node_types[parent] == production_stat_if_else || node_types[parent] == production_stat_while then
             -- For `<keyword> condition block...;` type statements, we want don't want declarations in the condition or children
             -- to be visible from a node after the statement, but we do want declarations in the condition to be visible in the

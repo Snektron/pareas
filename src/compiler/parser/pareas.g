@@ -10,13 +10,15 @@ type [type_float] -> 'float';
 type [type_void] -> 'void';
 
 ## Statements
-stat [stat_while] -> 'while' expr compound_stat;
+stat [stat_while] -> 'while' while_dummy expr compound_stat;
 stat [stat_if] -> 'if' expr compound_stat;
 stat [stat_else] -> 'else' compound_stat; # LL(P) doesn't support else statements otherwise
 stat [stat_elif] -> 'elif' expr compound_stat;
 stat [stat_expr] -> expr 'semi';
 stat [stat_return] -> 'return' expr 'semi';
 stat [stat_compound] -> compound_stat;
+
+while_dummy -> ;
 
 # Extra production type that can be used in the fix_if_else stage.
 stat_if_else -> ;

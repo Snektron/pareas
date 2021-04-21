@@ -51,7 +51,7 @@ let build_right_leaf_vector [n] (parents: [n]i32) (prev_siblings: [n]i32): [n]i3
         (map i64.i32 prev_siblings)
         (replicate n false)
     -- Compute a 'last child' vector, by scattering a node's index to the parent _if_ its the last child.
-    |>  map2 (\parent is_last_child -> if is_last_child then parent else -1) parents
+    |> map2 (\parent is_last_child -> if is_last_child then parent else -1) parents
     |> invert
     -- Now, to find the right most leaf, simply compute for each node a pointer to its root.
     |> find_roots
