@@ -100,8 +100,10 @@ maybe_app [no_app] -> ;
 maybe_bind [bind] -> 'colon' type;
 maybe_bind [no_bind] -> ;
 
-args -> expr arg_list;
+args -> arg arg_list;
 args [no_args] -> ;
 
-arg_list -> 'comma' expr arg_list;
+arg_list -> 'comma' arg arg_list;
 arg_list [arg_list_end] -> ;
+
+arg -> expr; # Required for code generation.

@@ -65,6 +65,17 @@ let squish_binds [n] (node_types: [n]production.t) (parents: [n]i32): ([n]produc
         |> remove_nodes_lin parents
     in (new_node_types, new_parents)
 
+-- | For code generation, it's easier to have a wrapper around children of a function call expression. These
+-- are not needed for parameters lists though, and so simply remove them here,
+let remove_param_arg_wrapper [n] (node_types: [n]production.t) (parents: [n]i32): [n]i32 =
+    parents
+    -- Mark all `arg` nodes which are grandchild of a prototype. At this point they should all still be there,
+    -- so simply removing all grandchildren suffices.
+    -- Check if the grandparent is a `fn_proto`.
+    -- Parents of a production_arg_list should never be -1, so checking directly is fine.
+    |> map (\parent -> parent != -1 && node_types[parent] == production_arg_list && node_types[parents[parent]] == production_atom_fn_proto)
+    |> remove_nodes_lin parents
+
 -- | This pass checks whether the structure of function declaration argument lists are correct, and is supposed to
 -- be performed somewhere after `squish_binds`@term, but before `remove_marker_nodes`@term@"remove_marker_nodes".
 -- This pass should only be performed _after_` `flatten_lists`@term@"flatten_lists".

@@ -284,37 +284,27 @@ void dump_parse_tree(size_t n, const grammar::Production* types, const int32_t* 
 
         if (parent != i) {
             fmt::print("node{} [label=\"{} {}", i, name, i);
-            fmt::print(" ({})\"]\n", (int32_t) data[i]);
 
-            // switch (prod) {
-            //     case grammar::Production::ATOM_NAME:
-            //         fmt::print(" (decl={})\"]\n", data[i]);
-            //         break;
-            //     case grammar::Production::ATOM_DECL:
-            //         fmt::print(" (offset={})\"]\n", data[i]);
-            //         break;
-            //     case grammar::Production::ATOM_FN_PROTO:
-            //         fmt::print(" (name={})\"]\n", data[i]);
-            //         break;
-            //     case grammar::Production::ATOM_FN_CALL:
-            //         fmt::print(" (target={})\"]\n", data[i]);
-            //         break;
-            //     case grammar::Production::ATOM_INT:
-            //         fmt::print(" (value={})\"]\n", data[i]);
-            //         break;
-            //     case grammar::Production::ATOM_FLOAT:
-            //         fmt::print(" (value={})\"]\n", *reinterpret_cast<const float*>(&data[i]));
-            //         break;
-            //     case grammar::Production::FN_DECL:
-            //         fmt::print(" (id={})\"]\n", data[i]);
-            //         break;
-            //     default:
-            //         if (data[i] != 0) {
-            //             fmt::print(" (junk={})\"]\n", data[i]);
-            //         } else {
-            //             fmt::print("\"]\n");
-            //         }
-            // }
+            switch (prod) {
+                case grammar::Production::ATOM_FN_PROTO:
+                case grammar::Production::ATOM_DECL:
+                case grammar::Production::ATOM_NAME:
+                case grammar::Production::ATOM_FN_CALL:
+                    fmt::print(" (name={})\"]\n", data[i]);
+                    break;
+                case grammar::Production::ATOM_INT:
+                    fmt::print(" (value={})\"]\n", data[i]);
+                    break;
+                case grammar::Production::ATOM_FLOAT:
+                    fmt::print(" (value={})\"]\n", *reinterpret_cast<const float*>(&data[i]));
+                    break;
+                default:
+                    if (data[i] != 0) {
+                        fmt::print(" (junk={})\"]\n", data[i]);
+                    } else {
+                        fmt::print("\"]\n");
+                    }
+            }
 
             if (parent >= 0) {
                 fmt::print("node{} -> node{};\n", parent, i);

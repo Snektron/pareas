@@ -149,7 +149,7 @@ let resolve_vars [n] (node_types: [n]production.t) (parents: [n]i32) (prev_sibli
 -- | This function resolves the arguments of a function call with its parameters, and checks whether the numbers
 -- of arguments match up. The resolution vector contains, for every `arg_list` child which in turn is a child of
 -- an `atom_fn_call`, a pointer to the corresponding `atom_decl` of the called function.
--- In this function, we assume that `fn_resolution` is valid.
+-- In this function, we assume that `fn_resolution` is valid, but may also contain the variable resolution.
 let resolve_args [n] (node_types: [n]production.t) (parents: [n]i32) (prev_siblings: [n]i32) (fn_resolution: [n]i32): (bool, [n]i32) =
     -- It's nicer to start matching up from the start.
     let next_siblings = invert prev_siblings

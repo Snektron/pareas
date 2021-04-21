@@ -76,6 +76,7 @@ entry main
     let (node_types, parents) = fix_fn_args node_types parents
     let (node_types, parents) = squish_binds node_types parents
     let (node_types, parents) = flatten_lists node_types parents
+    let parents = remove_param_arg_wrapper node_types parents
     in if !(check_fn_params node_types parents) then mk_error status_invalid_params
     else
     let parents = remove_marker_nodes node_types parents
@@ -91,13 +92,17 @@ entry main
     -- ints/floats/names order should be unchanged, relatively, so this is fine.
     let data = build_data_vector node_types input tokens
     let right_leafs = build_right_leaf_vector parents prev_siblings
-    let (valid, var_resolution) = resolve_vars node_types parents prev_siblings right_leafs data
+    let (valid, resolution) = resolve_vars node_types parents prev_siblings right_leafs data
     in if !valid then mk_error status_invalid_variable
     else
-    let (valid, fn_resolution) = resolve_fns node_types data
+    let (valid, var_resolution) = resolve_fns node_types data
+    -- This works because declarations and function calls are disjoint.
+    let resolution = merge_resolutions resolution var_resolution
     in if !valid then mk_error status_duplicate_fn_or_invalid_call
     else
-    let (valid, arg_resolution) = resolve_args node_types parents prev_siblings fn_resolution
+    let (valid, arg_resolution) = resolve_args node_types parents prev_siblings resolution
+    -- This works because declarations, function calls, and function arg wrappers are disjoint.
+    let resolution = merge_resolutions resolution arg_resolution
     in if !valid then mk_error status_invalid_arg_count
     else
     let left_leafs = build_left_leaf_vector parents prev_siblings
