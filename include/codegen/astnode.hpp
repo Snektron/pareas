@@ -46,7 +46,8 @@ enum class NodeType {
     DEREF_EXPR,
     ASSIGN_EXPR,
     DECL_EXPR,
-    ID_EXPR
+    ID_EXPR,
+    WHILE_DUMMY
 };
 
 class ASTNode {

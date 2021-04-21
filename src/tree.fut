@@ -39,7 +39,8 @@ type NodeType =
     #deref_expr |
     #assign_expr |
     #decl_expr |
-    #id_expr
+    #id_expr |
+    #while_dummy
 
 --Node definition
 type Node = {

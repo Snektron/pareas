@@ -207,7 +207,7 @@ ASTNode* Parser::parseWhileStatement() {
     this->expect(TokenType::WHILE);
     std::unique_ptr<ASTNode> cond(this->parseExpression());
     std::unique_ptr<ASTNode> stat(this->parseStatement());
-    return new ASTNode(NodeType::WHILE_STAT, {cond.release(), stat.release()});
+    return new ASTNode(NodeType::WHILE_STAT, {new ASTNode(NodeType::WHILE_DUMMY), cond.release(), stat.release()});
 }
 
 ASTNode* Parser::parseStatement() {

@@ -1,6 +1,5 @@
 function a() <- int {
-    if 2
-        3;
-    else
+    0;
+    while 2
         4;
 }

@@ -31,9 +31,10 @@ let node_instr(node_type: NodeType) (data_type: DataType) (instr_offset: i64) : 
 
     -- Control flow
     case (#if_stat, _, 0) ->            0b0000000_00000_00000_000_00000_1100011 -- BEQ x0
-    case (#if_stat, _, 1) ->            0b0000000_00000_00000_000_00000_1101111 -- JAL x0
-    case (#if_else_stat, _, _) ->       0b0000000_00000_00000_000_00000_1110011 -- TODO
-    case (#while_stat, _, _) ->         0b0000000_00000_00000_000_00000_1110011 -- TODO
+    case (#if_else_stat, _, 0) ->       0b0000000_00000_00000_000_00000_1100011 -- BEQ x0
+    case (#if_else_stat, _, 1) ->       0b0000000_00000_00000_000_00000_1101111 -- JAL x0
+    case (#while_stat, _, 0) ->         0b0000000_00000_00000_000_00000_1100011 -- BEQ x0
+    case (#while_stat, _, 1) ->         0b0000000_00000_00000_000_00000_1101111 -- JAL x0
 
     -- Binary integer arithmetic
     case (#add_expr, #int, 0) ->        0b0000000_00000_00000_000_00000_0110011 -- ADD
@@ -167,7 +168,9 @@ let node_get_parent_arg_idx (nodes: []Node) (node: Node) (instr_offset: i64) : i
     else
         let parent = nodes[i64.u32 node.parent]
         in
-        if node.child_idx > 0 && (parent.node_type == #if_stat || parent.node_type == #if_else_stat || parent.node_type == #while_stat) then
+        if node.child_idx > 0 && (parent.node_type == #if_stat || parent.node_type == #if_else_stat) then
+            parent_arg_idx node
+        else if (node.child_idx == 0 || node.child_idx == 2) && (parent.node_type == #while_stat) then
             parent_arg_idx node
         else
             node_get_parent_arg_idx_sub node instr_offset
@@ -179,7 +182,7 @@ let node_get_instr_arg (node_id: i64) (node: Node) (registers: []i64) (arg_no: i
     match(node.node_type, node.resulting_type, arg_no, instr_offset)
         case (#if_stat, _, 0, 0) -> registers[node_id * PARENT_IDX_PER_NODE]
         case (#if_else_stat, _, 0, 0) -> registers[node_id * PARENT_IDX_PER_NODE]
-        case (#while_stat, _, 0, 0) -> registers[node_id * PARENT_IDX_PER_NODE]
+        case (#while_stat, _, 0, 0) -> registers[node_id * PARENT_IDX_PER_NODE + 1]
         case (#add_expr, _, _, 0) -> registers[node_id * PARENT_IDX_PER_NODE + arg_no]
         case (#sub_expr, _,_, 0) -> registers[node_id * PARENT_IDX_PER_NODE + arg_no]
         case (#mul_expr, _,_, 0) -> registers[node_id * PARENT_IDX_PER_NODE + arg_no]
@@ -221,9 +224,30 @@ let node_has_output (nodes: []Node) (node: Node) (instr_offset: i64) : bool =
         case (#lit_expr, _, 0) -> true
         case _ -> false
 
+let make_branch_constant (node_id: i64) (registers: []i64) (delta: i64) (instr_loc: i64) (idx: i64) : u32 =
+    let offset = (registers[node_id * PARENT_IDX_PER_NODE + idx] + delta - instr_loc) * 4
+    let low_offset = (((offset >> 1) & 0xF) << 1) | ((offset >> 11) & 0x1)
+    let high_offset = ((offset >> 5) & 0x1F) | (((offset >> 12) & 0x1) << 5)
+    in
+    u32.i64 ((low_offset << 7) | (high_offset << 25))
 
-let instr_constant [max_vars] (node: Node) (instr_offset: i64) (symtab: Symtab[max_vars]) : u32 =
+let make_jump_constant (node_id: i64) (registers: []i64) (instr_loc: i64) (idx: i64): u32 =
+    let offset = (registers[node_id * PARENT_IDX_PER_NODE + idx] - instr_loc) * 4
+    in
+    u32.i64 (
+        (((offset >> 12) & 0xFF) << 12) |
+        (((offset >> 11) & 0x1) << 20) |
+        (((offset >> 1) & 0x3FF) << 21) |
+        (((offset >> 20) & 0x1) << 31)
+    )
+
+let instr_constant [max_vars] (node: Node) (instr_offset: i64) (symtab: Symtab[max_vars]) (node_id: i64) (registers: []i64) (instr_loc: i64) : u32 =
     match(node.node_type, node.resulting_type, instr_offset)
+        case (#if_stat, _, 0) -> make_branch_constant node_id registers 0 instr_loc 1
+        case (#if_else_stat, _, 0) -> make_branch_constant node_id registers 1 instr_loc 1
+        case (#if_else_stat, _, 1) -> make_jump_constant node_id registers instr_loc 2
+        case (#while_stat, _, 0) -> make_branch_constant node_id registers 1 instr_loc 2
+        case (#while_stat, _, 1) -> make_jump_constant node_id registers instr_loc 0
         case (#lit_expr, #int, 0) -> node.node_data & 0xFFFFF000
         case (#lit_expr, #int, 1) -> (node.node_data & 0xFFF) << 20
         case (#id_expr, _, 0) -> (-4 * ((symtab_local_offset symtab node.node_data) + 1)) << 20
@@ -231,8 +255,10 @@ let instr_constant [max_vars] (node: Node) (instr_offset: i64) (symtab: Symtab[m
         case _ -> 0
 
 let get_instr_loc (node: Node) (node_id: i64) (instr_no: i64) (instr_offset: i64) (registers: []i64) =
-    if instr_offset == 1 && (node.node_type == #if_else_stat || node.node_type == #while_stat) then
+    if instr_offset == 1 && (node.node_type == #if_else_stat) then
         registers[node_id * PARENT_IDX_PER_NODE + 1]
+    else if instr_offset == 1 && node.node_type == #while_stat then
+        registers[node_id * PARENT_IDX_PER_NODE + 2]
     else
         instr_no
 
@@ -241,8 +267,13 @@ let get_data_prop_value [tree_size] (tree: Tree[tree_size]) (node: Node) (rd: i6
         rd
     else
         let parent_type = tree.nodes[i64.u32 node.parent].node_type in
-        if parent_type == #if_stat || parent_type == #if_else_stat || parent_type == #while_stat then
-            if node.child_idx == 1 then
+        if parent_type == #if_stat || parent_type == #if_else_stat then
+            if node.child_idx == 1 || node.child_idx == 2 then
+                instr_no
+            else
+                rd
+        else if parent_type == #while_stat then
+            if node.child_idx == 0 || node.child_idx == 2 then
                 instr_no
             else
                 rd
@@ -253,12 +284,13 @@ let get_node_instr [tree_size] [max_vars] (tree: Tree[tree_size]) (node: Node) (
     let node_type = node.node_type
     let data_type = node.resulting_type
     let rd = (if node_has_output tree.nodes node instr_offset then register instr_no else 0)
+    let instr_loc = get_instr_loc node node_index instr_no instr_offset registers
     in
         (
-            get_instr_loc node node_index instr_no instr_offset registers,
+            instr_loc,
             node_get_parent_arg_idx tree.nodes node instr_offset,
             {
-                instr = node_instr node_type data_type instr_offset | instr_constant node instr_offset symtab,
+                instr = node_instr node_type data_type instr_offset | instr_constant node instr_offset symtab node_index registers instr_loc,
                 rd = rd,
                 rs1 = node_get_instr_arg node_index node registers 0 instr_no instr_offset,
                 rs2 = node_get_instr_arg node_index node registers 1 instr_no instr_offset

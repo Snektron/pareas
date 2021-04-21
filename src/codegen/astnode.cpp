@@ -41,7 +41,8 @@ const char* NODE_NAMES[] = {
     "dereference expression",
     "assignment expression",
     "declaration expression",
-    "identifier expression"
+    "identifier expression",
+    "while dummy"
 };
 
 ASTNode::ASTNode(NodeType type) : type(type) {}
@@ -131,8 +132,11 @@ void ASTNode::resolveType() {
     switch(this->type) {
         case NodeType::IF_STAT:
         case NodeType::IF_ELSE_STAT:
-        case NodeType::WHILE_STAT:
             assert_type(0, {DataType::INT});
+            this->return_type = DataType::VOID;
+            break;
+        case NodeType::WHILE_STAT:
+            assert_type(1, {DataType::INT});
             this->return_type = DataType::VOID;
             break;
         case NodeType::ADD_EXPR:
