@@ -113,6 +113,31 @@ let invert [n] (parents: [n]i32): [n]i32 =
         (parents |> map i64.i32)
         (iota n |> map i32.i64)
 
+let match_lists [n] (parents: [n]i32) (friends: [n]i32): [n]i32 =
+    let (_, friends) =
+        iterate
+            (n |> i32.i64 |> bit_width)
+            (\(links, friends) ->
+                let is =
+                    map2
+                        (\friend link -> if friend == -1 then -1 else link)
+                        friends
+                        links
+                    |> map i64.i32
+                let vs =
+                    map
+                        (\friend -> if friend == -1 then -1 else links[friend])
+                        friends
+                let friends' =
+                    scatter
+                        (copy friends)
+                        is
+                        vs
+                let links' = map (\link -> if link == -1 then link else links[link]) links
+                in (links', friends'))
+            (parents, friends)
+    in friends
+
 -- | Make a mask-array of a set of productions
 let mk_production_mask [n] (productions: [n]production.t): [num_productions]bool =
     scatter

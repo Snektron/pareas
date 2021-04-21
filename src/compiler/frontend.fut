@@ -48,6 +48,7 @@ let status_invalid_assign: status_code = 4
 let status_invalid_fn_proto: status_code = 5
 let status_duplicate_fn_or_invalid_call: status_code = 6
 let status_invalid_variable: status_code = 7
+let status_invalid_arg_count: status_code = 8
 
 entry main
     (input: []u8)
@@ -90,15 +91,18 @@ entry main
     -- ints/floats/names order should be unchanged, relatively, so this is fine.
     let data = build_data_vector node_types input tokens
     let right_leafs = build_right_leaf_vector parents prev_siblings
-    let (vars_valid, var_resolution) = resolve_vars node_types parents prev_siblings right_leafs data
-    in if !vars_valid then mk_error status_invalid_variable
+    let (valid, var_resolution) = resolve_vars node_types parents prev_siblings right_leafs data
+    in if !valid then mk_error status_invalid_variable
     else
-    let (calls_valid, fn_resolution) = resolve_fns node_types parents data
-    in if !calls_valid then mk_error status_duplicate_fn_or_invalid_call
+    let (valid, fn_resolution) = resolve_fns node_types data
+    in if !valid then mk_error status_duplicate_fn_or_invalid_call
     else
-    --  let left_leafs = build_left_leaf_vector parents prev_siblings
-    --  let (parents, old_index) = build_postorder_ordering parents prev_siblings left_leafs
-    -- Note: prev_siblings, right_leafs and left_leafs invalid from here.
-    --  let node_types = gather node_types old_index
-    --  let data = gather data old_index
-    (status_ok, node_types, parents, var_resolution |> map u32.i32)
+    let (valid, arg_resolution) = resolve_args node_types parents prev_siblings fn_resolution
+    in if !valid then mk_error status_invalid_arg_count
+    else
+    let left_leafs = build_left_leaf_vector parents prev_siblings
+    let (parents, old_index) = build_postorder_ordering parents prev_siblings left_leafs
+     --  Note: prev_siblings, right_leafs and left_leafs invalid from here.
+    let node_types = gather node_types old_index
+    let data = gather data old_index
+    in (status_ok, node_types, parents, data)

@@ -17,7 +17,7 @@ let merge_resolutions [n] (a: [n]i32) (b: [n]i32) =
 -- - The name ID of each `fn_call` node is replaced with the function ID of the called function.
 -- A bool specifying whether the program is valid according to above constraints and the new data
 -- array is returned.
-let resolve_fns [n] (node_types: [n]production.t) (parents: [n]i32) (data: [n]u32): (bool, [n]i32) =
+let resolve_fns [n] (node_types: [n]production.t) (data: [n]u32): (bool, [n]i32) =
     -- The program is only valid if all functions are unique, and so we must check whether all
     -- elements in the data array corresponding with atom_fn_proto are unique. There are multiple
     -- ways to do this:
@@ -56,16 +56,12 @@ let resolve_fns [n] (node_types: [n]production.t) (parents: [n]i32) (data: [n]u3
             (replicate n 1i32)
         |> all (<= 1)
     -- Build a vector which, for each name, points to the function that declares it.
-    let fn_decl_by_name =
-        -- First, build a vector which points to the proto that declares it.
-        invert is
-        -- And get their parents.
-        |> map (\i -> if i == -1 then -1 else parents[i])
+    let fn_proto_by_name = invert is
     -- Now do the actual resolution by, for each `fn_call` node, simply looking in the fn_decl_by_name array.
     let resolution =
         data
         |> map i32.u32
-        |> map2 (\is_call name_id -> if is_call then copy fn_decl_by_name[name_id] else -1) is_fn_call
+        |> map2 (\is_call name_id -> if is_call then copy fn_proto_by_name[name_id] else -1) is_fn_call
     -- These must all yield something other than -1.
     let calls_valid =
         resolution
@@ -149,3 +145,69 @@ let resolve_vars [n] (node_types: [n]production.t) (parents: [n]i32) (prev_sibli
         |> reduce (&&) true
     -- Finally, build the new data vector by replacing the name_id of `atom_decl` and `atom_name` with their offsets.
     in (valid, resolution)
+
+-- | This function resolves the arguments of a function call with its parameters, and checks whether the numbers
+-- of arguments match up. The resolution vector contains, for every `arg_list` child which in turn is a child of
+-- an `atom_fn_call`, a pointer to the corresponding `atom_decl` of the called function.
+-- In this function, we assume that `fn_resolution` is valid.
+let resolve_args [n] (node_types: [n]production.t) (parents: [n]i32) (prev_siblings: [n]i32) (fn_resolution: [n]i32): (bool, [n]i32) =
+    -- It's nicer to start matching up from the start.
+    let next_siblings = invert prev_siblings
+    -- Create the initial 'friends' vector: The first argument of each function call should point to the first parameter
+    -- of the called function.
+    let grandparents = map (\parent -> if parent == -1 then -1 else parents[parent]) parents
+    -- Some useful masks
+    let grandparent_is_proto = map (\gp -> gp != -1 && node_types[gp] == production_atom_fn_proto) grandparents
+    let grandparent_is_call = map (\gp -> gp != -1 && node_types[gp] == production_atom_fn_call) grandparents
+    let is_first_child = map (== -1) prev_siblings
+    let is_last_child = map (== -1) next_siblings
+    -- Scatter up that first parameter.
+    -- Also scatter up the first argument, this will be useful later.
+    let first_param_or_arg =
+        -- Build a mapping from first parameter to grand parent.
+        grandparent_is_proto
+        |> map2 (||) grandparent_is_call
+        |> map2 (&&) is_first_child
+        |> map2
+            (\grandparent is_first_param -> if is_first_param then grandparent else -1)
+            grandparents
+        -- And invert it.
+        |> invert
+    -- Now fetch that first parameter from the resolved function prototype.
+    let first_arg_first_param =
+        grandparent_is_call
+        |> map2 (&&) is_first_child
+        |> map2
+            (\grandparent is_first_arg -> if is_first_arg then first_param_or_arg[fn_resolution[grandparent]] else -1)
+            grandparents
+    -- Compute the resolution by matching up the argument lists now, with the initial friends set to that first
+    -- parameter of each argument list.
+    let arg_resolution = match_lists next_siblings first_arg_first_param
+    -- Now we still need to make sure that the parameter counts are correct. This can be done by checking two things:
+    -- - If there are too many arguments in the call, the superfluous arguments will have -1 as resolved declaration.
+    -- - If there are too few arguments in the call, the next sibling of the resolved declaration won't be -1.
+    -- There is one special case to consider, which is when the call has no arguments at all (the proto having
+    -- no calls works out fine, since the last argument's resolved declaration will simply be -1).
+    -- TODO: This can also be done with compute_depths, but this is O(1) vs O(log n), but still experiment with that.
+    let args_valid =
+        grandparent_is_call
+        |> map2 (&&) is_last_child
+        |> map2
+            (\resolved_decl last_arg -> if last_arg then resolved_decl != -1 && next_siblings[resolved_decl] == -1 else true)
+            arg_resolution
+        |> reduce (&&) true
+    -- Now use the first arg in `first_param_or_arg` to tell if a call has no arguments, and
+    -- match it with the value for the corresponding declaration.
+    let zero_args_valid =
+        node_types
+        |> map (== production_atom_fn_call)
+        -- Build a mask whether this call has a nonzero amount of arguments
+        |> map2
+            (&&)
+            (map (!= -1) first_param_or_arg)
+        -- And check if that agrees with the parameters
+        |> map2
+            (==)
+            (map (\fn -> fn != -1 && first_param_or_arg[fn] != -1) fn_resolution)
+        |> reduce (&&) true
+    in (args_valid && zero_args_valid, arg_resolution)
