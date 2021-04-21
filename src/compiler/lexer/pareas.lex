@@ -42,8 +42,8 @@ colon = /:/
 # For this case, we differentiate binary minus from unary minus based on the tokens
 # that precede it.
 # Also define a special binary whitespace token so that we can lex `a - b`.
-binary_minus_whitespace = /[ \t\r\n]+/ [rparen, id, float_literal, int_literal]
-binary_minus = /-/ [rparen, id, float_literal, int_literal, binary_minus_whitespace]
+binary_minus_whitespace = /[ \t\r\n]+/ [rparen, name, float_literal, int_literal]
+binary_minus = /-/ [rparen, name, float_literal, int_literal, binary_minus_whitespace]
 
 ## Parenthesis
 rparen = /\)/
@@ -54,7 +54,7 @@ rbrace = /}/
 lbrace = /{/
 
 ## Semantic: These tokens carry information that is required for the rest of the compilation.
-id = /[a-zA-Z_][a-zA-Z0-9_]*/
+name = /[a-zA-Z_][a-zA-Z0-9_]*/
 float_literal = /[0-9]+.[0-9]+/
 int_literal = /[0-9]+/
 

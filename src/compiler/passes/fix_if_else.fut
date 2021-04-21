@@ -10,27 +10,22 @@ import "../../../gen/pareas_grammar"
 -- pass).
 -- Note: This pass works because the else-statement always has a higher index than the if-node and any
 -- of its children, and so the final child order of the new if nodes is correct.
-let fix_if_else [n] (types: [n]production.t) (parents: [n]i32): (bool, [n]production.t, [n]i32) =
+let fix_if_else [n] (node_types: [n]production.t) (parents: [n]i32): (bool, [n]production.t, [n]i32) =
     -- Construct arrays indicating whether a node is if-type (if or elif), and else-type (elif or else).
-    let is_if_node = map (\ty -> ty == production_stat_if || ty == production_stat_elif) types
-    let is_else_node = map (\ty -> ty == production_stat_elif || ty == production_stat_else) types
+    let is_if_node = map (\ty -> ty == production_stat_if || ty == production_stat_elif) node_types
+    let is_else_node = map (\ty -> ty == production_stat_elif || ty == production_stat_else) node_types
     -- First, build a vector for each else-type node its corresponding if-type node (which will
-    -- become it.s new parent). This happens in 2 stages: First, for each if-type node, scatter
+    -- become its new parent). This happens in 2 stages: First, for each if-type node, scatter
     -- its index to its parent. Then, for each else-type node, fetch its grandparent in that
     -- array.
     let new_parents =
         -- Compute the list of indices to scatter to.
-        let is =
-            map2 (\if_node parent -> if if_node then parent else -1) is_if_node parents
-            |> map i64.i32
-        -- Scatter node indices to these indices. Remember, if- and else-type nodes should be
-        -- child of a stat_list.
-        -- Set the if-index of nodes which don't have such a child to -1.
         let stat_list_if_children =
-            scatter
-                (replicate n (-1i32))
-                is
-                (iota n |> map i32.i64)
+            map2 (\if_node parent -> if if_node then parent else -1) is_if_node parents
+            -- Scatter node indices to these indices. Remember, if- and else-type nodes should be
+            -- child of a stat_list.
+            -- Set the if-index of nodes which don't have such a child to -1.
+            |> invert
         -- Finally, gather the new parent by first computing the grandparent and then fetching in the
         -- stat_list_if_children array.
         in
@@ -49,19 +44,19 @@ let fix_if_else [n] (types: [n]production.t) (parents: [n]i32): (bool, [n]produc
         |> map2 (==) is_else_node
         |> reduce (&&) true
     -- Early return if invalid
-    in if !valid then (false, types, parents) else
+    in if !valid then (false, node_types, parents) else
     -- Construct the real new parents array by filling in the -1 entries with the original parents.
     let new_parents = map2 (\new_parent parent -> if new_parent == -1 then parent else new_parent) new_parents parents
     -- Finally, do a bunch of cleaning up.
     -- First, any if-type node needs to be replaced with an if-else node if applicable.
     -- Do this simply by scattering into the types array.
-    let new_types =
+    let new_node_types =
         let is =
             map2 (\else_node parent -> if else_node then parent else -1) is_else_node new_parents
             |> map i64.i32
         in
             scatter
-                (copy types)
+                (copy node_types)
                 is
                 (replicate n production_stat_if_else)
             -- Also replace any remaining elif node; these need to become if nodes.
@@ -80,7 +75,9 @@ let fix_if_else [n] (types: [n]production.t) (parents: [n]i32): (bool, [n]produc
         -- Merge that with else nodes.
         |> map2
             (||)
-            (map (== production_stat_else) new_types)
+            (map (== production_stat_else) new_node_types)
         -- And remove all of these.
-        |> remove_nodes new_parents
-    in (valid, new_types, new_parents)
+        -- We expect there only a small amount of subsequent nodes to remove here, as it is limited
+        -- by the length of the longest if-elif-else chain.
+        |> remove_nodes_lin new_parents
+    in (valid, new_node_types, new_parents)

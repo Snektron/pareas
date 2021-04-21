@@ -27,71 +27,72 @@ stat_list -> stat stat_list;
 stat_list [stat_list_end] -> ;
 
 ## Expressions
-expr -> logical_or assign;
+expr -> logical_or_list assign;
 
-assign -> 'eq' logical_or assign;
+assign -> 'eq' logical_or_list assign;
 assign [assign_end] -> ;
 
-logical_or -> logical_and logical_or_list;
+logical_or_list -> logical_and_list logical_or;
 
-logical_or_list -> 'pipe_pipe' logical_and logical_or_list;
-logical_or_list [logical_or_end] -> ;
+logical_or -> 'pipe_pipe' logical_and_list logical_or;
+logical_or [logical_or_end] -> ;
 
-logical_and -> rela logical_and_list;
+logical_and_list -> rela_list logical_and;
 
-logical_and_list -> 'and_and' rela logical_and_list;
-logical_and_list [logical_and_end] -> ;
+logical_and -> 'and_and' rela_list logical_and;
+logical_and [logical_and_end] -> ;
 
-rela -> bitwise rela_list;
+rela_list -> bitwise_list rela;
 
-rela_list [rela_eq] -> 'eq_eq' bitwise rela_list;
-rela_list [rela_neq] -> 'neq' bitwise rela_list;
-rela_list [rela_gt] -> 'gt' bitwise rela_list;
-rela_list [rela_gte] -> 'gte' bitwise rela_list;
-rela_list [rela_lt] -> 'lt' bitwise rela_list;
-rela_list [rela_lte] -> 'lte' bitwise rela_list;
-rela_list [rela_end] -> ;
+rela [rela_eq] -> 'eq_eq' bitwise_list rela;
+rela [rela_neq] -> 'neq' bitwise_list rela;
+rela [rela_gt] -> 'gt' bitwise_list rela;
+rela [rela_gte] -> 'gte' bitwise_list rela;
+rela [rela_lt] -> 'lt' bitwise_list rela;
+rela [rela_lte] -> 'lte' bitwise_list rela;
+rela [rela_end] -> ;
 
-bitwise -> shift bitwise_list;
+bitwise_list -> shift_list bitwise;
 
-bitwise_list [bitwise_and] -> 'and' shift bitwise_list;
-bitwise_list [bitwise_or] -> 'pipe' shift bitwise_list;
-bitwise_list [bitwise_xor] -> 'hat' shift bitwise_list;
-bitwise_list [bitwise_end] -> ;
+bitwise [bitwise_and] -> 'and' shift_list bitwise;
+bitwise [bitwise_or] -> 'pipe' shift_list bitwise;
+bitwise [bitwise_xor] -> 'hat' shift_list bitwise;
+bitwise [bitwise_end] -> ;
 
-shift -> sum shift_list;
+shift_list -> sum_list shift;
 
-shift_list [shift_lr] -> 'gt_gt' sum shift_list;
-shift_list [shift_ar] -> 'gt_gt_gt' sum shift_list;
-shift_list [shift_ll] -> 'lt_lt' sum shift_list;
-shift_list [shift_end] -> ;
+shift [shift_lr] -> 'gt_gt' sum_list shift;
+shift [shift_ar] -> 'gt_gt_gt' sum_list shift;
+shift [shift_ll] -> 'lt_lt' sum_list shift;
+shift [shift_end] -> ;
 
-sum -> prod sum_list;
+sum_list -> prod_list sum;
 
-sum_list [sum_add] -> 'plus' prod sum_list;
-sum_list [sum_sub] -> 'binary_minus' prod sum_list;
-sum_list [sum_end] -> ;
+sum [sum_add] -> 'plus' prod_list sum;
+sum [sum_sub] -> 'binary_minus' prod_list sum;
+sum [sum_end] -> ;
 
-prod -> atom prod_list;
+prod_list -> atom prod;
 
-prod_list [prod_mul] -> 'star' atom prod_list;
-prod_list [prod_div] -> 'slash' atom prod_list;
-prod_list [prod_mod] -> 'percent' atom prod_list;
-prod_list [prod_end] -> ;
+prod [prod_mul] -> 'star' atom prod;
+prod [prod_div] -> 'slash' atom prod;
+prod [prod_mod] -> 'percent' atom prod;
+prod [prod_end] -> ;
 
 atom [atom_unary_neg] -> 'unary_minus' atom;
 atom [atom_unary_bitflip] -> 'tilde' atom;
 atom [atom_unary_not] -> 'exclaim' atom;
 atom [atom_cast] -> type 'lparen' expr 'rparen';
 atom [atom_paren] -> 'lparen' expr 'rparen';
-atom [atom_id] -> 'id' maybe_app maybe_bind;
+atom [atom_name] -> 'name' maybe_app maybe_bind;
 atom [atom_int] -> 'int_literal';
 atom [atom_float] -> 'float_literal';
 
 # Some extra nodes useful during the frontend part of the compilation.
-atom_fn_call -> ; # Replaces atom_id if it has an application
-atom_fn_proto -> ; # Replaces atom_fn_call if it has a bind
-atom_decl -> ; # Replaces atom_id if it has a bind (but no call).
+atom_fn_call -> ; # Replaces atom_name if it has an application.
+atom_fn_proto -> ; # Replaces atom_fn_call if it has a bind.
+atom_decl -> ; # Replaces atom_name if it has a bind (but no call).
+atom_unary_deref -> ; # Inserted when an l-value needs to be dereferenced.
 
 maybe_app [app] -> 'lbracket' args 'rbracket';
 maybe_app [no_app] -> ;
@@ -99,8 +100,10 @@ maybe_app [no_app] -> ;
 maybe_bind [bind] -> 'colon' type;
 maybe_bind [no_bind] -> ;
 
-args -> expr arg_list;
+args -> arg arg_list;
 args [no_args] -> ;
 
-arg_list -> 'comma' expr arg_list;
+arg_list -> 'comma' arg arg_list;
 arg_list [arg_list_end] -> ;
+
+arg -> expr; # Required for code generation.

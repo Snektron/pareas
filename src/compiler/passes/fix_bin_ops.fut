@@ -1,13 +1,13 @@
 import "util"
 import "../../../gen/pareas_grammar"
 
--- Node types which are list intermediates (may appear in list, but neither start nor end).
+-- | Node types which are list intermediates (may appear in list, but neither start nor end).
 local let is_list_intermediate = mk_production_mask [
         production_assign,
 
-        production_logical_or_list,
+        production_logical_or,
 
-        production_logical_and_list,
+        production_logical_and,
 
         production_rela_eq,
         production_rela_neq,
@@ -32,7 +32,7 @@ local let is_list_intermediate = mk_production_mask [
         production_prod_mod
     ]
 
--- Node types which are list ends.
+-- | Node types which are list ends.
 local let is_list_end = mk_production_mask [
         production_assign_end,
         production_logical_or_end,
@@ -44,20 +44,20 @@ local let is_list_end = mk_production_mask [
         production_prod_end
     ]
 
--- Node types which are either list intermediates or ends
+-- | Node types which are either list intermediates or ends
 local let is_list_tail = map2 (||) is_list_intermediate is_list_end
 
--- A mapping of node types to an expression type, nodes which may appear in the same expression
+-- | A mapping of node types to an expression type, nodes which may appear in the same expression
 -- list need to have the same type. Otherwise, these values are arbitrary.
 -- The value of 0 is reserved for nodes which are not equal to eachother.
 -- Note that this is only required for left-associative nodes (of which the tree needs to be fixed up),
 -- so this array doubles as a test whether a list tail is left-associative.
 local let not_left_assoc_list = 0i32
 local let left_assoc_list_type = mk_production_array not_left_assoc_list [
-        (production_logical_or_list, 1),
+        (production_logical_or, 1),
         (production_logical_or_end, 1),
 
-        (production_logical_and_list, 2),
+        (production_logical_and, 2),
         (production_logical_and_end, 2),
 
         (production_rela_eq, 3),
@@ -88,7 +88,7 @@ local let left_assoc_list_type = mk_production_array not_left_assoc_list [
         (production_prod_end, 7)
     ]
 
--- Also construct a mask for nodes which are left-associative. We can just re-use the
+-- | Also construct a mask for nodes which are left-associative. We can just re-use the
 -- left_assoc_list_type array here.
 let is_left_associative_tail = map (!= not_left_assoc_list) left_assoc_list_type
 
@@ -178,11 +178,10 @@ let is_left_associative_tail = map (!= not_left_assoc_list) left_assoc_list_type
 --    0   5
 --   / \
 --  1   3
-let fix_bin_ops [n] (types: [n]production.t) (parents: [n]i32) =
+let fix_bin_ops [n] (node_types: [n]production.t) (parents: [n]i32) =
     -- First, move all the parent pointers of nodes that point to list intermediates one up.
     -- This step only needs to happen for lists of left-associative operators.
     let new_parents =
-        --  iota n
         map2
             -- This complicated map checks whether a node is a non-list child of a list.
             (\ty parent ->
@@ -190,8 +189,8 @@ let fix_bin_ops [n] (types: [n]production.t) (parents: [n]i32) =
                 -- removed yet, so a left child of a list can't ever be a list tail.
                 !is_list_tail[production.to_i64 ty]
                 && parent != -1
-                && is_left_associative_tail[production.to_i64 types[parent]])
-            types
+                && is_left_associative_tail[production.to_i64 node_types[parent]])
+            node_types
             parents
         |> map2
             (\parent im -> if im then parents[parent] else parent)
@@ -200,12 +199,12 @@ let fix_bin_ops [n] (types: [n]production.t) (parents: [n]i32) =
         |> map3
             (\i ty parent -> if is_list_end[ty] && is_left_associative_tail[ty] then i else parent)
             (iota n |> map i32.i64)
-            (types |> map production.to_i64)
+            (node_types |> map production.to_i64)
     -- Compute new nodes by moving all list intermediate/end nodes one up.
     -- This needs to happen for both left- and right-associative operators.
-    let new_types =
+    let new_node_types =
         let is =
-            types
+            node_types
             |> map production.to_i64
             |> map (\ty -> is_list_tail[ty])
             -- Generate the new nodes list simply by scattering. To avoid a filter here, simply set the scatter target
@@ -215,10 +214,10 @@ let fix_bin_ops [n] (types: [n]production.t) (parents: [n]i32) =
             |> map2 (\parent is_tail_node -> if is_tail_node then parent else -1) parents
             |> map i64.i32
         in scatter
-            (copy types)
+            (copy node_types)
             is
-            types
-    let expr_type = map (\ty -> left_assoc_list_type[production.to_i64 ty]) new_types
+            node_types
+    let expr_type = map (\ty -> left_assoc_list_type[production.to_i64 ty]) new_node_types
     -- Compute whether this node's expression type is the same as that of the parent and whether its left-associative
     -- - and thus whether their pointers need to be flipped.
     let same_type_as_parent =
@@ -231,11 +230,14 @@ let fix_bin_ops [n] (types: [n]production.t) (parents: [n]i32) =
     -- of those again.
     -- This also needs to happen for only left-associative lists, but this is already guarded by the same_type_as_parent array.
     let new_parents =
-        let end_parents = find_unmarked_parents new_parents same_type_as_parent
+        -- TODO: Experiment to see whether the logarithmic approach or linear approach is faster
+        -- Generally, the amount of iterations here is limited by the grammar, which is a chain of empty lists
+        -- limited at 10 or so, which is not very much, but might be on the edge.
+        let end_parents = find_unmarked_parents_lin new_parents same_type_as_parent
         in
             iota n
             -- Careful to not mess up lists that only have the end node here
-            |> map2 (\node i -> is_list_end[production.to_i64 node] && same_type_as_parent[i]) new_types
+            |> map2 (\node i -> is_list_end[production.to_i64 node] && same_type_as_parent[i]) new_node_types
             |> map3
                 (\parent end_parent is_end -> if is_end then new_parents[end_parent] else parent)
                 new_parents
@@ -254,8 +256,10 @@ let fix_bin_ops [n] (types: [n]production.t) (parents: [n]i32) =
     -- Finally, just remove all the list end markers.
     -- This needs to happen for both left- and right-associative list ends.
     let new_parents =
-        new_types
+        new_node_types
         |> map production.to_i64
         |> map (\node -> is_list_end[node])
-        |> remove_nodes new_parents
-    in (new_types, new_parents)
+        -- We expect there to only be a few of these subsequentially - again, limited by the 10 or so operators
+        -- in the grammar.
+        |> remove_nodes_lin new_parents
+    in (new_node_types, new_parents)
