@@ -38,7 +38,7 @@ local let is_expr_node = mk_production_mask [
         production_atom_int,
         production_atom_float,
         production_atom_fn_call,
-        -- production_atom_fn_proto, -- Not relevant for this pass.
+        production_atom_fn_proto,
         production_atom_decl,
         production_atom_unary_deref,
         production_arg
@@ -70,6 +70,15 @@ local let predetermined_result_types = mk_production_array data_type.invalid [
         (production_rela_lte, data_type.int)
     ]
 
+local let is_relational_op = mk_production_mask [
+        production_rela_eq,
+        production_rela_neq,
+        production_rela_gt,
+        production_rela_gte,
+        production_rela_lt,
+        production_rela_lte
+    ]
+
 -- | Translate a node type (such as type_int) into a data type. If its not a `type`-type node,
 -- the invalid data type is returned.
 local let node_type_to_data_type (nt: production.t): data_type =
@@ -82,10 +91,10 @@ local let node_type_to_data_type (nt: production.t): data_type =
 local let node_produces_reference (nt: production.t): bool =
     nt == production_atom_decl || nt == production_atom_name
 
--- | This function resolves inherits by following linked-list pointer chains, skipping nodes marked in `skip`
--- in the process. This function is mostly the same as `find_unmarked_parents_log`, except that it also checks
--- whether a pointer passed a dereference-type node (given by `is_deref`).
-local let resolve_inherits [n] (parents: [n]i32) (skip: [n]bool) (is_deref: [n]bool): ([n]i32, [n]bool) =
+-- | This function resolves inherits by following linked-list pointer chains. This function is
+-- mostly the same as `find_roots`, except that it also checks whether a pointer passed a
+-- dereference-type node (given by `is_deref`).
+local let resolve_inherits [n] (parents: [n]i32) (is_deref: [n]bool): ([n]i32, [n]bool) =
     iterate
         (n |> i32.i64 |> bit_width)
         (\(links, loses_reference) ->
@@ -95,13 +104,13 @@ local let resolve_inherits [n] (parents: [n]i32) (skip: [n]bool) (is_deref: [n]b
                 |> map2 (||) loses_reference
             let links' =
                 map
-                    (\link -> if link == -1 || !skip[link] then link else links[link])
+                    (\link -> if link == -1 || links[link] == -1 then link else links[link])
                     links
             in (links', loses_reference'))
         (parents, is_deref)
 
 -- | This pass resolves (but not checks!) a type for each expression-type node.
-let resolve_types [n] (node_types: [n]production.t) (parents: [n]i32) (prev_siblings: [n]i32) (resolution: [n]i32) =
+let resolve_types [n] (node_types: [n]production.t) (parents: [n]i32) (prev_siblings: [n]i32) (resolution: [n]i32): [n]data_type =
     -- Initialize the type resolution vector with nodes which inherit their results from their 'type' children.
     -- These include (function prototype) declarations and cast nodes.
     let data_types =
@@ -149,10 +158,16 @@ let resolve_types [n] (node_types: [n]production.t) (parents: [n]i32) (prev_sibl
     -- inserted at this point), so we'll need to keep track of whether an inherited type loses a pointer.
     -- We should be able to compute this vector using the logarithmic strategy though.
     let data_types =
-        -- Compute a mask for nodes we want to skip: Those which are currently invalid.
-        let mask =
-            data_types
-            |> map (== data_type.invalid)
+        -- Build a list of nodes which end the inherit order.
+        let ends =
+            node_types
+            -- The search ends at nodes which are a not an expression...
+            |> map production.to_i64
+            |> map (\nty -> !is_expr_node[nty])
+            -- ... or nodes which have their type already known.
+            |> map2
+                (||)
+                (map (!= data_type.invalid) data_types)
         -- Compute the order in which we're going to search for an inherited type, which is simply a node's last child.
         -- TODO: This code is shared with `build_right_leaf_vector`, maybe it's computation can be shared as well?
         let inherit_order =
@@ -164,23 +179,15 @@ let resolve_types [n] (node_types: [n]production.t) (parents: [n]i32) (prev_sibl
             -- Compute a 'last child' vector, by scattering a node's index to the parent _if_ its the last child.
             |> map2 (\parent is_last_child -> if is_last_child then parent else -1) parents
             |> invert
+            -- We want to stop looking at nodes which are marked by the `ends` array, so just set their value to -1.
+            |> map2 (\end next -> if end then -1 else next) ends
         let (inherit, loses_reference) =
             resolve_inherits
                 inherit_order
-                mask
                 (map (== production_atom_unary_deref) node_types)
-        -- Build a quick mask of nodes which appear in an expression
-        let is_expr =
-            node_types
-            |> map production.to_i64
-            |> map (\nty -> is_expr_node[nty])
         -- Finally, fetch and compute the final type.
         in
             inherit
-            -- We don't care about non-expression nodes and nodes which already had a value, so ignore those.
-            |> map2 (\in_expr i -> if in_expr then i else -1) is_expr
-            -- We also don't care about nodes which already had a valid datatype.
-            |> map2 (\dty i -> if dty == data_type.invalid then i else -1) data_types
             -- Now, fetch the relevant type.
             |> map (\i -> if i == -1 then data_type.invalid else data_types[i])
             -- Remove the reference if required.
@@ -188,3 +195,88 @@ let resolve_types [n] (node_types: [n]production.t) (parents: [n]i32) (prev_sibl
             -- And finally, merge it with the existing data type array. These should all be mutually exclusive valid.
             |> map2 (\old new -> if new != data_type.invalid then new else old) data_types
     in data_types
+
+-- | `resolve_types` computes a result type for every expression node, but doesn't actually verify whether this is
+-- consistent with the entire tree. This function performs that check.
+let check_types [n] (node_types: [n]production.t) (parents: [n]i32) (prev_siblings: [n]i32) (data_types: [n]data_type): bool =
+    -- In general, data types need to be equal to their parent's type. There are a few exceptions, however, and they fall into
+    -- a few different categories:
+    -- - Non-expression nodes obviously don't need to be checked, and can be skipped. In principle though, the result
+    --   values of these types of nodes should be `invalid`.
+    -- - Nodes which are children of non-expression nodes:
+    --   - If the parent is `stat_if`, `stat_if_else` or `stat_while`, the result value needs to be an integer.
+    --   - If the parent is `stat_return`, the result may be any type that is valid and not a reference.
+    --   - If the parent is `stat_expr`, the result may be any valid type.
+    -- - No operator accepts `void`, but there are still a few nodes which are allowed to have this value:
+    --   `atom_fn_proto`, `atom_stat_expr`, `atom_stat_return` and `atom_fn_call`.
+    --   This and the latter falls under the category 'nodes which type should be equal to their parent's'
+    -- - The children of relational operators may be floats and ints (data_type.is_comparable`), but they don't need
+    --   to be equal to their parents.
+    -- - The left-hand child of an `assign` node should be the ref'ed version of the right-hand child.
+    -- - The child of a cast node should be either float or int, and not a reference. (See `data_type.is_castable`.)
+    -- - The general case of nodes which' data type should be equal to their parents:
+    --   - Any type child of an `arg` node.
+    --   - The children of arithmetic non-bitwise operators take both ints and floats (and so their type
+    --     must be equal to their parent's).
+    --   - The children of operators which only accept ints should take ints (so these must also be
+    --     equal to their parent's).
+   let check nty parent prev_sibling dty =
+        -- This function only handles expression nodes, and so at this point `parent` is guaranteed to be valid.
+        let parent_nty = node_types[parent]
+        let parent_dty = data_types[parent]
+        let is_first_child = prev_sibling == -1
+        -- Account for statements of while/if/elif.
+        in if parent_nty == production_stat_while || parent_nty == production_stat_if || parent_nty == production_stat_if_else then
+            dty == data_type.int
+        -- Note: Don't need to check stat_expr for invalid, that's done before this function is called.
+        -- Account for return statements.
+        else if parent_nty == production_stat_return then
+            !(data_type.is_ref dty)
+        -- Mostly a sanity check.
+        else if parent_nty == production_atom_unary_deref then
+            data_type.remove_ref dty == parent_dty
+        -- Account for `assign`.
+        else if parent_nty == production_assign then
+            if is_first_child then true
+            else data_type.add_ref dty == data_types[prev_sibling]
+        -- Account for relational operators.
+        else if is_relational_op[production.to_i64 parent_nty] then
+            -- Node type should be equal to its sibling, if it has one, and those should also be either ints or floats.
+            if is_first_child then true
+            else data_type.is_comparable dty && dty == data_types[prev_sibling]
+        -- Account for casts.
+        else if parent_nty == production_atom_cast then
+            data_type.is_castable dty parent_dty
+        -- Account for void values.
+        -- TODO: Is this right? Maybe this construction lets something slip by...
+        -- When the child of another node type is one of these and the result is void, it should be caught by those, probably.
+        else if dty == data_type.void then
+            nty == production_atom_fn_call || nty == production_stat_expr || nty == production_stat_return || nty == production_atom_fn_proto
+        -- Filter out nodes who'se parents are not expressions. These are things like `atom_fn_proto`, children of `arg_list`s and
+        -- children of statement lists.
+        -- Just check them explicitly for extra care.
+        else if nty == production_atom_fn_proto || parent_nty == production_arg_list || nty == production_stat_expr || nty == production_stat_return then
+            true
+        -- Finally, account for the remaining (arithmetic) nodes.
+        -- Note that while the other remaining nodes, like `arg`, are not really arithmetic, they should still pass
+        -- this same check, as only those types may be passed to functions anyway.
+        else dty == parent_dty
+    in
+        -- Filter out non-expression nodes and invalid nodes beforehand, to clean up `check` a bit.
+        node_types
+        |> map production.to_i64
+        |> map (\nty -> is_expr_node[nty])
+        |> map2
+            (==)
+            (map (!= data_type.invalid) data_types)
+        -- Perform the `check` function for expression type nodes.
+        |> map5
+            (\nty parent prev_sibling dty valid ->
+                if is_expr_node[production.to_i64 nty] then valid && check nty parent prev_sibling dty
+                else valid)
+            node_types
+            parents
+            prev_siblings
+            data_types
+        -- And finally, all of these checks must hold
+        |> reduce (&&) true

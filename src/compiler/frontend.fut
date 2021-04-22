@@ -51,6 +51,7 @@ let status_invalid_fn_proto: status_code = 5
 let status_duplicate_fn_or_invalid_call: status_code = 6
 let status_invalid_variable: status_code = 7
 let status_invalid_arg_count: status_code = 8
+let status_type_error: status_code = 9
 
 entry main
     (input: []u8)
@@ -108,6 +109,9 @@ entry main
     in if !valid then mk_error status_invalid_arg_count
     else
     let data_types = resolve_types node_types parents prev_siblings resolution
+    let valid = check_types node_types parents prev_siblings data_types
+    in if !valid then mk_error status_type_error
+    else
     let left_leafs = build_left_leaf_vector parents prev_siblings
     let (parents, old_index) = build_postorder_ordering parents prev_siblings left_leafs
     -- Note: prev_siblings, right_leafs and left_leafs invalid from here.

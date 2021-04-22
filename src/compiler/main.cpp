@@ -27,6 +27,7 @@ enum class Status : uint8_t {
     DUPLICATE_FN_OR_INVALID_CALL = 6,
     INVALID_VARIABLE = 7,
     INVALID_ARG_COUNT = 8,
+    TYPE_ERROR = 9,
 };
 
 const char* status_name(Status s) {
@@ -40,6 +41,7 @@ const char* status_name(Status s) {
         case Status::DUPLICATE_FN_OR_INVALID_CALL: return "Duplicate function declaration or call to undefined function";
         case Status::INVALID_VARIABLE: return "Undeclared variable";
         case Status::INVALID_ARG_COUNT: return "Invalid amount of arguments for function call";
+        case Status::TYPE_ERROR: return "Type error";
     }
 }
 

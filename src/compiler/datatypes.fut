@@ -20,6 +20,15 @@ module data_type = {
         if dty == int_ref then int
         else if dty == float_ref then float
         else invalid
+
+    let is_comparable (dty: t): bool =
+        dty == int || dty == float
+
+    let is_castable (from: t) (to: t): bool =
+        (from == int || from == float) && (to == int || to == float)
+
+    let is_arithmetic (dty: t): bool =
+        dty == int || dty == float
 }
 
 type data_type = data_type.t
