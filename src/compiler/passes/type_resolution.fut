@@ -9,6 +9,7 @@ import "../../../gen/pareas_grammar"
 local let is_expr_node = mk_production_mask [
         production_stat_expr,
         production_stat_return,
+        production_no_expr,
         production_assign,
         production_logical_or,
         production_logical_and,
@@ -210,7 +211,7 @@ let check_types [n] (node_types: [n]production.t) (parents: [n]i32) (prev_siblin
     --   - If the parent is `stat_return`, the result may be any type that is valid and not a reference.
     --   - If the parent is `stat_expr`, the result may be any valid type.
     -- - No operator accepts `void`, but there are still a few nodes which are allowed to have this value:
-    --   `atom_fn_proto`, `atom_stat_expr`, `atom_stat_return` and `atom_fn_call`.
+    --   `atom_fn_proto`, `atom_stat_expr`, `atom_stat_return`, `atom_fn_call` and `no_expr`.
     --   This and the latter falls under the category 'nodes which type should be equal to their parent's'
     -- - The children of relational operators may be floats and ints (data_type.is_comparable`), but they don't need
     --   to be equal to their parents.
@@ -251,7 +252,8 @@ let check_types [n] (node_types: [n]production.t) (parents: [n]i32) (prev_siblin
         -- TODO: Is this right? Maybe this construction lets something slip by...
         -- When the child of another node type is one of these and the result is void, it should be caught by those, probably.
         else if dty == data_type.void then
-            nty == production_atom_fn_call || nty == production_stat_expr || nty == production_stat_return || nty == production_atom_fn_proto
+            nty == production_atom_fn_call || nty == production_stat_expr || nty == production_stat_return
+            || nty == production_atom_fn_proto || nty == production_no_expr
         -- Filter out nodes who'se parents are not expressions. These are things like `atom_fn_proto`, children of `arg_list`s and
         -- children of statement lists.
         -- Just check them explicitly for extra care.
@@ -279,4 +281,34 @@ let check_types [n] (node_types: [n]production.t) (parents: [n]i32) (prev_siblin
             prev_siblings
             data_types
         -- And finally, all of these checks must hold
+        |> reduce (&&) true
+
+-- | This function checks whether return statements line up with their function's declared return type.
+let check_return_types [n] (node_types: [n]production.t) (parents: [n]i32) (data_types: [n]data_type.t): bool =
+    -- First, compute a vector from any node to its function declaration.
+    let node_to_decl =
+        node_types
+        |> map (== production_fn_decl)
+        |> map2 (\parent is_fn_decl -> if is_fn_decl then -1 else parent) parents
+        |> find_roots
+    -- Scatter the expected type up to the decl.
+    let decl_return_type =
+        let is =
+            node_types
+            |> map (== production_atom_fn_proto)
+            |> map2 (\parent is_fn_proto -> if is_fn_proto then parent else -1) parents
+            |> map i64.i32
+        in scatter
+            (replicate n data_type.invalid)
+            is
+            data_types
+    -- Finally, simply check if they are equal for every return statement.
+    in
+        node_types
+        |> map (== production_stat_return)
+        |> map3
+            (\dty fn_decl is_return ->
+                if is_return then fn_decl != -1 && decl_return_type[fn_decl] == dty else true)
+            data_types
+            node_to_decl
         |> reduce (&&) true
