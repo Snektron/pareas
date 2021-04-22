@@ -14,8 +14,8 @@ stat [stat_while] -> 'while' while_dummy expr compound_stat;
 stat [stat_if] -> 'if' expr compound_stat;
 stat [stat_else] -> 'else' compound_stat; # LL(P) doesn't support else statements otherwise
 stat [stat_elif] -> 'elif' expr compound_stat;
-stat [stat_expr] -> expr 'semi';
-stat [stat_return] -> 'return' expr 'semi';
+stat [stat_expr] -> maybe_expr 'semi';
+stat [stat_return] -> 'return' maybe_expr 'semi';
 stat [stat_compound] -> compound_stat;
 
 while_dummy -> ;
@@ -29,6 +29,11 @@ stat_list -> stat stat_list;
 stat_list [stat_list_end] -> ;
 
 ## Expressions
+# By making the LHS of this production the same as that of `expr`, we can ignore it further,
+# and simply handle no_expr when type checking.
+maybe_expr [expr_] -> logical_or_list assign;
+maybe_expr [no_expr] -> ;
+
 expr -> logical_or_list assign;
 
 assign -> 'eq' logical_or_list assign;

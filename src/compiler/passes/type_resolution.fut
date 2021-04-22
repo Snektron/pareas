@@ -67,7 +67,9 @@ local let predetermined_result_types = mk_production_array data_type.invalid [
         (production_rela_gt, data_type.int),
         (production_rela_gte, data_type.int),
         (production_rela_lt, data_type.int),
-        (production_rela_lte, data_type.int)
+        (production_rela_lte, data_type.int),
+
+        (production_no_expr, data_type.void)
     ]
 
 local let is_relational_op = mk_production_mask [
@@ -237,13 +239,11 @@ let check_types [n] (node_types: [n]production.t) (parents: [n]i32) (prev_siblin
             data_type.remove_ref dty == parent_dty
         -- Account for `assign`.
         else if parent_nty == production_assign then
-            if is_first_child then true
-            else data_type.add_ref dty == data_types[prev_sibling]
+            is_first_child || (data_type.add_ref dty == data_types[prev_sibling])
         -- Account for relational operators.
         else if is_relational_op[production.to_i64 parent_nty] then
             -- Node type should be equal to its sibling, if it has one, and those should also be either ints or floats.
-            if is_first_child then true
-            else data_type.is_comparable dty && dty == data_types[prev_sibling]
+            is_first_child || (data_type.is_comparable dty && dty == data_types[prev_sibling])
         -- Account for casts.
         else if parent_nty == production_atom_cast then
             data_type.is_castable dty parent_dty

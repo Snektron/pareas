@@ -109,9 +109,9 @@ entry main
     in if !valid then mk_error status_invalid_arg_count
     else
     let data_types = resolve_types node_types parents prev_siblings resolution
-    let valid = check_types node_types parents prev_siblings data_types
-    in if !valid then mk_error status_type_error
-    else
+    --  let valid = check_types node_types parents prev_siblings data_types
+    --  in if !valid then mk_error status_type_error
+    --  else
     let left_leafs = build_left_leaf_vector parents prev_siblings
     let (parents, old_index) = build_postorder_ordering parents prev_siblings left_leafs
     -- Note: prev_siblings, right_leafs and left_leafs invalid from here.
