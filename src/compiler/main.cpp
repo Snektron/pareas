@@ -5,11 +5,13 @@
 
 #include <fmt/format.h>
 #include <fmt/ostream.h>
+#include <fmt/chrono.h>
 
 #include <iostream>
 #include <fstream>
 #include <string_view>
 #include <memory>
+#include <chrono>
 #include <charconv>
 #include <cstdlib>
 #include <cstdint>
@@ -449,6 +451,7 @@ int main(int argc, const char* argv[]) {
 
     auto ctx = futhark::Context(futhark_context_new(config.get()));
 
+    auto start = std::chrono::high_resolution_clock::now();
     auto* lex_table = upload_lex_table(ctx);
     auto* sct = upload_strtab<futhark_opaque_stack_change_table>(
         ctx,
@@ -465,14 +468,21 @@ int main(int argc, const char* argv[]) {
     auto* arity_array = futhark_new_i32_1d(ctx.get(), grammar::arities, grammar::NUM_PRODUCTIONS);
     auto* input_array = futhark_new_u8_1d(ctx.get(), reinterpret_cast<const uint8_t*>(input.data()), input.size());
 
+    int err = 0;
+    if ((err = futhark_context_sync(ctx.get())))
+        report_futhark_error(ctx, "Sync after upload failed");
+
+    auto stop = std::chrono::high_resolution_clock::now();
+    fmt::print(std::cerr, "Upload time: {}\n", std::chrono::duration_cast<std::chrono::microseconds>(stop - start));
+
     futhark_u8_1d* node_types = nullptr;
     futhark_i32_1d* parents = nullptr;
     futhark_u32_1d* data = nullptr;
     futhark_u8_1d* data_types = nullptr;
     Status status;
 
-    int err = 0;
-    if (lex_table && sct && pt && arity_array && input_array) {
+    if (!err && lex_table && sct && pt && arity_array && input_array) {
+        auto start = std::chrono::high_resolution_clock::now();
         err = futhark_entry_main(
             ctx.get(),
             reinterpret_cast<std::underlying_type_t<Status>*>(&status),
@@ -492,6 +502,9 @@ int main(int argc, const char* argv[]) {
 
         if ((err = futhark_context_sync(ctx.get())))
             report_futhark_error(ctx, "Sync after main kernel failed");
+
+        auto stop = std::chrono::high_resolution_clock::now();
+        fmt::print(std::cerr, "Main kernel runtime: {}\n", std::chrono::duration_cast<std::chrono::microseconds>(stop - start));
 
         if (!err) {
             if (status == Status::OK) {
