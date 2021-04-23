@@ -105,7 +105,8 @@ futhark_sources = [
     'src/compiler/passes/compactify.fut',
     'src/compiler/passes/reorder.fut',
     'src/compiler/passes/symbol_resolution.fut',
-    'src/compiler/passes/type_checking.fut',
+    'src/compiler/passes/type_resolution.fut',
+    'src/compiler/passes/check_return_paths.fut',
 ]
 
 futhark_compile_command = [
