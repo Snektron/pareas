@@ -18,6 +18,7 @@ import "passes/compactify"
 import "passes/reorder"
 import "passes/symbol_resolution"
 import "passes/type_resolution"
+import "passes/check_return_paths"
 import "passes/util"
 
 type~ lex_table [n] = lexer.lex_table [n] token.t
@@ -53,6 +54,7 @@ let status_invalid_variable: status_code = 7
 let status_invalid_arg_count: status_code = 8
 let status_type_error: status_code = 9
 let status_invalid_return: status_code = 10
+let status_missing_return: status_code = 11
 
 entry main
     (input: []u8)
@@ -114,6 +116,9 @@ entry main
     let returns_valid = check_return_types node_types parents data_types
     in if !types_valid then mk_error status_type_error
     else if !returns_valid then mk_error status_invalid_return
+    else
+    let paths_valid = check_return_paths node_types parents prev_siblings data_types
+    in if !paths_valid then mk_error status_missing_return
     else
     let left_leafs = build_left_leaf_vector parents prev_siblings
     let (parents, old_index) = build_postorder_ordering parents prev_siblings left_leafs
