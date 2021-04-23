@@ -5,52 +5,48 @@ import "../../../gen/pareas_grammar"
 
 -- | The types of operations a node in a binary expression tree can have:
 -- Either `&&` or `||`, or this node can produce a constant of either value.
-local type operator = #and | #or | #value
+local type bool_expr_node_type = #false | #true | #and | #or
 
 -- | The type of a node in the binary expression tree: We have a value, an operator, a left and a right child.
-local type bool_exp_node = (bool, operator, i32, i32)
+local type bool_expr_node = (i32, i32, bool_expr_node_type)
 
 -- | Evolve a binary tree to compute more results. This function has to be applied only log2 n times to
 -- compute the entire tree.
-local let iter [n] (expr: [n]bool_exp_node): [n]bool_exp_node =
-    -- Some helper functions to get values from certain nodes.
-    let is_value_known ptr = expr[ptr].1 == #value
-    let value ptr = expr[ptr].0
-    -- The actual iteration operator, which is applied to each node.
-    let f (v: bool, op: operator, left: i32, right: i32) =
+local let iter [n] (expr: [n]bool_expr_node): [n]bool_expr_node =
+    let is_value_known ptr = expr[ptr].2 == #true || expr[ptr].2 == #false
+    let value ptr = expr[ptr].2 == #true
+    let f (left, right, nty) =
         -- If this node already has a concrete value, then do nothing, as we are done with this node.
-        if op == #value then
-            (v, op, left, right)
-        -- If either child is invalid, we don't need to look at the operator at all, and we can either pass up
+        if nty == #true || nty == #false then
+            (left, right, nty)
+        -- If either child is invalid, we don't need to look at the operator at all. We can either pass up
         -- the value or provide a "leaf" value.
         else if left == -1 || right == -1 then
             -- If this node has only one child, then simply pass up the value of that.
             if left != -1 then expr[left]
             else if right != -1 then expr[right]
-            -- Corner case: This node has no children (and it is not stat_return, else op would be #value),
-            -- so just return false.
-            else (false, #value, left, right)
+            -- Corner case: This node has no children, so just return false.
+            else (left, right, #false)
         -- After this, we know that left and right are both valid (non-negative) pointers.
         -- If both children are known, we can simply compute the value.
         else if is_value_known left && is_value_known right then
-            if op == #and then (value left && value right, #value, left, right)
-            else (value left || value right, #value, left, right)
-        -- If only one of the values is known, we can either produce an early result or pass up the value,
-        -- depending on the operator and the known value.
+            if nty == #and then (left, right, if value left && value right then #true else #false)
+            else (left, right, if value left || value right then #true else #false)
         else if is_value_known left then
             -- If the value of the child is `true` and the operator is #and, then this operator can still become `false`,
             -- so we need to pass up the other child.
             -- Conversely, if the value of the child is `false` and the operator is #or, then this operator can still become
             -- `true` and we need to pass up the other child as well.
-            if value left == (op == #and) then expr[right]
+            if value left == (nty == #and) then expr[right]
             -- Else, the value is equal to that of the known child.
             else expr[left]
         else if is_value_known right then
             -- Same thing as the previous branch but the sides swapped
-            if value right == (op == #and) then expr[left]
+            if value right == (nty == #and) then expr[left]
             else expr[right]
+        -- Neither child is known: postpone computation.
         else
-            (v, op, left, right)
+            (left, right, nty)
     in map f expr
 
 -- | As type resolving works by first computing a type that is valid for the expression if the program is valid,
@@ -79,33 +75,23 @@ let check_return_paths [n] (node_types: [n]production.t) (parents: [n]i32) (prev
             (replicate n false)
             is
             (replicate n true)
-        -- Build the boolean expression tree.
-        -- First, produce the initial value and operator.
+    -- Build the boolean expression tree.
+    -- First, produce the initial value and operator.
     in map3
-        -- Map nodes which pass up their value to #or so we can simply replace -1 pointers with -1 as value.
-        -- If the operator is not #value, then the value doesn't matter, so we simply set it to false.
+        -- Nodes which have only one child/which pass up their value are simply mapped to #or.
         (\nty parent next_sibling ->
-            if nty == production_stat_return then
-                (true, #value)
-            else if parent == -1 then
-                (false, #or)
-            else if node_types[parent] == production_stat_if_else then
-                -- Second child becomes and-type node.
-                if nty == production_stat_list && next_sibling != -1 then (false, #and)
-                else (false, #or)
-            else if node_types[parent] == production_stat_list then
-                (false, #or)
-            else if node_types[parent] == production_stat_if || node_types[parent] == production_stat_while then
-                -- Cannot guarantee these types returning, so return false from these
-                (false, #value)
-            else
-                (false, #or))
+            if nty == production_stat_return then #true
+            else if parent == -1 then #or
+            -- Only the second child of an if/else node becomes and-type node.
+            else if node_types[parent] == production_stat_if_else && nty == production_stat_list && next_sibling != -1 then #and
+            -- Cannot guarantee these types returning, so return false from these
+            else if node_types[parent] == production_stat_if || node_types[parent] == production_stat_while then #false
+            else #or)
         node_types
         parents
         next_siblings
     -- Now add the children
-    |> map3
-        (\first_child next_sibling (v: bool, op: operator) -> (v, op, first_child, next_sibling) : bool_exp_node)
+    |> zip3
         first_childs
         next_siblings
     -- Apply the computation function log2(n) times.
@@ -113,7 +99,8 @@ let check_return_paths [n] (node_types: [n]production.t) (parents: [n]i32) (prev
         (n |> i32.i64 |> bit_width)
         iter
     -- Fetch the result value. At this point we know that all operators must be #value.
-    |> map (.0)
+    |> map (.2)
+    |> map (== #true)
     -- All function declaration nodes need to have 'true' unless they return void.
     |> map2 (||) is_void_fn_decl
     |> map2

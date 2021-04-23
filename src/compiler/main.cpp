@@ -44,7 +44,7 @@ const char* status_name(Status s) {
         case Status::INVALID_VARIABLE: return "Undeclared variable";
         case Status::INVALID_ARG_COUNT: return "Invalid amount of arguments for function call";
         case Status::TYPE_ERROR: return "Type error";
-        case Status::INVALID_RETURN: return "Return statement has invalid expression";
+        case Status::INVALID_RETURN: return "Return expression has invalid type";
         case Status::MISSING_RETURN: return "Not all code paths in non-void function return a value";
     }
 }
