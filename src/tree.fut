@@ -40,7 +40,12 @@ type NodeType =
     #assign_expr |
     #decl_expr |
     #id_expr |
-    #while_dummy
+    #while_dummy |
+    #func_call_arg_float_in_int |
+    #func_call_arg_stack |
+    #func_arg |
+    #func_arg_float_in_int |
+    #func_arg_stack
 
 --Node definition
 type Node = {

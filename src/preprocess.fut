@@ -20,6 +20,16 @@ let is_compare_node (t: NodeType) =
         case #greateq_expr -> true
         case _ -> false
 
+let copy_node_with_nodetype (n: Node) (t: NodeType) (d: u32) = 
+    {
+        node_type = t,
+        resulting_type = n.resulting_type,
+        parent = n.parent,
+        depth = n.depth,
+        child_idx = n.child_idx,
+        node_data = d
+    }
+
 let copy_node_with_type (n: Node) (d: DataType) =
     {
         node_type = n.node_type,
@@ -47,6 +57,23 @@ let replace_float_compare_types [n] (tree: Tree[n]) =
         max_depth = tree.max_depth
     }
 
+--Calling convention
+-- If float and number of float args < 8 -> float
+-- If int and number of int args + max(float_args - 8, 0) < 8 -> int
+-- Else stack
+let calling_convention_node_replace (n: Node) =
+    if n.node_type == #func_call_arg then
+        n -- TODO calling convention
+    else if n.node_type == #func_arg then
+        n -- TODO calling convention
+    else
+        n
+
+let replace_arg_types [n] (tree: Tree[n]) =
+    {
+        nodes = tree.nodes |> map calling_convention_node_replace,
+        max_depth = tree.max_depth
+    }
 
 let preprocess_tree [n] (tree: Tree[n]) =
-    tree |> replace_float_compare_types
+    tree |> replace_arg_types |> replace_float_compare_types
