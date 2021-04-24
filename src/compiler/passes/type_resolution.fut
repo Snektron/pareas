@@ -14,6 +14,7 @@ local let is_expr_node = mk_production_mask [
 
         production_no_expr,
         production_assign,
+        production_ascript,
         production_logical_or,
         production_logical_and,
         production_rela_eq,
@@ -185,7 +186,7 @@ let resolve_types [n] (node_types: [n]production.t) (parents: [n]i32) (prev_sibl
             |> invert
             -- We want to stop looking at nodes which are marked by the `ends` array, so just set their value to -1.
             |> map2 (\end next -> if end then -1 else next) ends
-            -- And for `arg` nodes, we want to follow the reference pointer instead.
+            -- For `arg` nodes, we want to follow the reference pointer instead.
             |> map3
                 (\nty res next -> if nty == production_arg then res else next)
                 node_types
@@ -224,7 +225,7 @@ let resolve_types [n] (node_types: [n]production.t) (parents: [n]i32) (prev_sibl
 
 -- | `resolve_types` computes a result type for every expression node, but doesn't actually verify whether this is
 -- consistent with the entire tree. This function performs that check.
-let check_types [n] (node_types: [n]production.t) (parents: [n]i32) (prev_siblings: [n]i32) (data_types: [n]data_type) =
+let check_types [n] (node_types: [n]production.t) (parents: [n]i32) (prev_siblings: [n]i32) (data_types: [n]data_type): bool =
     -- In general, data types need to be equal to their parent's type. There are a few exceptions, however, and they fall into
     -- a few different categories:
     -- - Non-expression nodes obviously don't need to be checked, and can be skipped. In principle though, the result
