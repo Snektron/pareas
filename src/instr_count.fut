@@ -11,7 +11,7 @@ let node_type_counts (t: NodeType) (d: DataType) : u32 =
         case (#if_stat, _) -> 0 --Insructions handled separately
         case (#if_else_stat, _) -> 0 --Instructions handled separately
         case (#while_stat, _) -> 1 --Instructions handled separately
-        case (#func_call_expr, _) -> 0
+        case (#func_call_expr, _) -> 0 -- TODO
         case (#func_call_arg, _) -> 1
         case (#add_expr, _) -> 1
         case (#sub_expr, _) -> 1
@@ -45,6 +45,11 @@ let node_type_counts (t: NodeType) (d: DataType) : u32 =
         case (#decl_expr, _) -> 1
         case (#id_expr, _) -> 1
         case (#while_dummy, _) -> 0
+        case (#func_call_arg_float_in_int, _) -> 1
+        case (#func_call_arg_stack, _) -> 2
+        case (#func_arg, _) -> 1
+        case (#func_arg_float_in_int, _) -> 1
+        case (#func_arg_stack, _) -> 2
         case (_, _) -> 0
 
 let node_counts (nodes: []Node) (n: Node) =
