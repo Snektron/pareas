@@ -98,23 +98,25 @@ local let node_type_to_data_type (nt: production.t): data_type =
 -- | This function resolves inherits by following linked-list pointer chains. This function is
 -- mostly the same as `find_roots`, except that it also checks whether a pointer passed a
 -- dereference-type node (given by `is_deref`).
-local let resolve_inherits [n] (parents: [n]i32) (is_deref: [n]bool): ([n]i32, [n]bool) =
+local let resolve_inherits [n] (parents: [n]i32) (ref_diff: [n]i32): ([n]i32, [n]i32) =
     iterate
         (n |> i32.i64 |> bit_width)
-        (\(links, loses_reference) ->
-            let loses_reference' =
+        (\(links, ref_diff) ->
+            let ref_diff' =
                 links
-                |> map (\link -> link != -1 && loses_reference[link])
-                |> map2 (||) loses_reference
+                -- TODO: I don't think this is correct, but probably works as the last node of a chain
+                -- should never ref/deref...
+                |> map (\link -> if link == -1 || links[link] == -1 then 0 else ref_diff[link])
+                |> map2 (+) ref_diff
             let links' =
                 map
                     (\link -> if link == -1 || links[link] == -1 then link else links[link])
                     links
-            in (links', loses_reference'))
-        (parents, is_deref)
+            in (links', ref_diff'))
+        (parents, ref_diff)
 
 -- | This pass resolves (but not checks!) a type for each expression-type node.
-let resolve_types [n] (node_types: [n]production.t) (parents: [n]i32) (prev_siblings: [n]i32) (resolution: [n]i32): [n]data_type =
+let resolve_types [n] (node_types: [n]production.t) (parents: [n]i32) (prev_siblings: [n]i32) (resolution: [n]i32) =
     -- Initialize the type resolution vector with nodes which inherit their results from their 'type' children.
     -- These include (function) declarations and cast nodes.
     let data_types =
@@ -138,15 +140,6 @@ let resolve_types [n] (node_types: [n]production.t) (parents: [n]i32) (prev_sibl
             |> map i64.i32
         -- And finally scatter these to the parents
         in scatter (replicate n data_type.invalid) is vs
-    -- Now initialize the type resolution vector with data types obtained via the 'resolution' vector.
-    -- Not this produces an `invalid` value for `arg` types, as they point to the `param` and not the decl.
-    let data_types =
-        map2
-            -- This should be fine to do in-place as they are disjoint, but futhark will likely
-            -- generate them into a new array anyway.
-            (\dty res -> if res != -1 then data_types[res] else dty)
-            data_types
-            resolution
     -- Also, initialize the type resolution vector with result types which gain their type from the node itself.
     let data_types =
         node_types
@@ -186,41 +179,43 @@ let resolve_types [n] (node_types: [n]production.t) (parents: [n]i32) (prev_sibl
             |> invert
             -- We want to stop looking at nodes which are marked by the `ends` array, so just set their value to -1.
             |> map2 (\end next -> if end then -1 else next) ends
-            -- For `arg` nodes, we want to follow the reference pointer instead.
-            |> map3
-                (\nty res next -> if nty == production_arg then res else next)
-                node_types
+            -- For values obtained via the `resolution` vector, point the order there.
+            |> map2
+                (\res next -> if res != -1 then res else next)
                 resolution
-        -- Dereference operators and arg nodes produce a dereferenced version of their arguments.
-        let derefs = map (\nty -> nty == production_atom_unary_deref || nty == production_arg) node_types
-        let (inherit, loses_reference) =
+            -- And for 'atom_decl' nodes, we want to follow the right child.
+            |> map3
+                (\nty next_sibling next -> if nty == production_atom_decl then next_sibling else next)
+                node_types
+                (invert prev_siblings)
+        -- `arg` and `unary_deref` make the value lose a reference, and `atom_decl` adds one.
+        let ref_diffs =
+            map
+                (\nty ->
+                    if nty == production_atom_unary_deref || nty == production_arg then -1
+                    else if nty == production_atom_decl then 1
+                    else 0)
+                node_types
+        --  in ref_diffs
+        let (inherit, ref_diffs) =
             resolve_inherits
                 inherit_order
-                derefs
+                ref_diffs
         -- Finally, fetch and compute the final type.
         in
             inherit
             -- Now, fetch the relevant type.
             |> map (\i -> if i == -1 then data_type.invalid else data_types[i])
-            -- Remove the reference if required.
-            |> map2 (\remove_ref dty -> if remove_ref then data_type.remove_ref dty else dty) loses_reference
+            -- Apply ref diffs. This should generally only be -1 to 1, so we simply either call add_ref or remove_ref.
+            |> map2
+                (\ref_diff dty ->
+                    if ref_diff == 0 then dty
+                    else if ref_diff == 1 then data_type.add_ref dty
+                    else if ref_diff == -1 then data_type.remove_ref dty
+                    else data_type.invalid)
+                ref_diffs
             -- And finally, merge it with the existing data type array. These should all be mutually exclusive valid.
             |> map2 (\old new -> if new != data_type.invalid then new else old) data_types
-    -- And finally, we still have one one type of node which doesn't have a type by now: inferenced declarations (atom_decl).
-    -- Because we picked the last child when computing the initial type, the type resolution still works. Now that all other
-    -- nodes are checked though, we can simply fetch the type from the parent (and add a reference).
-    -- Note: The parent of an `atom_decl` is not necessarily `assign`!
-    -- TODO: Add a check for that?
-    let data_types =
-        map3
-            (\nty parent dty ->
-                -- Accessing parent should be fine, `atom_decl` is never the root node.
-                if nty == production_atom_decl && node_types[parent] == production_assign then
-                    data_type.add_ref data_types[parent]
-                else dty)
-            node_types
-            parents
-            data_types
     in data_types
 
 -- | `resolve_types` computes a result type for every expression node, but doesn't actually verify whether this is

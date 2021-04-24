@@ -315,7 +315,6 @@ void dump_parse_tree(size_t n, const grammar::Production* node_types, const int3
 
         if (parent != i) {
             fmt::print("node{} [label=\"{} {}", i, name, i);
-            // fmt::print(" ({})", data[i]);
 
             switch (prod) {
                 case grammar::Production::ATOM_NAME:
