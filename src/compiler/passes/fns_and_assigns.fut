@@ -1,117 +1,209 @@
 import "util"
 import "../../../gen/pareas_grammar"
 
--- | This pass replaces atom_name which has no application with just atom_name (removes the application)
--- and replaces atom_name with an application with atom_fn_call.
--- Also replaces no_args with arg_list_end, and replaces args with arg_list.
-let fix_fn_args [n] (node_types: [n]production.t) (parents: [n]i32): ([n]production.t, [n]i32) =
-    -- First, for every app, scatter atom_fn.
-    let new_node_types =
+-- | This pass replaces `atom_name` depending on it's children:
+-- - If it has an application, its translated into `atom_fn_call`.
+-- - If it has a declaration, its translated into `atom_decl`.
+-- - If it has both, `false` is returned along with the new parents and node types array.
+--   Otherwise true
+let fix_names [n] (node_types: [n]production.t) (parents: [n]i32): (bool, [n]production.t, [n]i32) =
+    -- Scatter up whether the name is a declaration or a function call.
+    let is_call =
         let is =
             node_types
             |> map (== production_app)
-            |> map2 (\parent is_app -> if is_app then parent else -1) parents
-            |> map i64.i32
-        in
-            scatter
-                (copy node_types)
-                is
-                (replicate n production_atom_fn_call)
-            -- Replace those no_arg nodes with arg_list_end nodes.
-            |> map (\ty -> if ty == production_no_args then production_arg_list_end else ty)
-            -- Replace those arg nodes with arg_list nodes.
-            |> map (\ty -> if ty == production_args then production_arg_list else ty)
-    -- Now, simply remove app and no_app.
-    let new_parents =
-        new_node_types
-        |> map (\ty -> ty == production_app || ty == production_no_app)
-        -- These should only be one iteration each.
-        |> remove_nodes_lin parents
-    in (new_node_types, new_parents)
-
--- | This pass eliminates `bind` and `no_bind` type nodes by squishing them with their parents:
--- - If the parent of a bind is an atom_fn, it changes into an atom_fn_proto.
--- - If the parent of a bind is an atom_name, it changes into an atom_decl.
--- - `bind` and `no_bind` type nodes are simply removed after.
--- This pass should be performed after `fix_fn_args`@term.
-let squish_binds [n] (node_types: [n]production.t) (parents: [n]i32): ([n]production.t, [n]i32) =
-    -- First, move up the 'bind-ness' up to the parents
-    let is_bind_parent =
-        let is =
-            node_types
-            |> map (== production_bind)
-            |> map2 (\parent is_bind -> if is_bind then parent else -1) parents
+            |> map2 (\parent is_decl -> if is_decl then parent else -1) parents
             |> map i64.i32
         in scatter
             (replicate n false)
             is
             (replicate n true)
-    -- Perform the relevant transformations.
-    let new_node_types =
+    -- All nodes should either be declarations or calls (or none), but not both.
+    -- The grammar needs to allow `maybe_app` in `atom_decl` in order for the parser to be able to handle it,
+    -- and we simply check it manually here.
+    let invalid =
+        node_types
+        |> map (== production_atom_decl)
+        |> map2 (&&) is_call
+        |> reduce (||) false
+    -- Compute the new node types according to these masks.
+    let node_types =
         map2
-            -- Note that bind_parent should not be true for types other than production_atom_fn_call and
-            -- production_atom_name, which should be guaranteed by the grammar and the result of `fix_fn_args`@term.
-            (\bind_parent ty ->
-                if bind_parent && ty == production_atom_fn_call then production_atom_fn_proto
-                else if bind_parent && ty == production_atom_name then production_atom_decl
-                else ty)
-            is_bind_parent
+            (\nty call -> if call then production_atom_fn_call else nty)
             node_types
-    -- Finally, remove old `bind` and `no_bind` type nodes.
-    let new_parents =
-        new_node_types
-        |> map (\ty -> ty == production_bind || ty == production_no_bind)
-        -- These should only be one iteration each.
+            is_call
+    -- And finally filter out the now no longer useful node types.
+    let parents =
+        node_types
+        |> map (\nty -> nty == production_app || nty == production_no_app)
+        -- There should only be one iteration each.
         |> remove_nodes_lin parents
-    in (new_node_types, new_parents)
+    in (!invalid, node_types, parents)
 
--- | For code generation, it's easier to have a wrapper around children of a function call expression. These
--- are not needed for parameters lists though, and so simply remove them here,
-let remove_param_arg_wrapper [n] (node_types: [n]production.t) (parents: [n]i32): [n]i32 =
-    parents
-    -- Mark all `arg` nodes which are grandchild of a prototype. At this point they should all still be there,
-    -- so simply removing all grandchildren suffices.
-    -- Check if the grandparent is a `fn_proto`.
-    -- Parents of a production_arg_list should never be -1, so checking directly is fine.
-    |> map (\parent -> parent != -1 && node_types[parent] == production_arg_list && node_types[parents[parent]] == production_atom_fn_proto)
+-- | This pass removes `no_ascription` and `ascription` nodes, as well as `ascript` which do not have an `ascription`
+-- as child. Returns a new parents array.
+let fix_ascriptions [n] (node_types: [n]production.t) (parents: [n]i32): [n]i32 =
+    -- `ascript` parents of `no_ascription` nodes should be removed also.
+    -- First, scatter those up
+    let is =
+        node_types
+        |> map (== production_no_ascription)
+        |> map2 (\parent not_ascription -> if not_ascription then parent else -1) parents
+        |> map i64.i32
+    in scatter
+        (replicate n false)
+        is
+        (replicate n true)
+    -- Now also mark `ascription` and `no_ascription` nodes.
+    |> map2
+        (||)
+        (map (\nty -> nty == production_no_ascription || nty == production_ascription) node_types)
+    -- These should only be one or two iterations for every node.
     |> remove_nodes_lin parents
 
--- | This pass checks whether the structure of function declaration argument lists are correct, and is supposed to
--- be performed somewhere after `squish_binds`@term, but before `remove_marker_nodes`@term@"remove_marker_nodes".
--- This pass should only be performed _after_` `flatten_lists`@term@"flatten_lists".
-let check_fn_params [n] (node_types: [n]production.t) (parents: [n]i32): bool =
-    parents
-    -- Check if the grandparent is a `fn_proto`.
-    -- Parents of a production_arg_list should never be -1, so checking directly is fine.
-    |> map (\parent -> parent != -1 && node_types[parent] == production_arg_list && node_types[parents[parent]] == production_atom_fn_proto)
-    -- If the grandparent is a `fn_proto` (and the parent is a production_arg_list), then this node should be a declaration.
-    |> map2
-        (\ty is_param -> if is_param then ty == production_atom_decl else true)
+-- | The parser cannot parse something else than an expression at a function declaration, so this pass
+-- validates that the left child of a `fn_decl` is an `ascript` with a `fn_call` as child.
+-- This pass also modifies `fn_decls` in to a more useful node, by removing the `ascript` and the `call` node.
+-- This will have as effect that we can treat the `fn_decl` node as having a name associated to it in `tokenizer`,
+-- and the new children of a `fn_decl` will be in order an `arg_list`, a `type`, and a `compound_expr`.
+-- Returns whether the input is valid and the new parents array.
+let fix_fn_decls [n] (node_types: [n]production.t) (parents: [n]i32): (bool, [n]i32) =
+    -- We are simply going to check for `atom_fn_call`->`ascript`->`fn_decl` patterns,
+    -- and then scatter those values to all `fn_decls` to check whether they are valid.
+    let grandparents = map (\parent -> if parent == -1 then -1 else parents[parent]) parents
+    -- First, build some masks for the relevant types:
+    -- - 'prototypes' are `atom_fn_call` nodes with an `ascript` as parent and a `fn_decl` as grandparent.
+    -- - 'fn ascripts' are `ascripts` nodes with a `fn_decl` as parent.
+    let fn_protos =
+        map3
+            (\nty parent grandparent ->
+                nty == production_atom_fn_call
+                -- Accessing the parent is fine here as `atom_fn_call` should never be the root node.
+                && node_types[parent] == production_ascript
+                -- Accessing the parent is fine here as `ascript` should never be the root node.
+                && node_types[grandparent] == production_fn_decl)
         node_types
-    -- Should all yield true.
-    |> reduce (&&) true
-
--- | This function checks whether the left child of all `fn_decl` nodes is an `atom_fn_proto` node,
--- and also checks whether the parent of `atom_fn_proto` nodes is a `fn_decl`.
-let check_fn_decls [n] (node_types: [n]production.t) (parents: [n]i32) (prev_sibling: [n]i32): bool =
-    prev_sibling
-    -- First, build a mask of whether this node is the first child of its parent.
-    |> map (== -1)
-    -- If so, check whether the node's parent is a function declaration node.
-    |> map2
-        (\parent first_child -> first_child && parent != -1 && node_types[parent] == production_fn_decl)
         parents
-    -- If a node's parent is a function declaration and the node is the left child, it should be a function
-    -- prototype.
+        grandparents
+    let fn_ascripts =
+        map2
+            (\nty parent ->
+                nty == production_ascript
+                -- Accessing the parent is fine here as `ascript` should never be the root node.
+                && node_types[parent] == production_fn_decl)
+            node_types
+            parents
+    let valid =
+        -- Now, compute which decls are valid by scattering fn_protos to the grandparent.
+        let is =
+            fn_protos
+            |> map2 (\grandparent is_proto -> if is_proto then grandparent else -1) grandparents
+            |> map i64.i32
+        in scatter
+            (replicate n false)
+            is
+            (replicate n true)
+        -- These values must hold for all `fn_decl`s.
+        |> map2
+            (==)
+            (map (== production_fn_decl) node_types)
+        |> reduce (&&) true
+    -- Finally, compute the new parents simply by removing the scripts and protos
+    let parents =
+        map2 (||) fn_protos fn_ascripts
+        -- This should only be max 2 iterations each so use the linear version.
+        |> remove_nodes_lin parents
+    in (valid, parents)
+
+-- | It is useful for codegen and futher down the frontend part to tell an arg node from a param node, so this pass
+-- simply inserts those.
+let fix_param_lists [n] (node_types: [n]production.t) (parents: [n]i32): [n]production.t =
+    let grandparents = map (\parent -> if parent == -1 then -1 else parents[parent]) parents
+    let node_types =
+        map3
+            (\nty parent grandparent ->
+                -- We can access grandparent and parent node types here fine because `arg` and `arg_list` will never
+                -- be root nodes.
+                if nty == production_arg && node_types[grandparent] == production_fn_decl then production_param
+                else if nty == production_arg_list && node_types[parent] == production_fn_decl then production_param_list
+                else nty)
+            node_types
+            parents
+            grandparents
+    in node_types
+
+-- | Function parameters should be an `atom_name` with an `ascript`. This check is performed here.
+-- Just like in `fix_fn_decls`, we're going to look for a pattern and then scatter up.
+-- TODO: Maybe those two stages can be merged?
+let check_fn_params [n] (node_types: [n]production.t) (parents: [n]i32): bool =
+    let grandparents = map (\parent -> if parent == -1 then -1 else parents[parent]) parents
+    let is =
+        -- First, build a vector of parameter `atom_name`s
+        map3
+            (\nty parent grandparent ->
+                nty == production_atom_name
+                -- Accessing these parents should be fine.
+                && node_types[parent] == production_ascript
+                && node_types[grandparent] == production_param)
+            node_types
+            parents
+            grandparents
+        |> map2 (\grandparent is_param_name -> if is_param_name then grandparent else -1) grandparents
+        |> map i64.i32
+    -- Scatter to grandparent, the `param` node.
+    in scatter
+        (replicate n false)
+        is
+        (replicate n true)
     |> map2
         (==)
-        (map (== production_atom_fn_proto) node_types)
-    -- Above should hold for all nodes.
+        (map (== production_param) node_types)
+    -- Must hold for every node
     |> reduce (&&) true
 
--- | This function checks whether the left child of all `assign` nodes is either an `atom_decl` or an `atom_name`.
+-- | In this pass `atom_decl` nodes are combined with `ascript` nodes to form `atom_decl_explicit` nodes.
+-- | In this pass, `atom_decl_explicit` nodes are inserted. This is done in two occasions:
+-- - An `atom_decl` which is child of an `ascript`.
+-- - An `atom_name` which is child of an `ascript` which in turn is child of `param`.
+let squish_decl_ascripts [n] (node_types: [n]production.t) (parents: [n]i32): ([n]production.t, [n]i32) =
+    let grandparents = map (\parent -> if parent == -1 then -1 else parents[parent]) parents
+    -- We're simply going to check for these patterns from the children, and scatter their properties up to the
+    -- parents, and then removing the old nodes.
+    let to_replace =
+        map3
+            (\nty parent grandparent ->
+                -- Accessing the parent is fine for both of these, `atom_decl` and `ascript` will never be root nodes.
+                (nty == production_atom_decl
+                    && node_types[parent] == production_ascript)
+                || (nty == production_atom_name
+                    && node_types[parent] == production_ascript
+                    && node_types[grandparent] == production_param))
+            node_types
+            parents
+            grandparents
+    let is =
+        to_replace
+        |> map2 (\parent replace -> if replace then parent else -1) parents
+        |> map i64.i32
+    let is_explicit_decl = scatter (replicate n false) is (replicate n true)
+    -- Replace the ascripts with explicit declarations.
+    let node_types =
+        map2
+            (\nty explicit_decl -> if explicit_decl then production_atom_decl_explicit else nty)
+            node_types
+            is_explicit_decl
+    -- And finally, remove those old nodes we no longer need.
+    -- This should only be 1 iteration at most.
+    let parents = remove_nodes_lin parents to_replace
+    in (node_types, parents)
+
+
+-- | This function checks whether the left child of all `assign` nodes is either an `atom_decl`, `atom_decl_explicit`
+-- or an `atom_name`.
 -- Note: Performing this function after `remove_marker_nodes` makes `(a: int) = x` valid, but it saves a
 -- reduce_by_index and so is probably justified.
+-- TODO: Maybe chcek with `insert_derefs`?
+-- TODO: Also check whether declarations are _only_ LHS of assigns, and not free standing.
 let check_assignments [n] (node_types: [n]production.t) (parents: [n]i32) (prev_sibling: [n]i32): bool =
     prev_sibling
     -- First, build a mask of whether this node is the first child of its parent.
@@ -123,7 +215,7 @@ let check_assignments [n] (node_types: [n]production.t) (parents: [n]i32) (prev_
     -- If the parent is an assignment and the node is the left child of its parent, it should be an l-value producing node,
     -- either variable name or a variable declaration.
     |> map2
-        (\ty parent_is_assignment -> if parent_is_assignment then ty == production_atom_decl || ty == production_atom_name else true)
+        (\nty parent_is_assignment -> !parent_is_assignment || node_produces_reference nty)
         node_types
     -- Above should hold for all nodes.
     |> reduce (&&) true
@@ -140,24 +232,21 @@ let insert_derefs [n] (node_types: [n]production.t) (parents: [n]i32) (prev_sibl
     -- simply knowing the first child from the others is sufficient.
     let is_first_child = map (== -1) prev_sibling
     -- Create a mask whether the result of this node is an lvalue-expression.
-    let result_is_lvalue =
-        node_types
-        -- If functions returning lvalues was accepted, this would be the place to insert it.
-        |> map (\ty -> ty == production_atom_name || ty == production_atom_decl)
+    let result_is_lvalue = map node_produces_reference node_types
     -- Build a mask of which nodes need a new dereference parent inserted.
     -- A dereference needs to occur if this node produces an l-value, and it's parent expects an r-value.
     -- This always happens, except when the node is the left child of an assignment node, or when the parent
-    -- is a statement expression (in which case the result is discarded).
+    -- is a statement expression (in which case the result is discarded), or when the node is in a param list.
     let needs_deref =
         map2
             (\first_child parent ->
-                parent != -1
-                && !(node_types[parent] == production_assign && first_child)
-                && !(node_types[parent] == production_stat_expr)
-                -- TODO: Merge with check_fn_params?
-                && !(node_types[parent] == production_arg_list && node_types[parents[parent]] == production_atom_fn_proto))
+                parent == -1
+                || (node_types[parent] == production_assign && first_child)
+                || node_types[parent] == production_stat_expr
+                || node_types[parent] == production_param)
             is_first_child
             parents
+        |> map (!)
         |> map2 (&&) result_is_lvalue
     -- Count the number of dereference nodes to insert
     let m =

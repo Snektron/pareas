@@ -29,7 +29,9 @@ local let is_list_intermediate = mk_production_mask [
 
         production_prod_mul,
         production_prod_div,
-        production_prod_mod
+        production_prod_mod,
+
+        production_arg_list
     ]
 
 -- | Node types which are list ends.
@@ -41,7 +43,8 @@ local let is_list_end = mk_production_mask [
         production_bitwise_end,
         production_shift_end,
         production_sum_end,
-        production_prod_end
+        production_prod_end,
+        production_arg_list_end
     ]
 
 -- | Node types which are either list intermediates or ends

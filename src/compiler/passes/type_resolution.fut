@@ -4,11 +4,14 @@ import "../datatypes"
 import "../../../gen/pareas_grammar"
 
 -- | A mask for all nodes that should gain a result type, which in general are all expression nodes,
--- along with `stat_expr` and `stat_return`.
+-- along with `fn_decl`, `stat_expr` and `stat_return`.
 -- Note that list end and head nodes are already filtered out, as well as a few other nodes.
 local let is_expr_node = mk_production_mask [
+        -- Technically not an expression node, but is still useful if they gain a type.
+        production_fn_decl,
         production_stat_expr,
         production_stat_return,
+
         production_no_expr,
         production_assign,
         production_logical_or,
@@ -39,10 +42,11 @@ local let is_expr_node = mk_production_mask [
         production_atom_int,
         production_atom_float,
         production_atom_fn_call,
-        production_atom_fn_proto,
         production_atom_decl,
+        production_atom_decl_explicit,
         production_atom_unary_deref,
-        production_arg
+        production_arg,
+        production_param
     ]
 
 -- | Some nodes have a result type that is not determined by their children, which are
@@ -69,7 +73,7 @@ local let predetermined_result_types = mk_production_array data_type.invalid [
         (production_rela_gte, data_type.int),
         (production_rela_lt, data_type.int),
         (production_rela_lte, data_type.int),
-
+        -- For void return statements.
         (production_no_expr, data_type.void)
     ]
 
@@ -89,10 +93,6 @@ local let node_type_to_data_type (nt: production.t): data_type =
     else if nt == production_type_int then data_type.int
     else if nt == production_type_float then data_type.float
     else data_type.invalid
-
--- | A small helper function that checks if a node produces a reference type.
-local let node_produces_reference (nt: production.t): bool =
-    nt == production_atom_decl || nt == production_atom_name
 
 -- | This function resolves inherits by following linked-list pointer chains. This function is
 -- mostly the same as `find_roots`, except that it also checks whether a pointer passed a
@@ -115,14 +115,15 @@ local let resolve_inherits [n] (parents: [n]i32) (is_deref: [n]bool): ([n]i32, [
 -- | This pass resolves (but not checks!) a type for each expression-type node.
 let resolve_types [n] (node_types: [n]production.t) (parents: [n]i32) (prev_siblings: [n]i32) (resolution: [n]i32): [n]data_type =
     -- Initialize the type resolution vector with nodes which inherit their results from their 'type' children.
-    -- These include (function prototype) declarations and cast nodes.
+    -- These include (function) declarations and cast nodes.
     let data_types =
         -- Compute the data type according to the type and it's parent (which might add a reference).
         let vs =
             node_types
             -- Map these data types to their initial types
             |> map node_type_to_data_type
-            -- Add a reference for `atom_decl` and `atom_name` nodes.
+            -- Add a reference for `atom_decl_explicit` and `atom_name` nodes.
+            -- Note that `atom_decl` will simpy yield invalid.
             |> map2 (\parent dty ->
                 -- Adding a reference to an invalid type simply produces an invalid type, so this is fine.
                 if parent != -1 && node_produces_reference node_types[parent] then data_type.add_ref dty
@@ -137,8 +138,7 @@ let resolve_types [n] (node_types: [n]production.t) (parents: [n]i32) (prev_sibl
         -- And finally scatter these to the parents
         in scatter (replicate n data_type.invalid) is vs
     -- Now initialize the type resolution vector with data types obtained via the 'resolution' vector.
-    -- This includes argument (`arg` nodes) types, function return types, and `atom_name` types.
-    -- We can simply fetch decl and name nodes, but argument nodes lose their reference again.
+    -- Not this produces an `invalid` value for `arg` types, as they point to the `param` and not the decl.
     let data_types =
         map2
             -- This should be fine to do in-place as they are disjoint, but futhark will likely
@@ -146,7 +146,6 @@ let resolve_types [n] (node_types: [n]production.t) (parents: [n]i32) (prev_sibl
             (\dty res -> if res != -1 then data_types[res] else dty)
             data_types
             resolution
-        |> map2 (\nty dty -> if nty == production_arg then data_type.remove_ref dty else dty) node_types
     -- Also, initialize the type resolution vector with result types which gain their type from the node itself.
     let data_types =
         node_types
@@ -157,9 +156,11 @@ let resolve_types [n] (node_types: [n]production.t) (parents: [n]i32) (prev_sibl
     -- For most operators, we can pick either child, however, for some operators it is preferred to pick the latter child:
     -- - The first child of cast operators is the type.
     -- - The first child of an assignment operator is a reference type.
-    -- Furthermore, there is one node that modifies the type of its last child: `atom_unary_deref` (which are already
-    -- inserted at this point), so we'll need to keep track of whether an inherited type loses a pointer.
+    -- - The first child of an assignment node might need to be inferred if its an `atom_decl`.
+    -- Furthermore, there are two nodes that modifiy the type of its last child: `atom_unary_deref` (which are already
+    -- inserted at this point) and `arg`, so we'll need to keep track of whether an inherited type loses a pointer.
     -- We should be able to compute this vector using the logarithmic strategy though.
+    -- For arg, we're going to set the inherit order pointer to its resolved param node.
     let data_types =
         -- Build a list of nodes which end the inherit order.
         let ends =
@@ -184,10 +185,17 @@ let resolve_types [n] (node_types: [n]production.t) (parents: [n]i32) (prev_sibl
             |> invert
             -- We want to stop looking at nodes which are marked by the `ends` array, so just set their value to -1.
             |> map2 (\end next -> if end then -1 else next) ends
+            -- And for `arg` nodes, we want to follow the reference pointer instead.
+            |> map3
+                (\nty res next -> if nty == production_arg then res else next)
+                node_types
+                resolution
+        -- Dereference operators and arg nodes produce a dereferenced version of their arguments.
+        let derefs = map (\nty -> nty == production_atom_unary_deref || nty == production_arg) node_types
         let (inherit, loses_reference) =
             resolve_inherits
                 inherit_order
-                (map (== production_atom_unary_deref) node_types)
+                derefs
         -- Finally, fetch and compute the final type.
         in
             inherit
@@ -197,11 +205,26 @@ let resolve_types [n] (node_types: [n]production.t) (parents: [n]i32) (prev_sibl
             |> map2 (\remove_ref dty -> if remove_ref then data_type.remove_ref dty else dty) loses_reference
             -- And finally, merge it with the existing data type array. These should all be mutually exclusive valid.
             |> map2 (\old new -> if new != data_type.invalid then new else old) data_types
+    -- And finally, we still have one one type of node which doesn't have a type by now: inferenced declarations (atom_decl).
+    -- Because we picked the last child when computing the initial type, the type resolution still works. Now that all other
+    -- nodes are checked though, we can simply fetch the type from the parent (and add a reference).
+    -- Note: The parent of an `atom_decl` is not necessarily `assign`!
+    -- TODO: Add a check for that?
+    let data_types =
+        map3
+            (\nty parent dty ->
+                -- Accessing parent should be fine, `atom_decl` is never the root node.
+                if nty == production_atom_decl && node_types[parent] == production_assign then
+                    data_type.add_ref data_types[parent]
+                else dty)
+            node_types
+            parents
+            data_types
     in data_types
 
 -- | `resolve_types` computes a result type for every expression node, but doesn't actually verify whether this is
 -- consistent with the entire tree. This function performs that check.
-let check_types [n] (node_types: [n]production.t) (parents: [n]i32) (prev_siblings: [n]i32) (data_types: [n]data_type): bool =
+let check_types [n] (node_types: [n]production.t) (parents: [n]i32) (prev_siblings: [n]i32) (data_types: [n]data_type) =
     -- In general, data types need to be equal to their parent's type. There are a few exceptions, however, and they fall into
     -- a few different categories:
     -- - Non-expression nodes obviously don't need to be checked, and can be skipped. In principle though, the result
@@ -211,7 +234,7 @@ let check_types [n] (node_types: [n]production.t) (parents: [n]i32) (prev_siblin
     --   - If the parent is `stat_return`, the result may be any type that is valid and not a reference.
     --   - If the parent is `stat_expr`, the result may be any valid type.
     -- - No operator accepts `void`, but there are still a few nodes which are allowed to have this value:
-    --   `atom_fn_proto`, `atom_stat_expr`, `atom_stat_return`, `atom_fn_call` and `no_expr`.
+    --   `fn_decl`, `atom_stat_expr`, `atom_stat_return`, `atom_fn_call` and `no_expr`.
     --   This and the latter falls under the category 'nodes which type should be equal to their parent's'
     -- - The children of relational operators may be floats and ints (data_type.is_comparable`), but they don't need
     --   to be equal to their parents.
@@ -253,11 +276,12 @@ let check_types [n] (node_types: [n]production.t) (parents: [n]i32) (prev_siblin
         -- When the child of another node type is one of these and the result is void, it should be caught by those, probably.
         else if dty == data_type.void then
             nty == production_atom_fn_call || nty == production_stat_expr || nty == production_stat_return
-            || nty == production_atom_fn_proto || nty == production_no_expr
-        -- Filter out nodes who'se parents are not expressions. These are things like `atom_fn_proto`, children of `arg_list`s and
+            || nty == production_fn_decl || nty == production_no_expr
+        -- Filter out nodes who's parents are not expressions. These are things like `fn_decl`, children of `arg_list`s and
         -- children of statement lists.
         -- Just check them explicitly for extra care.
-        else if nty == production_atom_fn_proto || parent_nty == production_arg_list || nty == production_stat_expr || nty == production_stat_return then
+        else if nty == production_fn_decl || parent_nty == production_arg_list || parent_nty == production_param_list
+                || nty == production_stat_expr || nty == production_stat_return then
             true
         -- Finally, account for the remaining (arithmetic) nodes.
         -- Note that while the other remaining nodes, like `arg`, are not really arithmetic, they should still pass
@@ -291,24 +315,13 @@ let check_return_types [n] (node_types: [n]production.t) (parents: [n]i32) (data
         |> map (== production_fn_decl)
         |> map2 (\parent is_fn_decl -> if is_fn_decl then -1 else parent) parents
         |> find_roots
-    -- Scatter the expected type up to the decl.
-    let decl_return_type =
-        let is =
-            node_types
-            |> map (== production_atom_fn_proto)
-            |> map2 (\parent is_fn_proto -> if is_fn_proto then parent else -1) parents
-            |> map i64.i32
-        in scatter
-            (replicate n data_type.invalid)
-            is
-            data_types
-    -- Finally, simply check if they are equal for every return statement.
+    -- Finally, simply check if the data types are equal for every return statement.
     in
         node_types
         |> map (== production_stat_return)
         |> map3
             (\dty fn_decl is_return ->
-                if is_return then fn_decl != -1 && decl_return_type[fn_decl] == dty else true)
+                if is_return then fn_decl != -1 && data_types[fn_decl] == dty else true)
             data_types
             node_to_decl
         |> reduce (&&) true

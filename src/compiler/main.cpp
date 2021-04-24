@@ -23,15 +23,16 @@ enum class Status : uint8_t {
     OK = 0,
     PARSE_ERROR = 1,
     STRAY_ELSE_ERROR = 2,
-    INVALID_PARAMS = 3,
-    INVALID_ASSIGN = 4,
-    INVALID_FN_PROTO = 5,
-    DUPLICATE_FN_OR_INVALID_CALL = 6,
-    INVALID_VARIABLE = 7,
-    INVALID_ARG_COUNT = 8,
-    TYPE_ERROR = 9,
-    INVALID_RETURN = 10,
-    MISSING_RETURN = 11,
+    INVALID_DECL = 3,
+    INVALID_PARAMS = 4,
+    INVALID_ASSIGN = 5,
+    INVALID_FN_PROTO = 6,
+    DUPLICATE_FN_OR_INVALID_CALL = 7,
+    INVALID_VARIABLE = 8,
+    INVALID_ARG_COUNT = 9,
+    TYPE_ERROR = 10,
+    INVALID_RETURN = 11,
+    MISSING_RETURN = 12,
 };
 
 const char* status_name(Status s) {
@@ -39,9 +40,10 @@ const char* status_name(Status s) {
         case Status::OK: return "ok";
         case Status::PARSE_ERROR: return "parse error";
         case Status::STRAY_ELSE_ERROR: return "stray else/elif";
-        case Status::INVALID_PARAMS: return "Invalid function proto type parameter list";
+        case Status::INVALID_DECL: return "Declaration cannot be both function and variable";
+        case Status::INVALID_PARAMS: return "Invalid function parameter list";
         case Status::INVALID_ASSIGN: return "Invalid assignment lvalue";
-        case Status::INVALID_FN_PROTO: return "Stray or invalid function proto type";
+        case Status::INVALID_FN_PROTO: return "Invalid function prototype";
         case Status::DUPLICATE_FN_OR_INVALID_CALL: return "Duplicate function declaration or call to undefined function";
         case Status::INVALID_VARIABLE: return "Undeclared variable";
         case Status::INVALID_ARG_COUNT: return "Invalid amount of arguments for function call";
@@ -313,12 +315,14 @@ void dump_parse_tree(size_t n, const grammar::Production* node_types, const int3
 
         if (parent != i) {
             fmt::print("node{} [label=\"{} {}", i, name, i);
+            // fmt::print(" ({})", data[i]);
 
             switch (prod) {
-                case grammar::Production::ATOM_FN_PROTO:
-                case grammar::Production::ATOM_DECL:
                 case grammar::Production::ATOM_NAME:
                 case grammar::Production::ATOM_FN_CALL:
+                case grammar::Production::ATOM_DECL:
+                case grammar::Production::ATOM_DECL_EXPLICIT:
+                case grammar::Production::FN_DECL:
                     fmt::print(" (name={})", data[i]);
                     break;
                 case grammar::Production::ATOM_INT:

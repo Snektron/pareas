@@ -31,13 +31,18 @@ stat_list [stat_list_end] -> ;
 ## Expressions
 # By making the LHS of this production the same as that of `expr`, we can ignore it further,
 # and simply handle no_expr when type checking.
-maybe_expr [expr_] -> logical_or_list assign;
+maybe_expr [expr_] -> ascript assign;
 maybe_expr [no_expr] -> ;
 
-expr -> logical_or_list assign;
+expr -> ascript assign;
 
-assign -> 'eq' logical_or_list assign;
+assign -> 'eq' ascript assign;
 assign [assign_end] -> ;
+
+ascript -> logical_or_list maybe_ascription;
+
+maybe_ascription [ascription] -> 'colon' type;
+maybe_ascription [no_ascription] -> ;
 
 logical_or_list -> logical_and_list logical_or;
 
@@ -91,21 +96,21 @@ atom [atom_unary_bitflip] -> 'tilde' atom;
 atom [atom_unary_not] -> 'exclaim' atom;
 atom [atom_cast] -> type 'lparen' expr 'rparen';
 atom [atom_paren] -> 'lparen' expr 'rparen';
-atom [atom_name] -> 'name' maybe_app maybe_bind;
+atom [atom_decl] -> 'var' 'name' maybe_app;
+atom [atom_name] -> 'name' maybe_app;
 atom [atom_int] -> 'int_literal';
 atom [atom_float] -> 'float_literal';
 
 # Some extra nodes useful during the frontend part of the compilation.
 atom_fn_call -> ; # Replaces atom_name if it has an application.
-atom_fn_proto -> ; # Replaces atom_fn_call if it has a bind.
-atom_decl -> ; # Replaces atom_name if it has a bind (but no call).
 atom_unary_deref -> ; # Inserted when an l-value needs to be dereferenced.
+atom_decl_explicit -> ; # Replaces an ascript with a decl.
+
+maybe_decl [decl] -> 'var';
+maybe_decl [no_decl] -> ;
 
 maybe_app [app] -> 'lbracket' args 'rbracket';
 maybe_app [no_app] -> ;
-
-maybe_bind [bind] -> 'colon' type;
-maybe_bind [no_bind] -> ;
 
 args -> arg arg_list;
 args [no_args] -> ;
@@ -113,4 +118,8 @@ args [no_args] -> ;
 arg_list -> 'comma' arg arg_list;
 arg_list [arg_list_end] -> ;
 
-arg -> expr; # Required for code generation.
+# Required for code generation.
+arg -> expr;
+
+param -> ; # Inserted in place of arg for function declarations.
+param_list -> ; # Inserted in place of arg_list for function declarations.

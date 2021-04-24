@@ -26,9 +26,6 @@ module data_type = {
 
     let is_castable (from: t) (to: t): bool =
         (from == int || from == float) && (to == int || to == float)
-
-    let is_arithmetic (dty: t): bool =
-        dty == int || dty == float
 }
 
 type data_type = data_type.t

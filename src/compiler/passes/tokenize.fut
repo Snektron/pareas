@@ -115,8 +115,9 @@ let build_data_vector [n] (node_types: [n]production.t) (input: []u8) (tokens: [
     let has_name ty =
         ty == production_atom_name
         || ty == production_atom_fn_call
-        || ty == production_atom_fn_proto
         || ty == production_atom_decl
+        || ty == production_atom_decl_explicit
+        || ty == production_fn_decl
     let pairwise op (a1, b1, c1) (a2, b2, c2) = (op a1 a2, op b1 b2, op c1 c2)
     -- Partition tokens into interesting types.
     let (int_tokens, float_tokens, name_tokens, _) =

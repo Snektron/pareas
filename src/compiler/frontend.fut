@@ -11,10 +11,10 @@ import "datatypes"
 import "passes/tokenize"
 import "passes/fix_bin_ops"
 import "passes/fix_if_else"
-import "passes/fns_and_assigns"
-import "passes/flatten_lists"
-import "passes/remove_marker_nodes"
 import "passes/compactify"
+import "passes/flatten_lists"
+import "passes/fns_and_assigns"
+import "passes/remove_marker_nodes"
 import "passes/reorder"
 import "passes/symbol_resolution"
 import "passes/type_resolution"
@@ -46,15 +46,16 @@ type status_code = u8
 let status_ok: status_code = 0
 let status_parse_error: status_code = 1
 let status_stray_else_error: status_code = 2
-let status_invalid_params: status_code = 3
-let status_invalid_assign: status_code = 4
-let status_invalid_fn_proto: status_code = 5
-let status_duplicate_fn_or_invalid_call: status_code = 6
-let status_invalid_variable: status_code = 7
-let status_invalid_arg_count: status_code = 8
-let status_type_error: status_code = 9
-let status_invalid_return: status_code = 10
-let status_missing_return: status_code = 11
+let status_invalid_decl: status_code = 3
+let status_invalid_params: status_code = 4
+let status_invalid_assign: status_code = 5
+let status_invalid_fn_proto: status_code = 6
+let status_duplicate_fn_or_invalid_call: status_code = 7
+let status_invalid_variable: status_code = 8
+let status_invalid_arg_count: status_code = 9
+let status_type_error: status_code = 10
+let status_invalid_return: status_code = 11
+let status_missing_return: status_code = 12
 
 entry main
     (input: []u8)
@@ -79,11 +80,19 @@ entry main
     let (valid, node_types, parents) = fix_if_else node_types parents
     in if !valid then mk_error status_stray_else_error
     else
-    let (node_types, parents) = fix_fn_args node_types parents
-    let (node_types, parents) = squish_binds node_types parents
     let (node_types, parents) = flatten_lists node_types parents
-    let parents = remove_param_arg_wrapper node_types parents
-    in if !(check_fn_params node_types parents) then mk_error status_invalid_params
+    let (valid, node_types, parents) = fix_names node_types parents
+    in if !valid then mk_error status_invalid_decl
+    else
+    let parents = fix_ascriptions node_types parents
+    let (valid, parents) = fix_fn_decls node_types parents
+    in if !valid then mk_error status_invalid_fn_proto
+    else
+    let node_types = fix_param_lists node_types parents
+    let valid = check_fn_params node_types parents
+    -- only check for validity after squish so that futhark can better merge these passes.
+    let (node_types, parents) = squish_decl_ascripts node_types parents
+    in if !valid then mk_error status_invalid_params
     else
     let parents = remove_marker_nodes node_types parents
     let (parents, old_index) = compactify parents |> unzip
@@ -91,19 +100,18 @@ entry main
     let depths = compute_depths parents
     let prev_siblings = build_sibling_vector parents depths
     let (node_types, parents, prev_siblings) = insert_derefs node_types parents prev_siblings |> unzip3
-    -- Note: depths invalid from here.
-    in if !(check_fn_decls node_types parents prev_siblings) then mk_error status_invalid_fn_proto
-    else if !(check_assignments node_types parents prev_siblings) then mk_error status_invalid_assign
+    --  -- Note: depths invalid from here.
+    in if !(check_assignments node_types parents prev_siblings) then mk_error status_invalid_assign
     else
-    -- ints/floats/names order should be unchanged, relatively, so this is fine.
+    --  -- ints/floats/names order should be unchanged, relatively, so this is fine.
     let data = build_data_vector node_types input tokens
     let right_leafs = build_right_leaf_vector parents prev_siblings
     let (valid, resolution) = resolve_vars node_types parents prev_siblings right_leafs data
     in if !valid then mk_error status_invalid_variable
     else
-    let (valid, var_resolution) = resolve_fns node_types data
+    let (valid, fn_resolution) = resolve_fns node_types data
     -- This works because declarations and function calls are disjoint.
-    let resolution = merge_resolutions resolution var_resolution
+    let resolution = merge_resolutions resolution fn_resolution
     in if !valid then mk_error status_duplicate_fn_or_invalid_call
     else
     let (valid, arg_resolution) = resolve_args node_types parents prev_siblings resolution

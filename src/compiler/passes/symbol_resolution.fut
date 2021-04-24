@@ -19,7 +19,7 @@ let merge_resolutions [n] (a: [n]i32) (b: [n]i32) =
 -- array is returned.
 let resolve_fns [n] (node_types: [n]production.t) (data: [n]u32): (bool, [n]i32) =
     -- The program is only valid if all functions are unique, and so we must check whether all
-    -- elements in the data array corresponding with atom_fn_proto are unique. There are multiple
+    -- elements in the data array corresponding with fn_decl are unique. There are multiple
     -- ways to do this:
     -- - Extract all function name IDs (the value in data) and then perform a radix sort and checking
     --   adjacent values for uniqueness.
@@ -29,15 +29,13 @@ let resolve_fns [n] (node_types: [n]production.t) (data: [n]u32): (bool, [n]i32)
     --   general case).
     --   Furthermore, this same technique can be used to finally link the function calls to the function definitions,
     --   and as any filtering on function nodes requires us to make this array anyway, it seems justified.
-    -- TODO: Maybe merge fn_id_by_name and the computation of all_unique?
-    -- TODO: Maybe merge `fn_decl` and `atom_fn_proto` in some stage before this?
-    let is_fn_proto = map (== production_atom_fn_proto) node_types
+    let is_fn_decl = map (== production_fn_decl) node_types
     let is_fn_call = map (== production_atom_fn_call) node_types
     -- Build an index vector which scatters a node to a location corresponding to its name ID.
     let is =
         data
         |> map i32.u32
-        |> map2 (\is_fn_proto name_id -> if is_fn_proto then name_id else -1) is_fn_proto
+        |> map2 (\is_fn_decl name_id -> if is_fn_decl then name_id else -1) is_fn_decl
     -- To check if they're all unique, just count the occurances.
     let all_unique =
         reduce_by_index
@@ -56,12 +54,12 @@ let resolve_fns [n] (node_types: [n]production.t) (data: [n]u32): (bool, [n]i32)
             (replicate n 1i32)
         |> all (<= 1)
     -- Build a vector which, for each name, points to the function that declares it.
-    let fn_proto_by_name = invert is
+    let fn_decl_by_name = invert is
     -- Now do the actual resolution by, for each `fn_call` node, simply looking in the fn_decl_by_name array.
     let resolution =
         data
         |> map i32.u32
-        |> map2 (\is_call name_id -> if is_call then copy fn_proto_by_name[name_id] else -1) is_fn_call
+        |> map2 (\is_call name_id -> if is_call then copy fn_decl_by_name[name_id] else -1) is_fn_call
     -- These must all yield something other than -1.
     let calls_valid =
         resolution
@@ -130,7 +128,7 @@ let resolve_vars [n] (node_types: [n]production.t) (parents: [n]i32) (prev_sibli
         -- This nicely reduces the number of iterations we need to do in the next step.
         |> flip
             find_unmarked_parents_log
-            (map (!= production_atom_decl) node_types)
+            (map (\nty -> nty != production_atom_decl && nty != production_atom_decl_explicit) node_types)
     -- Helper function to find the declaration for a particular variable name, starting at `start`.
     -- Returns the node index of the declaration, or -1 if there was none that matched the name id.
     let find_decl start name_id =
@@ -155,35 +153,36 @@ let resolve_vars [n] (node_types: [n]production.t) (parents: [n]i32) (prev_sibli
     in (valid, resolution)
 
 -- | This function resolves the arguments of a function call with its parameters, and checks whether the numbers
--- of arguments match up. The resolution vector contains, for every `arg_list` child which in turn is a child of
--- an `atom_fn_call`, a pointer to the corresponding `atom_decl` of the called function.
+-- of arguments match up. The resolution vector contains, for every `arg` a pointer to the corresponding `param`
+-- of the called function.
 -- In this function, we assume that `fn_resolution` is valid, but may also contain the variable resolution.
 let resolve_args [n] (node_types: [n]production.t) (parents: [n]i32) (prev_siblings: [n]i32) (fn_resolution: [n]i32): (bool, [n]i32) =
-    -- It's nicer to start matching up from the start.
+    -- It's nicer to start matching up from the start instead of the end
     let next_siblings = invert prev_siblings
     -- Create the initial 'friends' vector: The first argument of each function call should point to the first parameter
     -- of the called function.
     let grandparents = map (\parent -> if parent == -1 then -1 else parents[parent]) parents
     -- Some useful masks
-    let grandparent_is_proto = map (\gp -> gp != -1 && node_types[gp] == production_atom_fn_proto) grandparents
-    let grandparent_is_call = map (\gp -> gp != -1 && node_types[gp] == production_atom_fn_call) grandparents
+--      let grandparent_is_proto = map (\gp -> gp != -1 && node_types[gp] == production_atom_fn_proto) grandparents
+--      let grandparent_is_call = map (\gp -> gp != -1 && node_types[gp] == production_atom_fn_call) grandparents
     let is_first_child = map (== -1) prev_siblings
     let is_last_child = map (== -1) next_siblings
     -- Scatter up that first parameter.
     -- Also scatter up the first argument, this will be useful later.
     let first_param_or_arg =
         -- Build a mapping from first parameter to grand parent.
-        grandparent_is_proto
-        |> map2 (||) grandparent_is_call
+        node_types
+        |> map (\nty -> nty == production_arg || nty == production_param)
         |> map2 (&&) is_first_child
         |> map2
             (\grandparent is_first_param -> if is_first_param then grandparent else -1)
             grandparents
         -- And invert it.
         |> invert
-    -- Now fetch that first parameter from the resolved function prototype.
+    -- Now fetch that first parameter from the resolved function declaration.
     let first_arg_first_param =
-        grandparent_is_call
+        node_types
+        |> map (== production_arg)
         |> map2 (&&) is_first_child
         |> map2
             (\grandparent is_first_arg -> if is_first_arg then first_param_or_arg[fn_resolution[grandparent]] else -1)
@@ -196,9 +195,10 @@ let resolve_args [n] (node_types: [n]production.t) (parents: [n]i32) (prev_sibli
     -- - If there are too few arguments in the call, the next sibling of the resolved declaration won't be -1.
     -- There is one special case to consider, which is when the call has no arguments at all (the proto having
     -- no calls works out fine, since the last argument's resolved declaration will simply be -1).
-    -- TODO: This can also be done with compute_depths, but this is O(1) vs O(log n), but still experiment with that.
+    -- TODO: This can also be done with compute_depths, but this is O(1) vs O(log n), but still maybe experiment with that.
     let args_valid =
-        grandparent_is_call
+        node_types
+        |> map (== production_arg)
         |> map2 (&&) is_last_child
         |> map2
             (\resolved_decl last_arg -> if last_arg then resolved_decl != -1 && next_siblings[resolved_decl] == -1 else true)

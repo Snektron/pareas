@@ -158,3 +158,7 @@ let mk_production_array [n] 't (default: t) (items: [n](production.t, t)): [num_
         (replicate num_productions default)
         (keys |> map i64.u8)
         values
+
+-- | A small helper function that checks if a node produces a reference type.
+let node_produces_reference (nty: production.t): bool =
+    nty == production_atom_decl || nty == production_atom_decl_explicit || nty == production_atom_name
