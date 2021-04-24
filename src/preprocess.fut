@@ -60,12 +60,37 @@ let replace_float_compare_types [n] (tree: Tree[n]) =
 --Calling convention
 -- If float and number of float args < 8 -> float
 -- If int and number of int args + max(float_args - 8, 0) < 8 -> int
+-- If float and number of int args + float_args - 8 < 8 -> int
 -- Else stack
+
+let calling_convention_node_replace_sub (n: Node) (def: NodeType) (fltint: NodeType) (stack: NodeType) =
+    if n.resulting_type == #float then
+        if n.node_data < 8 then
+            n
+        else
+            let num_float_args = n.node_data
+            let num_int_args = n.child_idx - num_float_args
+            let reg_offset = num_int_args + num_float_args - 8
+            in
+            if reg_offset < 8 then
+                copy_node_with_nodetype n fltint reg_offset
+            else
+                copy_node_with_nodetype n stack (reg_offset - 8)
+    else --Int
+        let num_int_args = n.node_data
+        let num_float_args = n.child_idx - num_int_args
+        let reg_offset = num_int_args + if num_float_args < 8 then 0 else num_float_args - 8
+        in
+        if reg_offset < 8 then
+            copy_node_with_nodetype n def reg_offset
+        else
+            copy_node_with_nodetype n stack (reg_offset - 8)
+
 let calling_convention_node_replace (n: Node) =
     if n.node_type == #func_call_arg then
-        n -- TODO calling convention
+        calling_convention_node_replace_sub n #func_call_arg #func_call_arg_float_in_int #func_call_arg_stack
     else if n.node_type == #func_arg then
-        n -- TODO calling convention
+        calling_convention_node_replace_sub n #func_arg #func_arg_float_in_int #func_arg_stack
     else
         n
 
