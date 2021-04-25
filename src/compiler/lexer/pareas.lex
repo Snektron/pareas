@@ -5,6 +5,7 @@ else = /else/
 elif = /elif/
 while = /while/
 return = /return/
+var = /var/
 
 ## Type keywords
 float = /float/

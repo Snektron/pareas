@@ -60,21 +60,12 @@ let check_return_paths [n] (node_types: [n]production.t) (parents: [n]i32) (prev
         |> map (== -1)
         |> map2 (\parent first_child -> if first_child then parent else -1) parents
         |> invert
-    -- We will also need to know whether a function returns void, and we will need to know this from the fn_decl node,
-    -- so scatter up the void-ness.
-    -- TODO: Should probably just compute this type before, as it's also used for `check_return_types`@term@"type_resolution".
+    -- We will also need to know whether a function returns void.
     let is_void_fn_decl =
-        let is =
-            map2
-                (\nty dty -> nty == production_atom_fn_proto && dty == data_type.void)
-                node_types
-                data_types
-            |> map2 (\parent void_fn_decl -> if void_fn_decl then parent else -1) parents
-            |> map i64.i32
-        in scatter
-            (replicate n false)
-            is
-            (replicate n true)
+        map2
+            (\nty dty -> nty == production_fn_decl && dty == data_type.void)
+            node_types
+            data_types
     -- Build the boolean expression tree.
     -- First, produce the initial value and operator.
     in map3
