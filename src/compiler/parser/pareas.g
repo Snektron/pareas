@@ -106,9 +106,6 @@ atom_fn_call -> ; # Replaces atom_name if it has an application.
 atom_unary_deref -> ; # Inserted when an l-value needs to be dereferenced.
 atom_decl_explicit -> ; # Replaces an ascript with a decl.
 
-maybe_decl [decl] -> 'var';
-maybe_decl [no_decl] -> ;
-
 maybe_app [app] -> 'lbracket' args 'rbracket';
 maybe_app [no_app] -> ;
 

@@ -19,6 +19,7 @@ import "passes/reorder"
 import "passes/symbol_resolution"
 import "passes/type_resolution"
 import "passes/check_return_paths"
+import "passes/ids"
 import "passes/util"
 
 type~ lex_table [n] = lexer.lex_table [n] token.t
@@ -128,6 +129,7 @@ entry main
     let paths_valid = check_return_paths node_types parents prev_siblings data_types
     in if !paths_valid then mk_error status_missing_return
     else
+    let data = assign_ids node_types resolution data_types data
     let left_leafs = build_left_leaf_vector parents prev_siblings
     let (parents, old_index) = build_postorder_ordering parents prev_siblings left_leafs
     -- Note: prev_siblings, right_leafs and left_leafs invalid from here.

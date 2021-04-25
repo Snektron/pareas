@@ -87,6 +87,7 @@ grammar_asm = grammar[3]
 
 futhark_sources = [
     'lib/github.com/diku-dk/sorts/radix_sort.fut',
+    'lib/github.com/diku-dk/segmented/segmented.fut',
     'src/compiler/string.fut',
     'src/compiler/util.fut',
     'src/compiler/datatypes.fut',
@@ -107,6 +108,7 @@ futhark_sources = [
     'src/compiler/passes/symbol_resolution.fut',
     'src/compiler/passes/type_resolution.fut',
     'src/compiler/passes/check_return_paths.fut',
+    'src/compiler/passes/ids.fut',
 ]
 
 futhark_compile_command = [

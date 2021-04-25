@@ -318,11 +318,17 @@ void dump_parse_tree(size_t n, const grammar::Production* node_types, const int3
 
             switch (prod) {
                 case grammar::Production::ATOM_NAME:
-                case grammar::Production::ATOM_FN_CALL:
                 case grammar::Production::ATOM_DECL:
                 case grammar::Production::ATOM_DECL_EXPLICIT:
+                    fmt::print(" (offset={})", data[i]);
+                    break;
                 case grammar::Production::FN_DECL:
-                    fmt::print(" (name={})", data[i]);
+                case grammar::Production::ATOM_FN_CALL:
+                    fmt::print(" (fn id={})", data[i]);
+                    break;
+                case grammar::Production::PARAM:
+                case grammar::Production::ARG:
+                    fmt::print(" (arg id={})", data[i]);
                     break;
                 case grammar::Production::ATOM_INT:
                     fmt::print(" (value={})", data[i]);
