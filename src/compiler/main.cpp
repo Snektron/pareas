@@ -226,86 +226,74 @@ void report_futhark_error(futhark::Context& ctx, std::string_view msg) {
     fmt::print(std::cerr, "Error: {}:\n{}", msg, err ? err.get() : "(no diagnostic)");
 }
 
-futhark_opaque_lex_table* upload_lex_table(futhark::Context& ctx) {
-    auto* initial_state = futhark_new_u16_1d(
-        ctx.get(),
+futhark::UniqueLexTable upload_lex_table(futhark::Context& ctx) {
+    auto initial_state = futhark::UniqueArray<uint16_t, 1>(
+        ctx,
         reinterpret_cast<const grammar::LexTable::State*>(grammar::lex_table.initial_states),
         grammar::LexTable::NUM_INITIAL_STATES
     );
 
-    auto* merge_table = futhark_new_u16_2d(
-        ctx.get(),
+    auto merge_table = futhark::UniqueArray<uint16_t, 2>(
+        ctx,
         reinterpret_cast<const grammar::LexTable::State*>(grammar::lex_table.merge_table),
         grammar::lex_table.n,
         grammar::lex_table.n
     );
 
-    auto* final_state = futhark_new_u8_1d(
-        ctx.get(),
+    auto final_state = futhark::UniqueArray<uint8_t, 1>(
+        ctx,
         reinterpret_cast<const std::underlying_type_t<grammar::Token>*>(grammar::lex_table.final_states),
         grammar::lex_table.n
     );
 
-    futhark_opaque_lex_table* lex_table = nullptr;
+    auto lex_table = futhark::UniqueLexTable(ctx);
 
-    if (initial_state && merge_table && final_state) {
-        int err = futhark_entry_mk_lex_table(
-            ctx.get(),
-            &lex_table,
-            initial_state,
-            merge_table,
-            final_state
-        );
-        if (err)
-            report_futhark_error(ctx, "Failed to upload lex table");
-    }
+    int err = futhark_entry_mk_lex_table(
+        ctx.get(),
+        &lex_table,
+        initial_state.get(),
+        merge_table.get(),
+        final_state.get()
+    );
 
-    if (initial_state)
-        futhark_free_u16_1d(ctx.get(), initial_state);
-
-    if (merge_table)
-        futhark_free_u16_2d(ctx.get(), merge_table);
-
-    if (final_state)
-        futhark_free_u8_1d(ctx.get(), final_state);
+    if (err)
+        throw futhark::Error(ctx);
 
     return lex_table;
 }
 
 template <typename T, typename U, typename F>
-T* upload_strtab(futhark::Context& ctx, const grammar::StrTab<U>& strtab, F upload_fn) {
+T upload_strtab(futhark::Context& ctx, const grammar::StrTab<U>& strtab, F upload_fn) {
     static_assert(sizeof(U) == sizeof(uint8_t));
 
-    auto* table = futhark_new_u8_1d(
-        ctx.get(),
+    auto table = futhark::UniqueArray<uint8_t, 1>(
+        ctx,
         reinterpret_cast<const uint8_t*>(strtab.table),
         strtab.n
     );
 
-    auto* offsets = futhark_new_i32_2d(ctx.get(), strtab.offsets, grammar::NUM_TOKENS, grammar::NUM_TOKENS);
-    auto* lengths = futhark_new_i32_2d(ctx.get(), strtab.lengths, grammar::NUM_TOKENS, grammar::NUM_TOKENS);
+    auto offsets = futhark::UniqueArray<int32_t, 2>(ctx, strtab.offsets, grammar::NUM_TOKENS, grammar::NUM_TOKENS);
+    auto lengths = futhark::UniqueArray<int32_t, 2>(ctx, strtab.lengths, grammar::NUM_TOKENS, grammar::NUM_TOKENS);
 
-    T* tab = nullptr;
+    auto tab = T(ctx);
 
-    if (table && offsets && lengths) {
-        int err = upload_fn(ctx.get(), &tab, table, offsets, lengths);
-        if (err)
-            report_futhark_error(ctx, "Failed to upload string table");
-    }
-
-    if (table)
-        futhark_free_u8_1d(ctx.get(), table);
-
-    if (offsets)
-        futhark_free_i32_2d(ctx.get(), offsets);
-
-    if (lengths)
-        futhark_free_i32_2d(ctx.get(), lengths);
+    int err = upload_fn(ctx.get(), &tab, table.get(), offsets.get(), lengths.get());
+    if (err != 0)
+        throw futhark::Error(ctx);
 
     return tab;
 }
 
-void dump_parse_tree(size_t n, const grammar::Production* node_types, const int32_t* parents, const uint32_t* data, const DataType* data_types) {
+void render_tree(
+    size_t n,
+    const grammar::Production* node_types,
+    const int32_t* parents,
+    const uint32_t* data,
+    const DataType* data_types,
+    const int32_t* depths,
+    const int32_t* child_indexes,
+    const int32_t* fn_tab
+) {
     fmt::print("digraph prog {{\n");
 
     for (size_t i = 0; i < n; ++i) {
@@ -314,7 +302,7 @@ void dump_parse_tree(size_t n, const grammar::Production* node_types, const int3
         auto* name = grammar::production_name(prod);
 
         if (parent != i) {
-            fmt::print("node{} [label=\"{} {}", i, name, i);
+            fmt::print("node{} [label=\"{}\nindex={}\ndepth={}\nchild index={}", i, name, i, depths[i], child_indexes[i]);
 
             switch (prod) {
                 case grammar::Production::ATOM_NAME:
@@ -323,6 +311,7 @@ void dump_parse_tree(size_t n, const grammar::Production* node_types, const int3
                     fmt::print("\\n(offset={})", data[i]);
                     break;
                 case grammar::Production::FN_DECL:
+                    fmt::print("\\n(num locals={})", fn_tab[data[i]]);
                 case grammar::Production::ATOM_FN_CALL:
                     fmt::print("\\n(fn id={})", data[i]);
                     break;
@@ -356,49 +345,39 @@ void dump_parse_tree(size_t n, const grammar::Production* node_types, const int3
     fmt::print("}}\n");
 }
 
-void download_and_parse_tree(futhark::Context& ctx, futhark_u8_1d* node_types, futhark_i32_1d* parents, futhark_u32_1d* data, futhark_u8_1d* data_types) {
-    int64_t n = futhark_shape_u8_1d(ctx.get(), node_types)[0];
-    assert(n == futhark_shape_i32_1d(ctx.get(), parents)[0]);
+void download_and_render_tree(
+    futhark::Context& ctx,
+    futhark::UniqueArray<uint8_t, 1>& node_types,
+    futhark::UniqueArray<int32_t, 1>& parents,
+    futhark::UniqueArray<uint32_t, 1>& data,
+    futhark::UniqueArray<uint8_t, 1>& data_types,
+    futhark::UniqueArray<int32_t, 1>& depths,
+    futhark::UniqueArray<int32_t, 1>& child_indexes,
+    futhark::UniqueArray<int32_t, 1>& fn_tab
+) {
+    int64_t n = node_types.shape()[0];
 
-    auto host_node_types = std::make_unique<grammar::Production[]>(n);
-    auto host_parents = std::make_unique<int32_t[]>(n);
-    auto host_data = std::make_unique<uint32_t[]>(n);
-    auto host_data_types = std::make_unique<DataType[]>(n);
-
-    int err = futhark_values_u8_1d(
-        ctx.get(),
-        node_types,
-        reinterpret_cast<std::underlying_type_t<grammar::Production>*>(host_node_types.get())
-    );
-    if (err) {
-        report_futhark_error(ctx, "Failed to download node data");
-        return;
-    }
-
-    if (futhark_values_i32_1d(ctx.get(), parents, host_parents.get())) {
-        report_futhark_error(ctx, "Failed to download parent data");
-        return;
-    }
-
-    if (futhark_values_u32_1d(ctx.get(), data, host_data.get())) {
-        report_futhark_error(ctx, "Failed to download data");
-        return;
-    }
-
-    err = futhark_values_u8_1d(
-        ctx.get(),
-        data_types,
-        reinterpret_cast<std::underlying_type_t<DataType>*>(host_data_types.get())
-    );
-    if (err) {
-        report_futhark_error(ctx, "Failed to download data types");
-        return;
-    }
+    auto host_node_types = node_types.download();
+    auto host_parents = parents.download();
+    auto host_data = data.download();
+    auto host_data_types = data_types.download();
+    auto host_depths = depths.download();
+    auto host_child_indexes = child_indexes.download();
+    auto host_fn_tab = fn_tab.download();
 
     if (futhark_context_sync(ctx.get()))
-        report_futhark_error(ctx, "Sync after downloading parse tree kernel failed");
+        throw futhark::Error(ctx);
 
-    dump_parse_tree(n, host_node_types.get(), host_parents.get(), host_data.get(), host_data_types.get());
+    render_tree(
+        n,
+        reinterpret_cast<grammar::Production*>(host_node_types.data()),
+        host_parents.data(),
+        host_data.data(),
+        reinterpret_cast<DataType*>(host_data_types.data()),
+        host_depths.data(),
+        host_child_indexes.data(),
+        host_fn_tab.data()
+    );
 }
 
 void download_and_dump_tokens(futhark::Context& ctx, futhark_u8_1d* tokens) {
@@ -461,125 +440,93 @@ int main(int argc, const char* argv[]) {
     auto ctx = futhark::Context(futhark_context_new(config.get()));
 
     auto start = std::chrono::high_resolution_clock::now();
-    auto* lex_table = upload_lex_table(ctx);
-    auto* sct = upload_strtab<futhark_opaque_stack_change_table>(
+
+    auto lex_table = upload_lex_table(ctx);
+
+    auto sct = upload_strtab<futhark::UniqueStackChangeTable>(
         ctx,
         grammar::stack_change_table,
         futhark_entry_mk_stack_change_table
     );
 
-    auto* pt = upload_strtab<futhark_opaque_parse_table>(
+    auto pt = upload_strtab<futhark::UniqueParseTable>(
         ctx,
         grammar::parse_table,
         futhark_entry_mk_parse_table
     );
 
-    auto* arity_array = futhark_new_i32_1d(ctx.get(), grammar::arities, grammar::NUM_PRODUCTIONS);
-    auto* input_array = futhark_new_u8_1d(ctx.get(), reinterpret_cast<const uint8_t*>(input.data()), input.size());
+    auto arity_array = futhark::UniqueArray<int32_t, 1>(ctx, grammar::arities, grammar::NUM_PRODUCTIONS);
+    auto input_array = futhark::UniqueArray<uint8_t, 1>(ctx, reinterpret_cast<const uint8_t*>(input.data()), input.size());
 
-    int err = 0;
-    if ((err = futhark_context_sync(ctx.get())))
-        report_futhark_error(ctx, "Sync after upload failed");
+    if (futhark_context_sync(ctx.get()) != 0)
+        throw futhark::Error(ctx);
 
     auto stop = std::chrono::high_resolution_clock::now();
     fmt::print(std::cerr, "Upload time: {}\n", std::chrono::duration_cast<std::chrono::microseconds>(stop - start));
 
-    futhark_u8_1d* node_types = nullptr;
-    futhark_i32_1d* parents = nullptr;
-    futhark_u32_1d* data = nullptr;
-    futhark_u8_1d* data_types = nullptr;
-    futhark_i32_1d* depths = nullptr;
-    futhark_i32_1d* child_indexes = nullptr;
-    futhark_i32_1d* fn_tab = nullptr;
+    auto node_types = futhark::UniqueArray<uint8_t, 1>(ctx);
+    auto parents = futhark::UniqueArray<int32_t, 1>(ctx);
+    auto data = futhark::UniqueArray<uint32_t, 1>(ctx);
+    auto data_types = futhark::UniqueArray<uint8_t, 1>(ctx);
+    auto child_indexes = futhark::UniqueArray<int32_t, 1>(ctx);
+    auto depths = futhark::UniqueArray<int32_t, 1>(ctx);
+    auto fn_tab = futhark::UniqueArray<int32_t, 1>(ctx);
     Status status;
 
-    if (!err && lex_table && sct && pt && arity_array && input_array) {
-        auto start = std::chrono::high_resolution_clock::now();
-        err = futhark_entry_main(
-            ctx.get(),
-            reinterpret_cast<std::underlying_type_t<Status>*>(&status),
-            &node_types,
-            &parents,
-            &data,
-            &data_types,
-            &depths,
-            &child_indexes,
-            &fn_tab,
-            input_array,
-            lex_table,
-            sct,
-            pt,
-            arity_array
-        );
+    start = std::chrono::high_resolution_clock::now();
+    int err = futhark_entry_main(
+        ctx.get(),
+        reinterpret_cast<std::underlying_type_t<Status>*>(&status),
+        &node_types,
+        &parents,
+        &data,
+        &data_types,
+        &depths,
+        &child_indexes,
+        &fn_tab,
+        input_array.get(),
+        lex_table.get(),
+        sct.get(),
+        pt.get(),
+        arity_array.get()
+    );
 
-        if (err)
-            report_futhark_error(ctx, "Main kernel failed");
+    if (err != 0)
+        throw futhark::Error(ctx);
 
-        if ((err = futhark_context_sync(ctx.get())))
-            report_futhark_error(ctx, "Sync after main kernel failed");
+    if (futhark_context_sync(ctx.get()) != 0)
+        throw futhark::Error(ctx);
 
-        auto stop = std::chrono::high_resolution_clock::now();
-        fmt::print(std::cerr, "Main kernel runtime: {}\n", std::chrono::duration_cast<std::chrono::microseconds>(stop - start));
+    stop = std::chrono::high_resolution_clock::now();
+    fmt::print(std::cerr, "Main kernel runtime: {}\n", std::chrono::duration_cast<std::chrono::microseconds>(stop - start));
 
-        if (!err) {
-            if (status == Status::OK) {
-                int64_t n = futhark_shape_u8_1d(ctx.get(), node_types)[0];
-                fmt::print(std::cerr, "{} nodes\n", n);
+    if (status == Status::OK) {
+        fmt::print(std::cerr, "{} nodes\n", node_types.shape()[0]);
 
-                if (opts.dump_dot)
-                    download_and_parse_tree(ctx, node_types, parents, data, data_types);
-            } else {
-                fmt::print(std::cerr, "Error: {}\n", status_name(status));
-                err = 1;
-            }
+        if (opts.dump_dot) {
+            download_and_render_tree(
+                ctx,
+                node_types,
+                parents,
+                data,
+                data_types,
+                depths,
+                child_indexes,
+                fn_tab
+            );
         }
     } else {
-        fmt::print(std::cerr, "Error: Failed to upload required data\n");
+        fmt::print(std::cerr, "Error: {}\n", status_name(status));
+        err = 1;
     }
-
-    if (node_types)
-        futhark_free_u8_1d(ctx.get(), node_types);
-
-    if (parents)
-        futhark_free_i32_1d(ctx.get(), parents);
-
-    if (data)
-        futhark_free_u32_1d(ctx.get(), data);
-
-    if (data_types)
-        futhark_free_u8_1d(ctx.get(), data_types);
-
-    if (depths)
-        futhark_free_i32_1d(ctx.get(), depths);
-
-    if (child_indexes)
-        futhark_free_i32_1d(ctx.get(), child_indexes);
-
-    if (fn_tab)
-        futhark_free_i32_1d(ctx.get(), fn_tab);
-
-    if (lex_table)
-        futhark_free_opaque_lex_table(ctx.get(), lex_table);
-
-    if (sct)
-        futhark_free_opaque_stack_change_table(ctx.get(), sct);
-
-    if (pt)
-        futhark_free_opaque_parse_table(ctx.get(), pt);
-
-    if (arity_array)
-        futhark_free_i32_1d(ctx.get(), arity_array);
-
-    if (input_array)
-        futhark_free_u8_1d(ctx.get(), input_array);
 
     if (opts.profile) {
         auto report = MallocPtr<char>(futhark_context_report(ctx.get()));
         fmt::print("Profile report:\n{}", report);
     }
 
-    if (futhark_context_sync(ctx.get()))
-        report_futhark_error(ctx, "Final sync failed");
+    if (futhark_context_sync(ctx.get()) != 0)
+        throw futhark::Error(ctx);
 
     return !err ? EXIT_SUCCESS : EXIT_FAILURE;
 }

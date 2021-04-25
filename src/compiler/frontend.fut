@@ -86,6 +86,7 @@ entry main
     in if !valid then mk_error status_invalid_decl
     else
     let parents = fix_ascriptions node_types parents
+    let node_types = replace_no_args node_types
     let (valid, parents) = fix_fn_decls node_types parents
     in if !valid then mk_error status_invalid_fn_proto
     else
