@@ -38,7 +38,8 @@ let node_type_counts (t: NodeType) (d: DataType) : u32 =
         case (#bitnot_expr, _) -> 1
         case (#lnot_expr, _) -> 1
         case (#neg_expr, _) -> 1
-        case (#lit_expr, _) -> 2
+        case (#lit_expr, #int) -> 2
+        case (#lit_expr, #float) -> 3
         case (#cast_expr, _) -> 1
         case (#deref_expr, _) -> 1
         case (#assign_expr, _) -> 2
@@ -54,10 +55,10 @@ let node_type_counts (t: NodeType) (d: DataType) : u32 =
 
 let node_counts (nodes: []Node) (n: Node) =
     let base_count = node_type_counts n.node_type n.resulting_type
-    let delta = if n.parent == 0xFFFFFFFF then
+    let delta = if n.parent == INVALID_NODE_IDX then
         0
     else
-        let parent_type = nodes[i64.u32 n.parent].node_type
+        let parent_type = nodes[n.parent].node_type
         in
         if n.child_idx == 0 && (parent_type == #if_stat || parent_type == #if_else_stat) then
             1
@@ -75,14 +76,14 @@ let instr_count_fix (node: Node) (instr_offset: u32) =
         instr_offset
 
 let instr_count_fix_post (nodes: []Node) (node: Node) (instr_offset: u32) =
-    if node.parent == 0xFFFFFFFF then
+    if node.parent == INVALID_NODE_IDX then
         (-1i64, 0)
     else
-        let parent_type = nodes[i64.u32 node.parent].node_type in
+        let parent_type = nodes[node.parent].node_type in
         if node.child_idx == 0 && (parent_type == #if_stat || parent_type == #if_else_stat) then
-            (i64.u32 node.parent, instr_offset + node_type_counts node.node_type node.resulting_type)
+            (i64.i32 node.parent, instr_offset + node_type_counts node.node_type node.resulting_type)
         else if node.child_idx == 1 && (parent_type == #while_stat) then
-            (i64.u32 node.parent, instr_offset + node_type_counts node.node_type node.resulting_type)
+            (i64.i32 node.parent, instr_offset + node_type_counts node.node_type node.resulting_type)
         else
             (-1i64, 0u32)
 

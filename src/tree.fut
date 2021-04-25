@@ -1,5 +1,7 @@
 import "datatypes"
 
+let INVALID_NODE_IDX : i32 = -1
+
 --Node types
 type NodeType =
     #invalid |
@@ -51,17 +53,17 @@ type NodeType =
 type Node = {
     node_type: NodeType,
     resulting_type: DataType,
-    parent: u32,
-    depth: u32,
-    child_idx: u32,
+    parent: i32,
+    depth: i32,
+    child_idx: i32,
     node_data: u32
 }
 
 --Tree definition
 type Tree [tree_size] = {
     nodes: [tree_size]Node, --Nodes of the tree
-    max_depth: u32 --Tree depth
+    max_depth: i32 --Tree depth
 }
 
-let is_level (n : Node) (depth: u32) =
+let is_level (n : Node) (depth: i32) =
     n.depth == depth

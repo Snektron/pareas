@@ -14,17 +14,17 @@ DepthTree::DepthTree(ASTNode* node) : max_depth(0) {
 
     this->node_types = new uint8_t[max_nodes];
     this->resulting_types = new uint8_t[max_nodes];
-    this->parents = new uint32_t[max_nodes];
-    this->depth = new uint32_t[max_nodes];
-    this->child_idx = new uint32_t[max_nodes];
+    this->parents = new int32_t[max_nodes];
+    this->depth = new int32_t[max_nodes];
+    this->child_idx = new int32_t[max_nodes];
     this->instr_offsets = new int64_t[max_nodes];
     this->node_data = new uint32_t[max_nodes];
 
     std::memset(this->node_types, 0, sizeof(uint8_t) * max_nodes);
     std::memset(this->resulting_types, 0, sizeof(uint8_t) * max_nodes);
-    std::memset(this->parents, -1, sizeof(uint32_t) * max_nodes);
-    std::memset(this->depth, -1, sizeof(uint32_t) * max_nodes);
-    std::memset(this->child_idx, -1, sizeof(uint32_t) * max_nodes);
+    std::memset(this->parents, -1, sizeof(int32_t) * max_nodes);
+    std::memset(this->depth, -1, sizeof(int32_t) * max_nodes);
+    std::memset(this->child_idx, -1, sizeof(int32_t) * max_nodes);
     std::memset(this->instr_offsets, -1, sizeof(int64_t) * max_nodes);
     std::memset(this->node_data, 0, sizeof(uint32_t) * max_nodes);
 

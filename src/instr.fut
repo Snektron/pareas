@@ -93,14 +93,20 @@ let node_instr(node_type: NodeType) (data_type: DataType) (instr_offset: i64) : 
     case (#assign_expr, #int_ref, 1) -> 0b0000000_00000_00000_000_00000_0110011 -- ADD x0
 
     -- Function call
-    case (#func_call_expr, _, _) ->     0b0000000_00000_00000_000_00000_1110011 -- TODO
-    case (#func_call_arg, _, _) ->      0b0000000_00000_00000_000_00000_1110011 -- TODO
+    case (#func_call_expr, _, _) ->                 0b0000000_00000_00000_000_00000_1110011 -- TODO
+    case (#func_call_arg, _, _) ->                  0b0000000_00000_00000_000_00000_1110011 -- TODO
+    case (#func_call_arg_float_in_int, _, _) ->     0b0000000_00000_00000_000_00000_1110011 -- TODO
+    case (#func_call_arg_stack, _, _) ->            0b0000000_00000_00000_000_00000_1110011 -- TODO
+    case (#func_arg, _, _) ->                       0b0000000_00000_00000_000_00000_1110011 -- TODO
+    case (#func_arg_float_in_int, _, _) ->          0b0000000_00000_00000_000_00000_1110011 -- TODO
+    case (#func_arg_stack, _, _) ->                 0b0000000_00000_00000_000_00000_1110011 -- TODO
 
     -- Literals
     case (#lit_expr, #int, 0) ->        0b0000000_00000_00000_000_00000_0110111 -- LUI
     case (#lit_expr, #int, 1) ->        0b0000000_00000_00000_110_00000_0010011 -- ORI
-    case (#lit_expr, #float, 0) ->      0b0000000_00000_00000_000_00000_1110011 -- TODO
-    case (#lit_expr, #float, 1) ->      0b0000000_00000_00000_000_00000_1110011 -- TODO
+    case (#lit_expr, #float, 0) ->      0b0000000_00000_00000_000_00000_0110111 -- LUI
+    case (#lit_expr, #float, 1) ->      0b0000000_00000_00000_110_00000_0010011 -- ORI
+    case (#lit_expr, #float, 2) ->      0b1111000_00000_00000_000_00000_1010011 -- FMV.W.X
 
     -- Casts (NOTE: filter out int->int or float->float casts in earlier stages, done with single map in preprocessing stage)
     case (#cast_expr, #int, 0) ->       0b1100000_00000_00000_111_00000_1010011 -- FCVT.W.S
@@ -130,6 +136,7 @@ let has_instr (node_type: NodeType) (data_type: DataType) (instr_offset: i64) : 
         case (#lesseq_expr, #int, 1) -> true
         case (#greateq_expr, #int, 1) -> true
         case (#lit_expr, _, 1) -> true
+        case (#lit_expr, #float, 2) -> true
         case (#assign_expr, _, 1) -> true
         case (_, _, 0) -> true
         case _ -> false
@@ -138,7 +145,7 @@ let node_has_return(_ : NodeType) (data_type : DataType) : bool =
     !(data_type == #void || data_type == #invalid)
 
 let parent_arg_idx (node: Node) : i64 =
-    i64.u32 node.parent * PARENT_IDX_PER_NODE + i64.u32 node.child_idx
+    i64.i32 node.parent * PARENT_IDX_PER_NODE + i64.i32 node.child_idx
 
 let node_get_parent_arg_idx_sub (node: Node) (instr_offset: i64) : i64 =
     match (node.node_type, node.resulting_type, instr_offset)
@@ -158,15 +165,17 @@ let node_get_parent_arg_idx_sub (node: Node) (instr_offset: i64) : i64 =
         case (#neq_expr, _, 1) -> parent_arg_idx node
         case (#lesseq_expr, #int, 1) -> parent_arg_idx node
         case (#greateq_expr, #int, 1) -> parent_arg_idx node
-        case (#lit_expr, _, 1) -> parent_arg_idx node
+        case (#lit_expr, #int, 1) -> parent_arg_idx node
         case (#assign_expr, _, 1) -> parent_arg_idx node
+
+        case (#lit_expr, #float, 2) -> parent_arg_idx node
         case _ -> -1
 
 let node_get_parent_arg_idx (nodes: []Node) (node: Node) (instr_offset: i64) : i64 =
-    if node.parent == 0xFFFFFFFF then
+    if node.parent == INVALID_NODE_IDX then
         node_get_parent_arg_idx_sub node instr_offset
     else
-        let parent = nodes[i64.u32 node.parent]
+        let parent = nodes[node.parent]
         in
         if node.child_idx > 0 && (parent.node_type == #if_stat || parent.node_type == #if_else_stat) then
             parent_arg_idx node
@@ -212,7 +221,8 @@ let node_get_instr_arg (node_id: i64) (node: Node) (registers: []i64) (arg_no: i
         case (#neq_expr, #float, 0, 1) -> register (instr_no - 1)
         case (#lesseq_expr, #int, 0, 1) -> register (instr_no - 1)
         case (#greateq_expr, #int, 0, 1) -> register (instr_no - 1)
-        case (#lit_expr, _,0, 1) -> register (instr_no - 1)
+        case (#lit_expr, _, 0, 1) -> register (instr_no - 1)
+        case (#lit_expr, #float, 0, 2) -> register (instr_no - 1)
         case _ -> 0
 
 let node_has_output (nodes: []Node) (node: Node) (instr_offset: i64) : bool =
@@ -222,6 +232,7 @@ let node_has_output (nodes: []Node) (node: Node) (instr_offset: i64) : bool =
         case (#lesseq_expr, #int, 0) -> true
         case (#greateq_expr, #int, 0) -> true
         case (#lit_expr, _, 0) -> true
+        case (#lit_expr, #float, 1) -> true
         case _ -> false
 
 let make_branch_constant (node_id: i64) (registers: []i64) (delta: i64) (instr_loc: i64) (idx: i64) : u32 =
@@ -248,8 +259,8 @@ let instr_constant [max_vars] (node: Node) (instr_offset: i64) (symtab: Symtab[m
         case (#if_else_stat, _, 1) -> make_jump_constant node_id registers instr_loc 2
         case (#while_stat, _, 0) -> make_branch_constant node_id registers 1 instr_loc 2
         case (#while_stat, _, 1) -> make_jump_constant node_id registers instr_loc 0
-        case (#lit_expr, #int, 0) -> node.node_data & 0xFFFFF000
-        case (#lit_expr, #int, 1) -> (node.node_data & 0xFFF) << 20
+        case (#lit_expr, _, 0) -> node.node_data & 0xFFFFF000
+        case (#lit_expr, _, 1) -> (node.node_data & 0xFFF) << 20
         case (#id_expr, _, 0) -> (-4 * ((symtab_local_offset symtab node.node_data) + 1)) << 20
         case (#decl_expr, _, 0) -> (-4 * ((symtab_local_offset symtab node.node_data) + 1)) << 20
         case _ -> 0
@@ -263,10 +274,10 @@ let get_instr_loc (node: Node) (node_id: i64) (instr_no: i64) (instr_offset: i64
         instr_no
 
 let get_data_prop_value [tree_size] (tree: Tree[tree_size]) (node: Node) (rd: i64) (instr_no: i64) =
-    if node.parent == 0xFFFFFFFF then
+    if node.parent == INVALID_NODE_IDX then
         rd
     else
-        let parent_type = tree.nodes[i64.u32 node.parent].node_type in
+        let parent_type = tree.nodes[node.parent].node_type in
         if parent_type == #if_stat || parent_type == #if_else_stat then
             if node.child_idx == 1 || node.child_idx == 2 then
                 instr_no
@@ -309,25 +320,26 @@ let compile_node [tree_size] [max_vars] (tree: Tree[tree_size]) (symtab: Symtab[
             else
                 (-1, node_get_parent_arg_idx tree.nodes node 0, EMPTY_INSTR, get_data_prop_value tree node 0 node_instr)
             ,
-            if has_instr node.node_type node.resulting_type 1 then get_node_instr tree node (node_instr+1) node_index registers symtab 1 else (-1, -1, EMPTY_INSTR, 0)
+            if has_instr node.node_type node.resulting_type 1 then get_node_instr tree node (node_instr+1) node_index registers symtab 1 else (-1, -1, EMPTY_INSTR, 0),
+            if has_instr node.node_type node.resulting_type 2 then get_node_instr tree node (node_instr+2) node_index registers symtab 2 else (-1, -1, EMPTY_INSTR, 0)
         ]
 
-let check_idx_node_depth [tree_size] (tree: Tree[tree_size]) (depth: u32) (i: i64) =
+let check_idx_node_depth [tree_size] (tree: Tree[tree_size]) (depth: i32) (i: i64) =
     is_level tree.nodes[i] depth
 
-let bit_width (x: u32): i32 =
-    u32.num_bits - (u32.clz x)
+let bit_width (x: i32): i32 =
+    i32.num_bits - (i32.clz x)
 
 let compile_tree [tree_size] [max_vars] (tree: Tree[tree_size]) (symtab: Symtab[max_vars]) (instr_offset: [tree_size]i64) (max_instrs: i64) =
-    let idx_array = iota tree_size |> radix_sort (bit_width tree.max_depth) (\bit idx -> u32.get_bit bit tree.nodes[idx].depth)
+    let idx_array = iota tree_size |> radix_sort (bit_width tree.max_depth) (\bit idx -> i32.get_bit bit tree.nodes[idx].depth)
     let depth_starts = iota tree_size |> filter (\i -> i == 0 || tree.nodes[idx_array[i]].depth != tree.nodes[idx_array[i-1]].depth)
     let initial_registers = replicate (tree_size * PARENT_IDX_PER_NODE) 0i64
     let initial_instr = replicate max_instrs EMPTY_INSTR
     let (instr_result, _) =
-        loop (data, registers) = (initial_instr, initial_registers) for i < i64.u32 tree.max_depth+1 do
-            let j = (i64.u32 tree.max_depth)-i
+        loop (data, registers) = (initial_instr, initial_registers) for i < tree.max_depth+1 do
+            let j = tree.max_depth-i
             let start = depth_starts[j]
-            let end = if j == i64.u32 tree.max_depth then tree_size else depth_starts[j + 1]
+            let end = if j == tree.max_depth then tree_size else depth_starts[j + 1]
             let (idx, parent_idx, instrs, new_regs) =
                 idx_array[start:end] |>
                 map (compile_node tree symtab (copy registers) instr_offset) |>

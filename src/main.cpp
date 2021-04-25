@@ -248,12 +248,12 @@ int main(int argc, const char* argv[]) {
                             futhark_new_u8_1d(context.get(), depth_tree.getNodeTypes(), depth_tree.maxNodes()));
         auto resulting_types = UniqueFPtr<futhark_u8_1d, futhark_free_u8_1d>(context.get(),
                             futhark_new_u8_1d(context.get(), depth_tree.getResultingTypes(), depth_tree.maxNodes()));
-        auto parents = UniqueFPtr<futhark_u32_1d, futhark_free_u32_1d>(context.get(),
-                            futhark_new_u32_1d(context.get(), depth_tree.getParents(), depth_tree.maxNodes()));
-        auto depth = UniqueFPtr<futhark_u32_1d, futhark_free_u32_1d>(context.get(),
-                            futhark_new_u32_1d(context.get(), depth_tree.getDepth(), depth_tree.maxNodes()));
-        auto child_idx = UniqueFPtr<futhark_u32_1d, futhark_free_u32_1d>(context.get(),
-                            futhark_new_u32_1d(context.get(), depth_tree.getChildren(), depth_tree.maxNodes()));
+        auto parents = UniqueFPtr<futhark_i32_1d, futhark_free_i32_1d>(context.get(),
+                            futhark_new_i32_1d(context.get(), depth_tree.getParents(), depth_tree.maxNodes()));
+        auto depth = UniqueFPtr<futhark_i32_1d, futhark_free_i32_1d>(context.get(),
+                            futhark_new_i32_1d(context.get(), depth_tree.getDepth(), depth_tree.maxNodes()));
+        auto child_idx = UniqueFPtr<futhark_i32_1d, futhark_free_i32_1d>(context.get(),
+                            futhark_new_i32_1d(context.get(), depth_tree.getChildren(), depth_tree.maxNodes()));
         auto node_data = UniqueFPtr<futhark_u32_1d, futhark_free_u32_1d>(context.get(),
                             futhark_new_u32_1d(context.get(), depth_tree.getNodeData(), depth_tree.maxNodes()));
 

@@ -12,9 +12,9 @@ class DepthTree {
     private:
         uint8_t* node_types;
         uint8_t* resulting_types;
-        uint32_t* parents;
-        uint32_t* depth;
-        uint32_t* child_idx;
+        int32_t* parents;
+        int32_t* depth;
+        int32_t* child_idx;
         int64_t* instr_offsets;
         uint32_t* node_data;
         size_t max_nodes;
@@ -37,13 +37,13 @@ class DepthTree {
         inline const uint8_t* getResultingTypes() const {
             return this->resulting_types;
         }
-        inline const uint32_t* getParents() const {
+        inline const int32_t* getParents() const {
             return this->parents;
         }
-        inline const uint32_t* getDepth() const {
+        inline const int32_t* getDepth() const {
             return this->depth;
         }
-        inline const uint32_t* getChildren() const {
+        inline const int32_t* getChildren() const {
             return this->child_idx;
         }
         inline const int64_t* getInstrOffsets() const {

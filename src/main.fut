@@ -66,7 +66,7 @@ let make_variable (data_type: u8) (offset: u32) : Variable =
         offset = offset
     }
 
-let make_node (node_type: u8) (data_type: u8, parent: u32, depth: u32, child_idx: u32, node_data: u32) : Node =
+let make_node (node_type: u8) (data_type: u8, parent: i32, depth: i32, child_idx: i32, node_data: u32) : Node =
     {
         node_type = make_node_type node_type,
         resulting_type = make_data_type data_type,
@@ -81,8 +81,8 @@ entry make_symtab [m] (data_types: [m]u8) (offsets: [m]u32) : Symtab[m] =
         variables = map2 make_variable data_types offsets
     }
 
-entry make_tree [n] (max_depth: u32) (node_types: [n]u8) (data_types: [n]u8) (parents: [n]u32)
-                    (depth: [n]u32) (child_idx: [n]u32) (node_data: [n]u32): Tree[n] =
+entry make_tree [n] (max_depth: i32) (node_types: [n]u8) (data_types: [n]u8) (parents: [n]i32)
+                    (depth: [n]i32) (child_idx: [n]i32) (node_data: [n]u32): Tree[n] =
     {
         nodes = zip5 data_types parents depth child_idx node_data |> map2 make_node node_types,
         max_depth = max_depth

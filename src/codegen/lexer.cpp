@@ -2,6 +2,7 @@
 #include "codegen/exception.hpp"
 
 #include <iostream>
+#include <cstring>
 
 Lexer::Lexer(std::istream& input) : input(input) {
 
@@ -43,6 +44,7 @@ void Lexer::unread(char c) {
 }
 
 Token Lexer::next_number() {
+    bool is_float = false;
     std::stringstream ss;
 
     char c = this->read();
@@ -51,13 +53,31 @@ Token Lexer::next_number() {
 
         c = this->read();
     }
+    if(c == '.') {
+        is_float = true;
+        ss << '.';
+        c = this->read();
+        while(c >= '0' && c <= '9') {
+            ss << c;
+
+            c = this->read();
+        }
+    }
 
     this->unread(c);
 
     std::string s = ss.str();
     try {
-        unsigned data = std::stoul(s);
-        return Token(TokenType::INTEGER, data);
+        if(is_float) {
+            float data_f = std::stof(s);
+            uint32_t data;
+            std::memcpy(&data, &data_f, sizeof(float));
+            return Token(TokenType::FLOAT, data);
+        }
+        else {
+            unsigned data = std::stoul(s);
+            return Token(TokenType::INTEGER, data);
+        }
     }
     catch(const std::invalid_argument& e) {
         throw ParseException("Invalid number ", s);

@@ -43,10 +43,10 @@ let copy_node_with_type (n: Node) (d: DataType) =
 let replace_float_compare_types [n] (tree: Tree[n]) = 
     let (ind, values) = tree.nodes |>
     map (\i ->
-        if i.parent == 0xFFFFFFFF then
+        if i.parent == INVALID_NODE_IDX then
             (-1i64, INVALID_NODE)
-        else if is_compare_node tree.nodes[i64.u32 i.parent].node_type && i.resulting_type == #float then
-            (i64.u32 i.parent, copy_node_with_type tree.nodes[i64.u32 i.parent] #float)
+        else if is_compare_node tree.nodes[i.parent].node_type && i.resulting_type == #float then
+            (i64.i32 i.parent, copy_node_with_type tree.nodes[i.parent] #float)
         else
             (-1i64, INVALID_NODE)
     ) |>
@@ -68,23 +68,23 @@ let calling_convention_node_replace_sub (n: Node) (def: NodeType) (fltint: NodeT
         if n.node_data < 8 then
             n
         else
-            let num_float_args = n.node_data
+            let num_float_args = i32.u32 n.node_data
             let num_int_args = n.child_idx - num_float_args
             let reg_offset = num_int_args + num_float_args - 8
             in
             if reg_offset < 8 then
-                copy_node_with_nodetype n fltint reg_offset
+                copy_node_with_nodetype n fltint (u32.i32 reg_offset)
             else
-                copy_node_with_nodetype n stack (reg_offset - 8)
+                copy_node_with_nodetype n stack (u32.i32 (reg_offset - 8))
     else --Int
-        let num_int_args = n.node_data
+        let num_int_args = i32.u32 n.node_data
         let num_float_args = n.child_idx - num_int_args
         let reg_offset = num_int_args + if num_float_args < 8 then 0 else num_float_args - 8
         in
         if reg_offset < 8 then
-            copy_node_with_nodetype n def reg_offset
+            copy_node_with_nodetype n def (u32.i32 reg_offset)
         else
-            copy_node_with_nodetype n stack (reg_offset - 8)
+            copy_node_with_nodetype n stack (u32.i32 (reg_offset - 8))
 
 let calling_convention_node_replace (n: Node) =
     if n.node_type == #func_call_arg then

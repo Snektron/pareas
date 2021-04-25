@@ -172,6 +172,8 @@ ASTNode* Parser::parseAtom() {
         }
         case TokenType::INTEGER:
             return new ASTNode(NodeType::LIT_EXPR, DataType::INT, lookahead.integer);
+        case TokenType::FLOAT:
+            return new ASTNode(NodeType::LIT_EXPR, DataType::FLOAT, lookahead.integer);
         default:
             throw ParseException("Parsing failed, unexpected token ", lookahead, ", expecting atom");
     }
@@ -223,6 +225,7 @@ ASTNode* Parser::parseStatement() {
         case TokenType::MIN:
         case TokenType::OPEN_PAR:
         case TokenType::INTEGER:
+        case TokenType::FLOAT:
         case TokenType::ID:
             return this->parseExpressionStatement();
         case TokenType::OPEN_CB: {
@@ -251,6 +254,7 @@ ASTNode* Parser::parseStatementList() {
             case TokenType::MIN:
             case TokenType::OPEN_PAR:
             case TokenType::INTEGER:
+            case TokenType::FLOAT:
             case TokenType::ID:
             case TokenType::OPEN_CB:
             case TokenType::WHILE:
