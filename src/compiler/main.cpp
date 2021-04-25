@@ -320,29 +320,29 @@ void dump_parse_tree(size_t n, const grammar::Production* node_types, const int3
                 case grammar::Production::ATOM_NAME:
                 case grammar::Production::ATOM_DECL:
                 case grammar::Production::ATOM_DECL_EXPLICIT:
-                    fmt::print(" (offset={})", data[i]);
+                    fmt::print("\\n(offset={})", data[i]);
                     break;
                 case grammar::Production::FN_DECL:
                 case grammar::Production::ATOM_FN_CALL:
-                    fmt::print(" (fn id={})", data[i]);
+                    fmt::print("\\n(fn id={})", data[i]);
                     break;
                 case grammar::Production::PARAM:
                 case grammar::Production::ARG:
-                    fmt::print(" (arg id={})", data[i]);
+                    fmt::print("\\n(arg id={})", data[i]);
                     break;
                 case grammar::Production::ATOM_INT:
-                    fmt::print(" (value={})", data[i]);
+                    fmt::print("\\n(value={})", data[i]);
                     break;
                 case grammar::Production::ATOM_FLOAT:
-                    fmt::print(" (value={})", *reinterpret_cast<const float*>(&data[i]));
+                    fmt::print("\\n(value={})", *reinterpret_cast<const float*>(&data[i]));
                     break;
                 default:
                     if (data[i] != 0) {
-                        fmt::print(" (junk={})", data[i]);
+                        fmt::print("\\n(junk={})", data[i]);
                     }
             }
 
-            fmt::print(" [{}]", data_type_name(data_types[i]));
+            fmt::print("\\n[{}]", data_type_name(data_types[i]));
             fmt::print("\"]\n");
 
             if (parent >= 0) {
@@ -488,6 +488,9 @@ int main(int argc, const char* argv[]) {
     futhark_i32_1d* parents = nullptr;
     futhark_u32_1d* data = nullptr;
     futhark_u8_1d* data_types = nullptr;
+    futhark_i32_1d* depths = nullptr;
+    futhark_i32_1d* child_indexes = nullptr;
+    futhark_i32_1d* fn_tab = nullptr;
     Status status;
 
     if (!err && lex_table && sct && pt && arity_array && input_array) {
@@ -499,6 +502,9 @@ int main(int argc, const char* argv[]) {
             &parents,
             &data,
             &data_types,
+            &depths,
+            &child_indexes,
+            &fn_tab,
             input_array,
             lex_table,
             sct,
@@ -542,6 +548,15 @@ int main(int argc, const char* argv[]) {
 
     if (data_types)
         futhark_free_u8_1d(ctx.get(), data_types);
+
+    if (depths)
+        futhark_free_i32_1d(ctx.get(), depths);
+
+    if (child_indexes)
+        futhark_free_i32_1d(ctx.get(), child_indexes);
+
+    if (fn_tab)
+        futhark_free_i32_1d(ctx.get(), fn_tab);
 
     if (lex_table)
         futhark_free_opaque_lex_table(ctx.get(), lex_table);

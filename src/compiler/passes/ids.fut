@@ -10,7 +10,9 @@ import "../../../lib/github.com/diku-dk/segmented/segmented"
 -- - `param` nodes gain an offset ID based on their type.
 -- - Finally, `arg`, `fn_call` and `atom_name` get IDs based on the node that the resolution vector
 --   points to.
-let assign_ids [n] (node_types: [n]production.t) (resolution: [n]i32) (data_types: [n]data_type) (data: [n]u32) =
+-- This function also computes a function table, which simply contains the amount of declarations indexed
+-- by function-ID. The required arrays are computed in this function anyway.
+let assign_ids [n] (node_types: [n]production.t) (resolution: [n]i32) (data_types: [n]data_type) (data: [n]u32): ([n]u32, []i32) =
     -- Even though the tree is strictly speaking not in any order right now, there is no pass that
     -- changes the relative order of the nodes we're interested in (`fn_decl`, `atom_decl` and `param`),
     -- so we're just going to do a (segmented) scan to assign the IDs. Function IDs will simply be a
@@ -22,7 +24,7 @@ let assign_ids [n] (node_types: [n]production.t) (resolution: [n]i32) (data_type
         |> map u32.bool
         |> scan (+) 0
         -- `scan` is inclusive, so simply subtract one to make it exclusive. This does overflow
-        -- for some nodes though, but they should be ignored anyway.
+        -- for some nodes though (before the first decl), but they should be ignored anyway.
         |> map (\a -> a - 1)
     -- Compute the declaration, int parameter and float parameter IDs simultaneously.
     let (decl_ids, int_param_ids, float_param_ids) =
@@ -34,7 +36,7 @@ let assign_ids [n] (node_types: [n]production.t) (resolution: [n]i32) (data_type
                 if nty == production_atom_decl || nty == production_atom_decl_explicit then
                     (1, 0, 0)
                 else if nty == production_param then
-                    if dty == data_type.int then (0, 1, 0) else (0, 0, 1)
+                    if dty == data_type.int_ref then (0, 1, 0) else (0, 0, 1)
                 else
                     (0, 0, 0))
             node_types
@@ -47,6 +49,24 @@ let assign_ids [n] (node_types: [n]production.t) (resolution: [n]i32) (data_type
         -- Again, make the scan exclusive simply by subtracting one.
         |> map (\(a, b, c) -> (a - 1, b - 1, c - 1))
         |> unzip3
+    -- Compute the maximum decl per function by scattering.
+    -- At this point, `fn_id` contains for every node the function ID which that node is defined in (except for the
+    -- `fn_decl_list` at the root). This means we can compute the maximum decl simply by checking whether this decl is the
+    -- maximum (when the next node is a fn_decl or the node is the last node) and then scatter that to the appropriate place
+    -- in the function table.
+    let fn_tab =
+        let is =
+            iota n
+            |> map (\i -> i == n - 1 || is_fn_decl[i + 1])
+            |> map2 (\fn_id is_last_decl -> if is_last_decl then i64.u32 fn_id else -1) fn_ids
+        in
+            scatter
+                (replicate n 0u32)
+                is
+                -- Add one to get a maximum declaration instead of a count.
+                (map (+1) decl_ids)
+            -- Codegen wants this as i32.
+            |> map i32.u32
     -- Insert everything back into the data vector.
     let data =
         map4
@@ -64,8 +84,9 @@ let assign_ids [n] (node_types: [n]production.t) (resolution: [n]i32) (data_type
         data
         (zip4 fn_ids int_param_ids float_param_ids decl_ids)
     -- Finally, simply fetch the value for every node where the resolution is not -1.
-    in
+    let data =
         map2
             (\res d -> if res != -1 then data[res] else d)
             resolution
             data
+    in (data, fn_tab)

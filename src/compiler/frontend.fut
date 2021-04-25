@@ -64,9 +64,9 @@ entry main
     (sct: stack_change_table [])
     (pt: parse_table [])
     (arities: arity_array)
-    : (status_code, []token.t, []i32, []u32, []data_type)
+    : (status_code, []token.t, []i32, []u32, []data_type, []i32, []i32, []i32)
     =
-    let mk_error (code: status_code) = (code, [], [], [], [])
+    let mk_error (code: status_code) = (code, [], [], [], [], [], [], [])
     let tokens = tokenize input lt
     let token_types = map (.0) tokens
     -- As the lexer returns an `invalid` token when the input cannot be lexed, which is accepted
@@ -101,10 +101,10 @@ entry main
     let depths = compute_depths parents
     let prev_siblings = build_sibling_vector parents depths
     let (node_types, parents, prev_siblings) = insert_derefs node_types parents prev_siblings |> unzip3
-    --  -- Note: depths invalid from here.
+    -- Note: depths invalid from here.
     in if !(check_assignments node_types parents prev_siblings) then mk_error status_invalid_assign
     else
-    --  -- ints/floats/names order should be unchanged, relatively, so this is fine.
+    -- ints/floats/names order should be unchanged, relatively, so this is fine.
     let data = build_data_vector node_types input tokens
     let right_leafs = build_right_leaf_vector parents prev_siblings
     let (valid, resolution) = resolve_vars node_types parents prev_siblings right_leafs data
@@ -129,11 +129,16 @@ entry main
     let paths_valid = check_return_paths node_types parents prev_siblings data_types
     in if !paths_valid then mk_error status_missing_return
     else
-    let data = assign_ids node_types resolution data_types data
+    let (data, fn_tab) = assign_ids node_types resolution data_types data
+    -- Compute the child index from the parent
+    let child_indexes = compute_depths prev_siblings
     let left_leafs = build_left_leaf_vector parents prev_siblings
     let (parents, old_index) = build_postorder_ordering parents prev_siblings left_leafs
-    -- Note: prev_siblings, right_leafs and left_leafs invalid from here.
+    -- Note: prev_siblings, right_leafs, left_leafs and resolution invalid from here.
     let node_types = gather node_types old_index
     let data = gather data old_index
     let data_types = gather data_types old_index
-    in (status_ok, node_types, parents, data, data_types)
+    let child_indexes = gather child_indexes old_index
+    -- Re-compute the depths
+    let depths = compute_depths parents
+    in (status_ok, node_types, parents, data, data_types, depths, child_indexes, fn_tab)
