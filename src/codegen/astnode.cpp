@@ -8,12 +8,15 @@ const char* NODE_NAMES[] = {
     "statement list",
     "empty statement",
     "function declaration",
+    "function argument",
+    "function argument list",
     "expression statement",
     "if statement",
     "if-else statement",
     "while statement",
     "function call expression",
     "function call argument",
+    "function call argument list",
     "add expression",
     "sub expression",
     "mul expression",
@@ -189,11 +192,15 @@ void ASTNode::resolveType() {
             assert_type(0, {DataType::INT_REF, DataType::FLOAT_REF});
             assert_type(1, {DataType::INT, DataType::FLOAT});
             assert_ref_of(0, 1);
-            this->return_type = this->children[0]->return_type;
+            this->return_type = this->children[1]->return_type; //TODO: actually check this
             break;
         case NodeType::LIT_EXPR:
         case NodeType::ID_EXPR:
         case NodeType::DECL_EXPR:
+            break;
+        case NodeType::FUNC_ARG:
+            assert_type(0, {DataType::INT_REF, DataType::FLOAT_REF});
+            this->return_type = this->children[0]->return_type;
             break;
         default:
             this->return_type = DataType::INVALID;

@@ -293,6 +293,58 @@ ASTNode* Parser::parseStatementList() {
     return new ASTNode(NodeType::STATEMENT_LIST, node_list);
 }
 
+ASTNode* Parser::parseArgumentList(std::vector<DataType>& arg_types) {
+    this->expect(TokenType::OPEN_PAR);
+
+    std::vector<std::unique_ptr<ASTNode>> arguments;
+    Token lookahead = this->lexer.lookahead();
+
+    auto parse_decl = [&] () {
+        Token current = this->lexer.lex();
+        if(current.type != TokenType::ID)
+            throw ParseException("Parsing failed, unexpected token ", current, ", expecting identifier");
+        
+        std::string var_name = current.str;
+
+        this->expect(TokenType::DECL);
+
+        current = this->lexer.lex();
+        DataType res_type;
+        switch(current.type) {
+            case TokenType::INT:
+                res_type = DataType::INT_REF;
+                break;
+            case TokenType::FLOAT:
+                res_type = DataType::FLOAT_REF;
+                break;
+            default:
+                throw ParseException("Parsing failed, unexpected token ", current, ", expecting typename");
+        }
+        uint32_t symbol_id = this->symtab.declareSymbol(var_name, res_type);
+        std::unique_ptr<ASTNode> decl_node(new ASTNode(NodeType::DECL_EXPR, res_type, symbol_id));
+        arguments.emplace_back(new ASTNode(NodeType::FUNC_ARG, {decl_node.release()}));
+    };
+
+    if(lookahead.type != TokenType::CLOSE_PAR) {
+        parse_decl();
+        Token lookahead = this->lexer.lookahead();
+        while(lookahead.type == TokenType::COMMA) {
+            this->lexer.lex();
+            parse_decl();
+            lookahead = this->lexer.lookahead();
+        }
+    }
+
+    this->expect(TokenType::CLOSE_PAR);
+
+    std::vector<ASTNode*> node_list;
+    for(size_t i = 0; i < arguments.size(); ++i) {
+        node_list.push_back(arguments[i].release());
+    }
+
+    return new ASTNode(NodeType::FUNC_ARG_LIST, node_list);
+}
+
 ASTNode* Parser::parseFunction() {
     this->expect(TokenType::FUNCTION);
 
@@ -300,9 +352,10 @@ ASTNode* Parser::parseFunction() {
     if(id.type != TokenType::ID)
         throw ParseException("Parsing failed, unexpected token ", id, ", expecting identifier");
 
+    this->symtab.newFunction();
+
     std::vector<DataType> arg_types;
-    this->expect(TokenType::OPEN_PAR);
-    this->expect(TokenType::CLOSE_PAR);
+    std::unique_ptr<ASTNode> argument_list(this->parseArgumentList(arg_types));
     this->expect(TokenType::DECL);
 
     DataType return_type;
@@ -319,7 +372,6 @@ ASTNode* Parser::parseFunction() {
     }
 
     uint32_t symbol_id = this->symtab.declareFunction(id.str, return_type, arg_types);
-    this->symtab.newFunction();
 
     this->expect(TokenType::OPEN_CB);
     std::unique_ptr<ASTNode> function_body(this->parseStatementList());
@@ -327,7 +379,7 @@ ASTNode* Parser::parseFunction() {
 
     this->symtab.endFunction();
 
-    return new ASTNode(NodeType::FUNC_DECL, return_type, symbol_id, {function_body.release()});
+    return new ASTNode(NodeType::FUNC_DECL, return_type, symbol_id, {argument_list.release(), function_body.release()});
 }
 
 ASTNode* Parser::parseFunctionList() {

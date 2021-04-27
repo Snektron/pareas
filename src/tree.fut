@@ -8,12 +8,15 @@ type NodeType =
     #statement_list |
     #empty_stat |
     #func_decl |
+    #func_arg |
+    #func_arg_list |
     #expr_stat |
     #if_stat |
     #if_else_stat |
     #while_stat |
     #func_call_expr |
     #func_call_arg |
+    #func_call_arg_list |
     #add_expr |
     #sub_expr |
     #mul_expr |
@@ -45,7 +48,6 @@ type NodeType =
     #while_dummy |
     #func_call_arg_float_in_int |
     #func_call_arg_stack |
-    #func_arg |
     #func_arg_float_in_int |
     #func_arg_stack
 

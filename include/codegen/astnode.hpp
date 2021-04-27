@@ -13,12 +13,15 @@ enum class NodeType {
     STATEMENT_LIST,
     EMPTY_STAT,
     FUNC_DECL,
+    FUNC_ARG,
+    FUNC_ARG_LIST,
     EXPR_STAT,
     IF_STAT,
     IF_ELSE_STAT,
     WHILE_STAT,
     FUNC_CALL_EXPR,
     FUNC_CALL_ARG,
+    FUNC_CALL_ARG_LIST,
     ADD_EXPR,
     SUB_EXPR,
     MUL_EXPR,
@@ -49,6 +52,8 @@ enum class NodeType {
     ID_EXPR,
     WHILE_DUMMY
 };
+
+extern const char* NODE_NAMES[];
 
 class ASTNode {
     private:

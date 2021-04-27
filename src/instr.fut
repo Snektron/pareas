@@ -27,7 +27,11 @@ let node_instr(node_type: NodeType) (data_type: DataType) (instr_offset: i64) : 
     case (#expr_stat, _, 0) ->          0b0000000_00000_00000_000_00000_0000000 -- ignored
 
     -- Scope control
-    case (#func_decl, _, _) ->          0b0000000_00000_00000_000_00000_1110011 -- TODO
+    case (#func_decl, _, _) ->              0b0000000_00000_00000_000_00000_1110011 -- TODO
+    case (#func_arg, _, _) ->               0b0000000_00000_00000_000_00000_1110011 -- TODO
+    case (#func_arg_float_in_int, _, _) ->  0b0000000_00000_00000_000_00000_1110011 -- TODO
+    case (#func_arg_stack, _, _) ->         0b0000000_00000_00000_000_00000_1110011 -- TODO
+    case (#func_arg_list, _, _) ->          0b0000000_00000_00000_000_00000_1110011 -- TODO
 
     -- Control flow
     case (#if_stat, _, 0) ->            0b0000000_00000_00000_000_00000_1100011 -- BEQ x0
@@ -89,17 +93,17 @@ let node_instr(node_type: NodeType) (data_type: DataType) (instr_offset: i64) : 
     case (#greateq_expr, #float, 0) ->  0b1010000_00000_00000_000_00000_1010011 -- FLE.S
 
     -- Assignment
-    case (#assign_expr, #int_ref, 0) -> 0b0000000_00000_00000_010_00000_0100011 -- SW offset 0
-    case (#assign_expr, #int_ref, 1) -> 0b0000000_00000_00000_000_00000_0110011 -- ADD x0
+    case (#assign_expr, #int, 0) ->     0b0000000_00000_00000_010_00000_0100011 -- SW offset 0
+    case (#assign_expr, #int, 1) ->     0b0000000_00000_00000_000_00000_0110011 -- ADD x0
+    case (#assign_expr, #float, 0) ->   0b0000000_00000_00000_010_00000_0100111 -- FSW offset 0
+    case (#assign_expr, #float, 1) ->   0b0010000_00000_00000_000_00000_1010011 -- FSGNJ.S ry, ry
 
     -- Function call
     case (#func_call_expr, _, _) ->                 0b0000000_00000_00000_000_00000_1110011 -- TODO
     case (#func_call_arg, _, _) ->                  0b0000000_00000_00000_000_00000_1110011 -- TODO
     case (#func_call_arg_float_in_int, _, _) ->     0b0000000_00000_00000_000_00000_1110011 -- TODO
     case (#func_call_arg_stack, _, _) ->            0b0000000_00000_00000_000_00000_1110011 -- TODO
-    case (#func_arg, _, _) ->                       0b0000000_00000_00000_000_00000_1110011 -- TODO
-    case (#func_arg_float_in_int, _, _) ->          0b0000000_00000_00000_000_00000_1110011 -- TODO
-    case (#func_arg_stack, _, _) ->                 0b0000000_00000_00000_000_00000_1110011 -- TODO
+    case (#func_call_arg_list, _, _) ->             0b0000000_00000_00000_000_00000_1110011 -- TODO
 
     -- Literals
     case (#lit_expr, #int, 0) ->        0b0000000_00000_00000_000_00000_0110111 -- LUI
@@ -114,7 +118,7 @@ let node_instr(node_type: NodeType) (data_type: DataType) (instr_offset: i64) : 
     case (#deref_expr, #int, 0) ->      0b0000000_00000_00000_010_00000_0000011 -- LW 0(rs1)
     case (#deref_expr, #float, 0) ->    0b0000000_00000_00000_010_00000_0000111 -- FLW 0(rs1)
 
-    -- Variables, TODO add global support using symbol table symbol id
+    -- Variables
     case (#decl_expr, _, 0) ->          0b0000000_00000_01000_000_00000_0010011 -- ADDI bp (local offsets inverted)
     case (#id_expr, _, 0) ->            0b0000000_00000_01000_000_00000_0010011 -- ADDI bp (local offsets inverted)
 
@@ -212,9 +216,10 @@ let node_get_instr_arg (node_id: i64) (node: Node) (registers: []i64) (arg_no: i
         case (#greateq_expr, #int, _, 0) -> registers[node_id * PARENT_IDX_PER_NODE + arg_no]
         case (#greateq_expr, #float, _, 0) -> registers[node_id * PARENT_IDX_PER_NODE + 1 - arg_no]
         case (#assign_expr, _,_, 0) -> registers[node_id * PARENT_IDX_PER_NODE + arg_no]
-        case (#assign_expr, _,0, 1) -> registers[node_id * PARENT_IDX_PER_NODE]
-        case (#cast_expr, _,0, 0) -> registers[node_id * PARENT_IDX_PER_NODE]
-        case (#deref_expr, _,0, 0) -> registers[node_id * PARENT_IDX_PER_NODE]
+        case (#assign_expr, _, 0, 1) -> registers[node_id * PARENT_IDX_PER_NODE + 1]
+        case (#assign_expr, #float, 1, 1) -> registers[node_id * PARENT_IDX_PER_NODE + 1]
+        case (#cast_expr, _, 0, 0) -> registers[node_id * PARENT_IDX_PER_NODE]
+        case (#deref_expr, _, 0, 0) -> registers[node_id * PARENT_IDX_PER_NODE]
 
         case (#eq_expr, #int, 0, 1) -> register (instr_no - 1)
         case (#neq_expr, #int, 1, 1) -> register (instr_no - 1)

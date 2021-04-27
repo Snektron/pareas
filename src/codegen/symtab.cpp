@@ -49,7 +49,7 @@ void SymbolTable::newFunction() {
 }
 
 void SymbolTable::endFunction() {
-    this->function_var_count[this->func_id_map.size() - 1] = this->function_offset;
+    this->function_var_count.push_back(this->function_offset);
 }
 
 void SymbolTable::print(std::ostream& os) const {

@@ -2,6 +2,9 @@
 #define _PAREAS_CODEGEN_PARSER_HPP
 
 #include "codegen/token.hpp"
+#include "codegen/datatype.hpp"
+
+#include <vector>
 
 class Lexer;
 class ASTNode;
@@ -26,6 +29,7 @@ class Parser {
         ASTNode* parseWhileStatement();
         ASTNode* parseStatement();
         ASTNode* parseStatementList();
+        ASTNode* parseArgumentList(std::vector<DataType>&);
         ASTNode* parseFunction();
         ASTNode* parseFunctionList();
     public:
