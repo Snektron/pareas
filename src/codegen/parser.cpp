@@ -165,6 +165,25 @@ ASTNode* Parser::parseAtom() {
                 uint32_t symbol_id = this->symtab.declareSymbol(id, symbol_type);
                 return new ASTNode(NodeType::DECL_EXPR, symbol_type, symbol_id);
             }
+            else if(lookahead.type == TokenType::OPEN_PAR) {
+                this->lexer.lex();
+                lookahead = this->lexer.lookahead();
+
+                std::vector<std::unique_ptr<ASTNode>> params;
+                
+                if(lookahead.type != TokenType::CLOSE_PAR) {
+                    params.emplace_back(this->parseExpression());
+                    lookahead = this->lexer.lookahead();
+                    while(lookahead.type == TokenType::COMMA) {
+                        this->lexer.lex();
+                        params.emplace_back(this->parseExpression());
+                        lookahead = this->lexer.lookahead();
+                    }
+                }
+
+                this->expect(TokenType::CLOSE_PAR);
+                //TODO: return the call
+            }
             else {
                 Symbol symbol = this->symtab.resolveSymbol(id);
                 return new ASTNode(NodeType::ID_EXPR, symbol.type, symbol.id);
@@ -281,6 +300,7 @@ ASTNode* Parser::parseFunction() {
     if(id.type != TokenType::ID)
         throw ParseException("Parsing failed, unexpected token ", id, ", expecting identifier");
 
+    std::vector<DataType> arg_types;
     this->expect(TokenType::OPEN_PAR);
     this->expect(TokenType::CLOSE_PAR);
     this->expect(TokenType::DECL);
@@ -298,12 +318,14 @@ ASTNode* Parser::parseFunction() {
             throw ParseException("Parsing failed, unexpected token ", id, ", expecting typename");
     }
 
-    uint32_t symbol_id = this->symtab.declareFunction(id.str, return_type);
+    uint32_t symbol_id = this->symtab.declareFunction(id.str, return_type, arg_types);
     this->symtab.newFunction();
 
     this->expect(TokenType::OPEN_CB);
     std::unique_ptr<ASTNode> function_body(this->parseStatementList());
     this->expect(TokenType::CLOSE_CB);
+
+    this->symtab.endFunction();
 
     return new ASTNode(NodeType::FUNC_DECL, return_type, symbol_id, {function_body.release()});
 }

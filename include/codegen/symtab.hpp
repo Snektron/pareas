@@ -29,15 +29,18 @@ class SymbolTable {
         std::vector<uint8_t> data_types;
         std::vector<uint8_t> globals;
         std::vector<uint32_t> function_offsets;
+        std::vector<uint32_t> function_var_count;
+        std::vector<std::vector<DataType>> arg_lists;
     public:
         SymbolTable();
         ~SymbolTable();
 
         uint32_t declareSymbol(const std::string&, DataType, bool = false);
-        uint32_t declareFunction(const std::string&, DataType);
+        uint32_t declareFunction(const std::string&, DataType, const std::vector<DataType>&);
         Symbol resolveSymbol(const std::string&) const;
 
         void newFunction();
+        void endFunction();
         void print(std::ostream&) const;
 
         inline size_t maxVars() const {

@@ -20,11 +20,13 @@ uint32_t SymbolTable::declareSymbol(const std::string& name, DataType type, bool
     return id;
 }
 
-uint32_t SymbolTable::declareFunction(const std::string& name, DataType type) {
+uint32_t SymbolTable::declareFunction(const std::string& name, DataType type, const std::vector<DataType>& arg_types) {
     if(this->func_id_map.count(name) > 0)
         throw ParseException("Redeclaration of function ", name);
     uint32_t id = this->func_id_map.size();
     this->func_id_map[name] = id;
+
+    this->arg_lists.push_back(arg_types);
 
     return id;
 }
@@ -44,6 +46,10 @@ Symbol SymbolTable::resolveSymbol(const std::string& name) const {
 
 void SymbolTable::newFunction() {
     this->function_offset = 0;
+}
+
+void SymbolTable::endFunction() {
+    this->function_var_count[this->func_id_map.size() - 1] = this->function_offset;
 }
 
 void SymbolTable::print(std::ostream& os) const {

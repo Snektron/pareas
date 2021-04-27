@@ -226,7 +226,7 @@ int main(int argc, const char* argv[]) {
     #endif
 
     try {
-        std::ifstream input(argv[1]);
+        std::ifstream input(opts.input_path);
         Lexer lexer(input);
         SymbolTable symtab;
         Parser parser(lexer, symtab);
