@@ -2,6 +2,7 @@
 #include "pareas/lpg/escape.hpp"
 
 #include <fmt/ostream.h>
+#include <iostream>
 
 #include <bitset>
 #include <limits>
@@ -76,12 +77,25 @@ namespace pareas::lexer {
                 return true;
         }
 
-        return this->children.size() > 0;
+        return this->children.size() == 0;
     }
 
     void RepeatNode::print(std::ostream& os) const {
         this->child->print(os);
-        fmt::print(os, this->repeat_type == RepeatType::ZERO_OR_MORE ? "*" : "+");
+
+        char c;
+        switch (this->repeat_type) {
+            case RepeatType::ZERO_OR_ONE:
+                c = '?';
+                break;
+            case RepeatType::ZERO_OR_MORE:
+                c = '*';
+                break;
+            case RepeatType::ONE_OR_MORE:
+                c = '+';
+                break;
+        }
+        fmt::print(os, "{}", c);
     }
 
     auto RepeatNode::compile(FiniteStateAutomaton& fsa, StateIndex start) const -> StateIndex {
@@ -89,18 +103,23 @@ namespace pareas::lexer {
         auto loop_end = this->child->compile(fsa, loop_start);
         auto end = fsa.add_state();
 
-        if (this->repeat_type == RepeatType::ZERO_OR_MORE)
-            fsa.add_epsilon_transition(start, end);
-
         fsa.add_epsilon_transition(start, loop_start);
         fsa.add_epsilon_transition(loop_end, end);
-        fsa.add_epsilon_transition(loop_end, loop_start);
+
+        // For ? and *, add the epsilon-transition which bypasses the child entirely.
+        if (this->repeat_type == RepeatType::ZERO_OR_ONE || this->repeat_type == RepeatType::ZERO_OR_MORE)
+            fsa.add_epsilon_transition(start, end);
+
+        // For + and *, add the epsilon-transition which loops around to the start of the loop.
+        if (this->repeat_type == RepeatType::ZERO_OR_MORE || this->repeat_type == RepeatType::ONE_OR_MORE)
+            fsa.add_epsilon_transition(loop_end, loop_start);
 
         return end;
     }
 
     bool RepeatNode::matches_empty() const {
         switch (this->repeat_type) {
+            case RepeatType::ZERO_OR_ONE:
             case RepeatType::ZERO_OR_MORE:
                 return true;
             case RepeatType::ONE_OR_MORE:

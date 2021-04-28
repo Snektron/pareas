@@ -56,7 +56,7 @@ lbrace = /{/
 
 ## Semantic: These tokens carry information that is required for the rest of the compilation.
 name = /[a-zA-Z_][a-zA-Z0-9_]*/
-float_literal = /[0-9]+.[0-9]+/
+float_literal = /[0-9]+\.[0-9]+/
 int_literal = /[0-9]+/
 
 ## Ignored: These should be filtered out before parsing.

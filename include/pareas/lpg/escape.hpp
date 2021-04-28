@@ -68,6 +68,8 @@ struct fmt::formatter<pareas::EscapeFormatter> {
             case '-':
             case '^':
             case '+':
+            case '?':
+            case '.':
                 if (this->escape_regex)
                     return print_escaped_regular();
                 break;

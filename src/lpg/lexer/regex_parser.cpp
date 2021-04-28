@@ -18,6 +18,8 @@ namespace {
             case ')':
             case '/':
             case '|':
+            case '?':
+            case '.':
                 return true;
             default:
                 return false;
@@ -77,8 +79,9 @@ namespace pareas::lexer {
 
         bool star = this->parser->test('*');
         bool plus = this->parser->test('+');
+        bool ques = this->parser->test('?');
 
-        if (!star && !plus)
+        if (!star && !plus && !ques)
             return child;
 
         this->parser->consume();
@@ -89,7 +92,7 @@ namespace pareas::lexer {
         }
 
         return std::make_unique<RepeatNode>(
-            star ? RepeatType::ZERO_OR_MORE : RepeatType::ONE_OR_MORE,
+            ques ? RepeatType::ZERO_OR_ONE : star ? RepeatType::ZERO_OR_MORE : RepeatType::ONE_OR_MORE,
             std::move(child)
         );
     }
@@ -98,7 +101,9 @@ namespace pareas::lexer {
         auto c = this->parser->peek();
         auto loc = this->parser->loc();
 
-        if (c == '[') {
+        if (c == '.') {
+            return std::make_unique<CharSetNode>(std::vector<CharRange>(), true);
+        } else if (c == '[') {
             return this->group();
         } else if (this->parser->eat('(')) {
             auto child = this->alternation();

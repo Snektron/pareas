@@ -46,6 +46,7 @@ namespace pareas::lexer {
     };
 
     enum class RepeatType {
+        ZERO_OR_ONE,
         ZERO_OR_MORE,
         ONE_OR_MORE
     };
