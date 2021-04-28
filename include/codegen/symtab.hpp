@@ -30,6 +30,7 @@ class SymbolTable {
         std::vector<uint8_t> globals;
         std::vector<uint32_t> function_offsets;
         std::vector<uint32_t> function_var_count;
+        std::vector<DataType> func_ret_types;
         std::vector<std::vector<DataType>> arg_lists;
     public:
         SymbolTable();
@@ -38,6 +39,8 @@ class SymbolTable {
         uint32_t declareSymbol(const std::string&, DataType, bool = false);
         uint32_t declareFunction(const std::string&, DataType, const std::vector<DataType>&);
         Symbol resolveSymbol(const std::string&) const;
+        uint32_t resolveFunction(const std::string&) const;
+        DataType getFunctionReturnType(size_t) const;
 
         void newFunction();
         void endFunction();

@@ -26,6 +26,7 @@ uint32_t SymbolTable::declareFunction(const std::string& name, DataType type, co
     uint32_t id = this->func_id_map.size();
     this->func_id_map[name] = id;
 
+    this->func_ret_types.push_back(type);
     this->arg_lists.push_back(arg_types);
 
     return id;
@@ -42,6 +43,16 @@ Symbol SymbolTable::resolveSymbol(const std::string& name) const {
         .global = (bool)this->globals[id],
         .function_offset = this->function_offsets[id]
     };
+}
+
+uint32_t SymbolTable::resolveFunction(const std::string& name) const {
+    if(this->func_id_map.count(name) == 0)
+        throw ParseException("Tried to call undeclared function ", name);
+    return this->func_id_map.at(name);
+}
+
+DataType SymbolTable::getFunctionReturnType(size_t id) const {
+    return this->func_ret_types[id];
 }
 
 void SymbolTable::newFunction() {

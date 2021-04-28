@@ -172,17 +172,29 @@ ASTNode* Parser::parseAtom() {
                 std::vector<std::unique_ptr<ASTNode>> params;
                 
                 if(lookahead.type != TokenType::CLOSE_PAR) {
-                    params.emplace_back(this->parseExpression());
+                    std::unique_ptr<ASTNode> expr1(this->parseExpression());
+                    params.emplace_back(new ASTNode(NodeType::FUNC_CALL_ARG, {expr1.release()}));
                     lookahead = this->lexer.lookahead();
                     while(lookahead.type == TokenType::COMMA) {
                         this->lexer.lex();
-                        params.emplace_back(this->parseExpression());
+                        std::unique_ptr<ASTNode> expr(this->parseExpression());
+                        params.emplace_back(new ASTNode(NodeType::FUNC_CALL_ARG, {expr.release()}));
                         lookahead = this->lexer.lookahead();
                     }
                 }
 
                 this->expect(TokenType::CLOSE_PAR);
-                //TODO: return the call
+
+                std::vector<ASTNode*> arg_list;
+                for(size_t i = 0; i < params.size(); ++i) {
+                    arg_list.push_back(params[i].release());
+                }
+
+                std::unique_ptr<ASTNode> arg_list_node(new ASTNode(NodeType::FUNC_CALL_ARG_LIST, arg_list));
+
+                uint32_t func_id = this->symtab.resolveFunction(id);
+                DataType ret_type = this->symtab.getFunctionReturnType(func_id);
+                return new ASTNode(NodeType::FUNC_CALL_EXPR, ret_type, {arg_list_node.release()});
             }
             else {
                 Symbol symbol = this->symtab.resolveSymbol(id);
@@ -299,6 +311,8 @@ ASTNode* Parser::parseArgumentList(std::vector<DataType>& arg_types) {
     std::vector<std::unique_ptr<ASTNode>> arguments;
     Token lookahead = this->lexer.lookahead();
 
+    size_t num_int_args = 0;
+
     auto parse_decl = [&] () {
         Token current = this->lexer.lex();
         if(current.type != TokenType::ID)
@@ -322,7 +336,8 @@ ASTNode* Parser::parseArgumentList(std::vector<DataType>& arg_types) {
         }
         uint32_t symbol_id = this->symtab.declareSymbol(var_name, res_type);
         std::unique_ptr<ASTNode> decl_node(new ASTNode(NodeType::DECL_EXPR, res_type, symbol_id));
-        arguments.emplace_back(new ASTNode(NodeType::FUNC_ARG, {decl_node.release()}));
+        size_t arg_idx = res_type == DataType::INT_REF ? num_int_args++ : arguments.size() - num_int_args;
+        arguments.emplace_back(new ASTNode(NodeType::FUNC_ARG, DataType::INVALID, arg_idx, {decl_node.release()}));
     };
 
     if(lookahead.type != TokenType::CLOSE_PAR) {

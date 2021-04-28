@@ -28,10 +28,11 @@ let node_instr(node_type: NodeType) (data_type: DataType) (instr_offset: i64) : 
 
     -- Scope control
     case (#func_decl, _, _) ->              0b0000000_00000_00000_000_00000_1110011 -- TODO
-    case (#func_arg, _, _) ->               0b0000000_00000_00000_000_00000_1110011 -- TODO
-    case (#func_arg_float_in_int, _, _) ->  0b0000000_00000_00000_000_00000_1110011 -- TODO
+    case (#func_arg, #int_ref, 0) ->        0b0000000_00000_00000_010_00000_0100011 -- SW offset 0
+    case (#func_arg, #float_ref, 0) ->      0b0000000_00000_00000_010_00000_0100111 -- FSW offset 0
+    case (#func_arg_float_in_int, _, 0) ->  0b0000000_00000_00000_010_00000_0100011 -- SW offset 0
     case (#func_arg_stack, _, _) ->         0b0000000_00000_00000_000_00000_1110011 -- TODO
-    case (#func_arg_list, _, _) ->          0b0000000_00000_00000_000_00000_1110011 -- TODO
+    case (#func_arg_list, _, _) ->          0b0000000_00000_00000_000_00000_0000000 -- ignored
 
     -- Control flow
     case (#if_stat, _, 0) ->            0b0000000_00000_00000_000_00000_1100011 -- BEQ x0
@@ -83,7 +84,7 @@ let node_instr(node_type: NodeType) (data_type: DataType) (instr_offset: i64) : 
     case (#greateq_expr, #int, 0) ->    0b0000000_00000_00000_010_00000_0110011 -- SLT
     case (#greateq_expr, #int, 1) ->    0b0000000_00001_00000_011_00000_0010011 -- SLTUI 1
 
-    -- Float comparision: TODO, change this lookup, return type is int
+    -- Float comparision
     case (#eq_expr, #float, 0) ->       0b1010000_00000_00000_010_00000_1010011 -- FEQ.S
     case (#neq_expr, #float, 0) ->      0b1010000_00000_00000_010_00000_1010011 -- FEQ.S
     case (#neq_expr, #float, 1) ->      0b0000000_00001_00000_011_00000_0010011 -- SLTUI 1
@@ -100,8 +101,9 @@ let node_instr(node_type: NodeType) (data_type: DataType) (instr_offset: i64) : 
 
     -- Function call
     case (#func_call_expr, _, _) ->                 0b0000000_00000_00000_000_00000_1110011 -- TODO
-    case (#func_call_arg, _, _) ->                  0b0000000_00000_00000_000_00000_1110011 -- TODO
-    case (#func_call_arg_float_in_int, _, _) ->     0b0000000_00000_00000_000_00000_1110011 -- TODO
+    case (#func_call_arg, #int, 0) ->               0b0000000_00000_00000_000_00000_0110011 -- ADD x0
+    case (#func_call_arg, #float, 0) ->             0b0010000_00000_00000_000_00000_1010011 -- FSGNJ.S ry, ry
+    case (#func_call_arg_float_in_int, _, 0) ->     0b1110000_00000_00000_000_00000_1010011 -- FMV.X.W
     case (#func_call_arg_stack, _, _) ->            0b0000000_00000_00000_000_00000_1110011 -- TODO
     case (#func_call_arg_list, _, _) ->             0b0000000_00000_00000_000_00000_1110011 -- TODO
 
@@ -131,6 +133,7 @@ let has_instr (node_type: NodeType) (data_type: DataType) (instr_offset: i64) : 
         case (#statement_list, _, 0) -> false
         case (#empty_stat, _, 0) -> false
         case (#func_decl, _, 0) -> false
+        case (#func_arg_list, _, 0) -> false
         case (#expr_stat, _, 0) -> false
         
         case (#if_else_stat, _, 1) -> true
@@ -193,6 +196,11 @@ let register (instr_no: i64) =
 
 let node_get_instr_arg (node_id: i64) (node: Node) (registers: []i64) (arg_no: i64) (instr_no: i64) (instr_offset: i64) : i64 =
     match(node.node_type, node.resulting_type, arg_no, instr_offset)
+        case (#func_arg, _, 0, 0) -> registers[node_id * PARENT_IDX_PER_NODE]
+        case (#func_arg, #int_ref, 1, 0) -> i64.u32 node.node_data + 10
+        case (#func_arg, #float_ref, 1, 0) -> i64.u32 node.node_data + 42
+        case (#func_arg_float_in_int, _, 0, 0) -> registers[node_id * PARENT_IDX_PER_NODE]
+        case (#func_arg_float_in_int, _, 1, 0) -> i64.u32 node.node_data + 10
         case (#if_stat, _, 0, 0) -> registers[node_id * PARENT_IDX_PER_NODE]
         case (#if_else_stat, _, 0, 0) -> registers[node_id * PARENT_IDX_PER_NODE]
         case (#while_stat, _, 0, 0) -> registers[node_id * PARENT_IDX_PER_NODE + 1]
@@ -215,9 +223,10 @@ let node_get_instr_arg (node_id: i64) (node: Node) (registers: []i64) (arg_no: i
         case (#lesseq_expr, #float, _, 0) -> registers[node_id * PARENT_IDX_PER_NODE + arg_no]
         case (#greateq_expr, #int, _, 0) -> registers[node_id * PARENT_IDX_PER_NODE + arg_no]
         case (#greateq_expr, #float, _, 0) -> registers[node_id * PARENT_IDX_PER_NODE + 1 - arg_no]
+        case (#func_call_arg, _, 0, 0) -> registers[node_id * PARENT_IDX_PER_NODE]
+        case (#func_call_arg, #float, 1, 0) -> registers[node_id * PARENT_IDX_PER_NODE]
+        case (#func_call_arg_float_in_int, _, 0, 0) -> registers[node_id * PARENT_IDX_PER_NODE]
         case (#assign_expr, _,_, 0) -> registers[node_id * PARENT_IDX_PER_NODE + arg_no]
-        case (#assign_expr, _, 0, 1) -> registers[node_id * PARENT_IDX_PER_NODE + 1]
-        case (#assign_expr, #float, 1, 1) -> registers[node_id * PARENT_IDX_PER_NODE + 1]
         case (#cast_expr, _, 0, 0) -> registers[node_id * PARENT_IDX_PER_NODE]
         case (#deref_expr, _, 0, 0) -> registers[node_id * PARENT_IDX_PER_NODE]
 
@@ -226,6 +235,8 @@ let node_get_instr_arg (node_id: i64) (node: Node) (registers: []i64) (arg_no: i
         case (#neq_expr, #float, 0, 1) -> register (instr_no - 1)
         case (#lesseq_expr, #int, 0, 1) -> register (instr_no - 1)
         case (#greateq_expr, #int, 0, 1) -> register (instr_no - 1)
+        case (#assign_expr, _, 0, 1) -> registers[node_id * PARENT_IDX_PER_NODE + 1]
+        case (#assign_expr, #float, 1, 1) -> registers[node_id * PARENT_IDX_PER_NODE + 1]
         case (#lit_expr, _, 0, 1) -> register (instr_no - 1)
         case (#lit_expr, #float, 0, 2) -> register (instr_no - 1)
         case _ -> 0
@@ -296,10 +307,17 @@ let get_data_prop_value [tree_size] (tree: Tree[tree_size]) (node: Node) (rd: i6
         else
             rd
 
+let get_output_register [tree_size] (tree: Tree[tree_size]) (node: Node) (instr_no: i64) (instr_offset: i64) =
+    match (node.node_type, node.resulting_type)
+        case (#func_call_arg, #int) -> i64.u32 node.node_data + 10
+        case (#func_call_arg, #float) -> i64.u32 node.node_data + 42
+        case (#func_call_arg_float_in_int, _) -> i64.u32 node.node_data + 10
+        case _ -> if node_has_output tree.nodes node instr_offset then register instr_no else 0
+
 let get_node_instr [tree_size] [max_vars] (tree: Tree[tree_size]) (node: Node) (instr_no: i64) (node_index: i64) (registers: []i64) (symtab: Symtab[max_vars]) (instr_offset: i64): (i64, i64, Instr, i64) =
     let node_type = node.node_type
     let data_type = node.resulting_type
-    let rd = (if node_has_output tree.nodes node instr_offset then register instr_no else 0)
+    let rd = get_output_register tree node instr_no instr_offset
     let instr_loc = get_instr_loc node node_index instr_no instr_offset registers
     in
         (

@@ -181,6 +181,7 @@ void ASTNode::resolveType() {
             this->return_type = DataType::INT;
             break;
         case NodeType::NEG_EXPR:
+        case NodeType::FUNC_CALL_ARG:
             assert_type(0, {DataType::INT, DataType::FLOAT});
             this->return_type = this->children[0]->return_type;
             break;
@@ -201,6 +202,16 @@ void ASTNode::resolveType() {
         case NodeType::FUNC_ARG:
             assert_type(0, {DataType::INT_REF, DataType::FLOAT_REF});
             this->return_type = this->children[0]->return_type;
+            break;
+        case NodeType::FUNC_CALL_ARG_LIST: {
+            size_t num_int_args = 0;
+            for(size_t i = 0; i < this->children.size(); ++i) {
+                assert_type(i, {DataType::INT, DataType::FLOAT});
+                DataType d_type = this->children[i]->return_type;
+                size_t arg_idx = d_type == DataType::INT_REF ? num_int_args++ : i - num_int_args;
+                this->children[i]->integer = arg_idx;
+            }
+        }
             break;
         default:
             this->return_type = DataType::INVALID;
