@@ -142,5 +142,4 @@ entry main
     let child_indexes = gather child_indexes old_index
     -- Re-compute the depths
     let depths = compute_depths parents
-    let n = length node_types
-    in (status_ok, node_types, parents, replicate n 0, replicate n data_type.invalid, depths, replicate n 0, replicate n 0)
+    in (status_ok, node_types, parents, data, data_types, depths, child_indexes, fn_tab)
