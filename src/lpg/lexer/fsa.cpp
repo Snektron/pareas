@@ -143,6 +143,7 @@ namespace pareas::lexer {
         for (size_t src = 0; src < this->num_states(); ++src) {
             const auto& [lexeme, transitions] = this->states[src];
             fmt::print(
+                os,
                 "    state{} [shape=\"{}\", label=\"{}\"];\n",
                 src,
                 lexeme ? "doublecircle" : "circle",
@@ -153,9 +154,9 @@ namespace pareas::lexer {
                 auto style = produces_lexeme ? ", color=blue" : "";
 
                 if (maybe_sym.has_value()) {
-                    fmt::print("    state{} -> state{} [label=\"{:q}\"{}];\n", src, dst, EscapeFormatter{maybe_sym.value()}, style);
+                    fmt::print(os, "    state{} -> state{} [label=\"{:q}\"{}];\n", src, dst, EscapeFormatter{maybe_sym.value()}, style);
                 } else {
-                    fmt::print("    state{} -> state{} [label=\"Ɛ\"{}];\n", src, dst, style);
+                    fmt::print(os, "    state{} -> state{} [label=\"Ɛ\"{}];\n", src, dst, style);
                 }
             }
         }

@@ -63,6 +63,9 @@ namespace pareas::lexer {
     ParallelLexer::Transition::Transition():
         result_state(REJECT), produces_lexeme(false) {}
 
+    ParallelLexer::Transition::Transition(StateIndex result_state, bool produces_lexeme):
+        result_state(result_state), produces_lexeme(produces_lexeme) {}
+
     ParallelLexer::MergeTable::MergeTable():
         num_states(0), capacity(0), merge_table(nullptr) {}
 
@@ -152,28 +155,31 @@ namespace pareas::lexer {
             this->identity_state_index = enqueue(std::move(identity));
         }
 
+        auto merge = [&](StateIndex i, StateIndex j) {
+            StateIndex result;
+            // We need to handle the identity stage separately here, as we
+            // normally just copy the produces_lexeme property from the right hand site,
+            // but if the right hand site is the identity state thats not correct.
+            if (i == this->identity_state_index) {
+                result = j;
+            } else if (j == this->identity_state_index) {
+                result = i;
+            } else {
+                auto ps = states[i];
+                ps.merge(states[j]);
+                result = enqueue(std::move(ps));
+            }
+
+            bool produces_lexeme = states[result].transitions[START].produces_lexeme;
+            this->merge_table(i, j) = {result, produces_lexeme};
+        };
+
         // Repeatedly perform the merges until no new merge is added
         for (StateIndex i = 0; i < states.size(); ++i) {
             auto first = states[i];
             for (StateIndex j = 0; j < states.size(); ++j) {
-                auto second = states[j];
-                auto copy = first;
-                copy.merge(second);
-                second.merge(first);
-
-                {
-                    bool ij_produces_lexeme = copy.transitions[START].produces_lexeme;
-                    auto ij = enqueue(std::move(copy));
-                    this->merge_table(i, j).result_state = ij;
-                    this->merge_table(i, j).produces_lexeme = ij_produces_lexeme;
-                }
-
-                {
-                    bool ji_produces_lexeme = second.transitions[START].produces_lexeme;
-                    auto ji = enqueue(std::move(second));
-                    this->merge_table(j, i).result_state = ji;
-                    this->merge_table(j, i).produces_lexeme = ji_produces_lexeme;
-                }
+                merge(i, j);
+                merge(j, i);
             }
         }
 

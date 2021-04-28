@@ -90,7 +90,7 @@ struct Options {
     bool profile;
 };
 
-void print_usage(const char* progname) {
+void print_usage(char* progname) {
     fmt::print(
         "Usage: {} [options...] <input path>\n"
         "Available options:\n"
@@ -118,7 +118,7 @@ void print_usage(const char* progname) {
     );
 }
 
-bool parse_options(Options* opts, int argc, const char* argv[]) {
+bool parse_options(Options* opts, int argc, char* argv[]) {
     *opts = {
         .input_path = nullptr,
         .output_path = "b.out",
@@ -220,11 +220,6 @@ struct Free {
 
 template <typename T>
 using MallocPtr = std::unique_ptr<T, Free<T>>;
-
-void report_futhark_error(futhark::Context& ctx, std::string_view msg) {
-    auto err = MallocPtr<char>(futhark_context_get_error(ctx.get()));
-    fmt::print(std::cerr, "Error: {}:\n{}", msg, err ? err.get() : "(no diagnostic)");
-}
 
 futhark::UniqueLexTable upload_lex_table(futhark::Context& ctx) {
     auto initial_state = futhark::UniqueArray<uint16_t, 1>(
@@ -380,30 +375,7 @@ void download_and_render_tree(
     );
 }
 
-void download_and_dump_tokens(futhark::Context& ctx, futhark_u8_1d* tokens) {
-    int64_t n = futhark_shape_u8_1d(ctx.get(), tokens)[0];
-
-    auto host_tokens = std::vector<grammar::Token>(n);
-
-    int err = futhark_values_u8_1d(
-        ctx.get(),
-        tokens,
-        reinterpret_cast<std::underlying_type_t<grammar::Token>*>(host_tokens.data())
-    );
-    if (err) {
-        report_futhark_error(ctx, "Failed to download tokens");
-        return;
-    }
-
-    if (futhark_context_sync(ctx.get()))
-        report_futhark_error(ctx, "Sync after downloading tokens failed");
-
-    for (auto token : host_tokens) {
-        fmt::print("{}\n", grammar::token_name(token));
-    }
-}
-
-int main(int argc, const char* argv[]) {
+int main(int argc, char* argv[]) {
     Options opts;
     if (!parse_options(&opts, argc, argv)) {
         fmt::print(std::cerr, "See '{} --help' for usage\n", argv[0]);

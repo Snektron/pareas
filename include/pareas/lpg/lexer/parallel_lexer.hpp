@@ -26,6 +26,7 @@ namespace pareas::lexer {
             bool produces_lexeme;
 
             Transition();
+            Transition(StateIndex result_state, bool produces_lexe);
         };
 
         class MergeTable {
