@@ -115,11 +115,13 @@ let fix_fn_decls [n] (node_types: [n]production.t) (parents: [n]i32): (bool, [n]
         |> remove_nodes_lin parents
     in (valid, parents)
 
--- | A small pass that replaces `no_args` with an `arg_list`.
+-- | A small pass that replaces `no_args` and `args` with an `arg_list`.
 -- Should happen somewhere before `fix_param_lists`.
-let replace_no_args [n] (node_types: [n]production.t): [n]production.t =
+let reinsert_arg_lists [n] (node_types: [n]production.t): [n]production.t =
     map
-        (\nty -> if nty == production_no_args then production_arg_list else nty)
+        (\nty ->
+            if nty == production_no_args || nty == production_args then production_arg_list
+            else nty)
         node_types
 
 -- | It is useful for codegen and futher down the frontend part to tell an arg node from a param node, so this pass
