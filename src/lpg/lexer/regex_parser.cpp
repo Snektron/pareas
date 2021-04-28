@@ -203,9 +203,9 @@ namespace pareas::lexer {
 
         auto convert_hex = [](int x) {
             if ('a' <= x && x <= 'f')
-                return x - 'a';
-            else if ('A' <= x && x <= 'Z')
-                return x - 'A';
+                return x - 'a' + 10;
+            else if ('A' <= x && x <= 'F')
+                return x - 'A' + 10;
             else if ('0' <= x && x <= '9')
                 return x - '0';
             return -1;
