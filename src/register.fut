@@ -18,38 +18,50 @@ let EMPTY_SYMBOL_DATA : SymbolData = {
     swapped = false
 }
 
-let INVALID_SYMBOL = 0xFFu8
 let NUM_SYSTEM_REGS = 64i64
 
-let is_valid_register (symbol_registers: []SymbolData) (register: i64) =
-    if register < NUM_SYSTEM_REGS then
-        false
-    else
-        let symb_reg = symbol_registers[register-NUM_SYSTEM_REGS].register in
-        symb_reg != INVALID_SYMBOL
+let is_system_register (register: i64) =
+    register < NUM_SYSTEM_REGS
 
 let needs_float_register (instr: u32) (offset: u32) =
     instr & 0b1111111 == 0b1010011
 
-let find_free_register (instr: u32) (lifetime_mask: u64) (offset: u32) : u64 =
+let find_free_register (instr: u32) (lifetime_mask: u64) (offset: u32) =
     let fixed_registers = lifetime_mask | (0xFFFFFFFFu64 << (if needs_float_register instr offset then 0 else 32))
     in
-    u64.ctz (!fixed_registers) |> u64.i32
+    u64.ctz (!fixed_registers)
+
+let make_symbol_data (reg: i32) =
+    {
+        register = u8.i32 reg,
+        active = true,
+        swapped = false
+    }
+
+let get_symbol_data (symbol_registers: []SymbolData) (reg: i64) : SymbolData =
+    if is_system_register reg then
+        {
+            register = u8.i64 reg,
+            active = true,
+            swapped = false
+        }
+    else
+        symbol_registers[reg - NUM_SYSTEM_REGS]
 
 let lifetime_analyze_valid [n] (instrs: [n]Instr) (symbol_registers: []SymbolData) (instr_offset: u32) (lifetime_mask: u64) =
-    if instr_offset == 0xFFFFFFFF then
-        (0i32, lifetime_mask, [(-1, EMPTY_SYMBOL_DATA), (-1, EMPTY_SYMBOL_DATA), (-1, EMPTY_SYMBOL_DATA)])
-    else
-        let instr = instrs[i64.u32 instr_offset]
-        let rd_register = find_free_register instr.instr lifetime_mask 0
-        let new_lifetime_mask = lifetime_mask | (1u64 << rd_register)
-        let register_info = [
-            (if is_valid_register symbol_registers instr.rd then instr.rd else -1, EMPTY_SYMBOL_DATA),
-            (if is_valid_register symbol_registers instr.rs1 then instr.rs1 else -1, EMPTY_SYMBOL_DATA),
-            (if is_valid_register symbol_registers instr.rs2 then instr.rs2 else -1, EMPTY_SYMBOL_DATA)
-        ]
-        in
-        (0i32, new_lifetime_mask, register_info)
+    let instr = instrs[i64.u32 instr_offset]
+    let old_rd_data = get_symbol_data symbol_registers instr.rd
+    let old_rs1_data = get_symbol_data symbol_registers instr.rs1
+    let old_rs2_data = get_symbol_data symbol_registers instr.rs2
+    let rd_register = find_free_register instr.instr lifetime_mask 0
+    let new_lifetime_mask = lifetime_mask | (1u64 << u64.i32 rd_register)
+    let register_info = [
+        (if !(is_system_register instr.rd) then instr.rd - NUM_SYSTEM_REGS else -1, rd_register |> make_symbol_data),
+        (if !(is_system_register instr.rs1) then instr.rs1 - NUM_SYSTEM_REGS else -1, old_rs1_data),
+        (if !(is_system_register instr.rs2) then instr.rs2 - NUM_SYSTEM_REGS else -1, old_rs2_data)
+    ]
+    in
+    (0i32, new_lifetime_mask, register_info)
 
 let lifetime_analyze [n] (instrs: [n]Instr) (symbol_registers: []SymbolData) (instr_offset: u32) (lifetime_mask: u64) =
     let register_info = [(-1i64, EMPTY_SYMBOL_DATA), (-1i64, EMPTY_SYMBOL_DATA), (-1i64, EMPTY_SYMBOL_DATA)] in
@@ -83,4 +95,8 @@ let register_alloc [n] [m] (instrs: [n]Instr) (functions: [m]FuncInfo) =
 
     in
 
-    (results.0, results.1)
+    (
+        results.0,
+        results.1,
+        results.2 |> map (\i -> i.register)
+    )

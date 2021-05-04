@@ -290,8 +290,10 @@ int main(int argc, const char* argv[]) {
         
         UniqueFPtr<futhark_i32_1d, futhark_free_i32_1d> register_instr_offsets(context.get());
         UniqueFPtr<futhark_u64_1d, futhark_free_u64_1d> lifetime_masks(context.get());
+        UniqueFPtr<futhark_u8_1d, futhark_free_u8_1d> register_map(context.get());
         if(!err)
-            err = futhark_entry_do_register_alloc(context.get(), &register_instr_offsets, &lifetime_masks, instr_fut.get(), rd_fut.get(), rs1_fut.get(), rs2_fut.get(),
+            err = futhark_entry_do_register_alloc(context.get(), &register_instr_offsets, &lifetime_masks, &register_map, 
+                            instr_fut.get(), rd_fut.get(), rs1_fut.get(), rs2_fut.get(),
                             function_ids.get(), function_offsets.get(), function_sizes.get());
         
         if (!err)
@@ -341,13 +343,18 @@ int main(int argc, const char* argv[]) {
             return EXIT_FAILURE;
         }
 
+        size_t num_register_map = *futhark_shape_u8_1d(context.get(), register_map.get());
+
         std::unique_ptr<int32_t[]> reg_instr_offsets(new int32_t[num_values]);
         std::unique_ptr<uint64_t[]> reg_lifetime_masks(new uint64_t[num_functab_entries]);
+        std::unique_ptr<uint8_t[]> reg_register_map(new uint8_t[num_register_map]);
 
         if(!err)
             futhark_values_i32_1d(context.get(), register_instr_offsets.get(), reg_instr_offsets.get());
         if(!err)
             futhark_values_u64_1d(context.get(), lifetime_masks.get(), reg_lifetime_masks.get());
+        if(!err)
+            futhark_values_u8_1d(context.get(), register_map.get(), reg_register_map.get());
 
         std::cout << std::endl << "Instruction offsets:" << std::endl;
         for(size_t i = 0; i < num_instr_counts; ++i) {
@@ -369,6 +376,11 @@ int main(int argc, const char* argv[]) {
             std::cout << i
                 << "+" << reg_instr_offsets[i]
                 << "\t= " << std::bitset<32>(instr[i]) << " " << rd[i] << " " << rs1[i] << " " << rs2[i] << std::endl;
+        }
+
+        std::cout << "Register mapping: " << std::endl;
+        for(size_t i = 0; i < num_register_map; ++i) {
+            std::cout << (i+64) << " -> " << (size_t)reg_register_map[i] << std::endl;
         }
 
 
