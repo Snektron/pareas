@@ -374,7 +374,7 @@ int main(int argc, const char* argv[]) {
         std::cout << std::endl << "Instructions:" << std::endl;        
         for(size_t i = 0; i < num_values; ++i) {
             std::cout << i
-                << "+" << reg_instr_offsets[i]
+                << "," << reg_instr_offsets[i]
                 << "\t= " << std::bitset<32>(instr[i]) << " " << rd[i] << " " << rs1[i] << " " << rs2[i] << std::endl;
         }
 
