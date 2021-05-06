@@ -284,16 +284,18 @@ int main(int argc, const char* argv[]) {
         UniqueFPtr<futhark_i64_1d, futhark_free_i64_1d> rd_fut(context.get());
         UniqueFPtr<futhark_i64_1d, futhark_free_i64_1d> rs1_fut(context.get());
         UniqueFPtr<futhark_i64_1d, futhark_free_i64_1d> rs2_fut(context.get());
+        UniqueFPtr<futhark_u32_1d, futhark_free_u32_1d> jt_fut(context.get());
         if(!err)
-            err = futhark_entry_main(context.get(), &instr_fut, &rd_fut, &rs1_fut, &rs2_fut, gpu_tree.get(), gpu_symtab.get(),
+            err = futhark_entry_main(context.get(), &instr_fut, &rd_fut, &rs1_fut, &rs2_fut, &jt_fut, gpu_tree.get(), gpu_symtab.get(),
                             instr_offsets.get());
         
         UniqueFPtr<futhark_i32_1d, futhark_free_i32_1d> register_instr_offsets(context.get());
         UniqueFPtr<futhark_u64_1d, futhark_free_u64_1d> lifetime_masks(context.get());
         UniqueFPtr<futhark_u8_1d, futhark_free_u8_1d> register_map(context.get());
+        UniqueFPtr<futhark_bool_1d, futhark_free_bool_1d> optimize_away(context.get());
         if(!err)
-            err = futhark_entry_do_register_alloc(context.get(), &register_instr_offsets, &lifetime_masks, &register_map, 
-                            instr_fut.get(), rd_fut.get(), rs1_fut.get(), rs2_fut.get(),
+            err = futhark_entry_do_register_alloc(context.get(), &register_instr_offsets, &lifetime_masks, &register_map, &optimize_away,
+                            instr_fut.get(), rd_fut.get(), rs1_fut.get(), rs2_fut.get(), jt_fut.get(),
                             function_ids.get(), function_offsets.get(), function_sizes.get());
         
         if (!err)
@@ -329,6 +331,7 @@ int main(int argc, const char* argv[]) {
         std::unique_ptr<int64_t[]> rd(new int64_t[num_values]);
         std::unique_ptr<int64_t[]> rs1(new int64_t[num_values]);
         std::unique_ptr<int64_t[]> rs2(new int64_t[num_values]);
+        std::unique_ptr<uint32_t[]> jt(new uint32_t[num_values]);
         err = futhark_values_u32_1d(context.get(), instr_fut.get(), instr.get());
         if(!err)
             err = futhark_values_i64_1d(context.get(), rd_fut.get(), rd.get());
@@ -336,6 +339,8 @@ int main(int argc, const char* argv[]) {
             err = futhark_values_i64_1d(context.get(), rs1_fut.get(), rs1.get());
         if(!err)
             err = futhark_values_i64_1d(context.get(), rs2_fut.get(), rs2.get());
+        if(!err)
+            err = futhark_values_u32_1d(context.get(), jt_fut.get(), jt.get());
 
         if(err) {
             auto err = MallocPtr<char>(futhark_context_get_error(context.get()));
@@ -348,6 +353,7 @@ int main(int argc, const char* argv[]) {
         std::unique_ptr<int32_t[]> reg_instr_offsets(new int32_t[num_values]);
         std::unique_ptr<uint64_t[]> reg_lifetime_masks(new uint64_t[num_functab_entries]);
         std::unique_ptr<uint8_t[]> reg_register_map(new uint8_t[num_register_map]);
+        std::unique_ptr<bool[]> optimize_away_arr(new bool[num_values]);
 
         if(!err)
             futhark_values_i32_1d(context.get(), register_instr_offsets.get(), reg_instr_offsets.get());
@@ -355,6 +361,8 @@ int main(int argc, const char* argv[]) {
             futhark_values_u64_1d(context.get(), lifetime_masks.get(), reg_lifetime_masks.get());
         if(!err)
             futhark_values_u8_1d(context.get(), register_map.get(), reg_register_map.get());
+        if(!err)
+            futhark_values_bool_1d(context.get(), optimize_away.get(), optimize_away_arr.get());
 
         std::cout << std::endl << "Instruction offsets:" << std::endl;
         for(size_t i = 0; i < num_instr_counts; ++i) {
@@ -374,8 +382,8 @@ int main(int argc, const char* argv[]) {
         std::cout << std::endl << "Instructions:" << std::endl;        
         for(size_t i = 0; i < num_values; ++i) {
             std::cout << i
-                << "," << reg_instr_offsets[i]
-                << "\t= " << std::bitset<32>(instr[i]) << " " << rd[i] << " " << rs1[i] << " " << rs2[i] << std::endl;
+                << "," << reg_instr_offsets[i] << " " << optimize_away_arr[i]
+                << "\t= " << std::bitset<32>(instr[i]) << " " << rd[i] << " " << rs1[i] << " " << rs2[i] << " " << jt[i] << std::endl;
         }
 
         std::cout << "Register mapping: " << std::endl;

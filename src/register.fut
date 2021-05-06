@@ -105,7 +105,7 @@ let count_instr [n] (instrs: [n]Instr) (symb_data: []SymbolData) (instr: i64) : 
     + (if (get_symbol_data symb_data instrs[instr].rs1).swapped then 1 else 0) --Instruction rs1 swap
     + (if (get_symbol_data symb_data instrs[instr].rs2).swapped then 1 else 0) --Instruction rs2 swap
 
-let register_alloc [n] [m] (instrs: [n]Instr) (functions: [m]FuncInfo) =
+let register_alloc [n] [m] (instrs: [n]Instr, functions: [m]FuncInfo) =
     let max_func_size = functions |> map (.size) |> u32.maximum |> i64.u32
     let lifetime_masks_init = replicate m 0x0000000000000001u64
     let symbol_registers_init = replicate n EMPTY_SYMBOL_DATA

@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <vector>
+#include <iostream>
 
 NodeType bin_node_type_for(TokenType type) {
     switch(type) {
@@ -222,9 +223,12 @@ ASTNode* Parser::parseExpressionStatement() {
 
 ASTNode* Parser::parseIfElseStatement() {
     this->expect(TokenType::IF);
+    std::cout << "Parsing cond" << std::endl;
     std::unique_ptr<ASTNode> cond(this->parseExpression());
+    std::cout << "Parsing first statement" << std::endl;
     std::unique_ptr<ASTNode> stat(this->parseStatement());
 
+    std::cout << "Expecting else" << std::endl;
     Token lookahead = this->lexer.lookahead();
     if(lookahead.type == TokenType::ELSE) {
         this->expect(TokenType::ELSE);
@@ -246,6 +250,8 @@ ASTNode* Parser::parseWhileStatement() {
 ASTNode* Parser::parseStatement() {
     Token lookahead = this->lexer.lookahead();
 
+    std::cout << "In statement: current lookahead: " << lookahead << std::endl;
+
     switch(lookahead.type) {
         case TokenType::SEMICOLON:
             this->expect(TokenType::SEMICOLON);
@@ -260,6 +266,7 @@ ASTNode* Parser::parseStatement() {
         case TokenType::ID:
             return this->parseExpressionStatement();
         case TokenType::OPEN_CB: {
+            this->expect(TokenType::OPEN_CB);
             std::unique_ptr<ASTNode> list(this->parseStatementList());
             this->expect(TokenType::CLOSE_CB);
             return list.release();

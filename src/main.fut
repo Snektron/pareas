@@ -5,6 +5,7 @@ import "instr_count"
 import "symtab"
 import "register"
 import "preprocess"
+import "optimizer"
 
 let make_node_type (node_type: u8) : NodeType =
     match node_type
@@ -98,19 +99,20 @@ entry make_function_table [n] (tree: Tree[n]) (instr_offset: [n]u32) =
     get_function_table tree instr_offset
 
 let split_instr (instr: Instr) =
-    (instr.instr, instr.rd, instr.rs1, instr.rs2)
+    (instr.instr, instr.rd, instr.rs1, instr.rs2, instr.jt)
 
 entry main [n] [m] (tree: Tree[n]) (symtab: Symtab[m]) (instr_offset: [n]u32) =
     let max_instrs = if n == 0 then 0 else i64.u32 instr_offset[n-1]
     let instr_offset_i64 = map i64.u32 instr_offset in
-    compile_tree tree symtab instr_offset_i64 max_instrs |> map split_instr |> unzip4
+    compile_tree tree symtab instr_offset_i64 max_instrs |> map split_instr |> unzip5
 
-let make_instr (instr: u32) (rd: i64) (rs1: i64) (rs2: i64) =
+let make_instr (instr: u32) (rd: i64) (rs1: i64) (rs2: i64) (jt: u32) =
     {
         instr = instr,
         rd = rd,
         rs1 = rs1,
-        rs2 = rs2
+        rs2 = rs2,
+        jt = jt
     }
 
 let make_functab (id: u32) (start: u32) (size: u32) =
@@ -120,8 +122,10 @@ let make_functab (id: u32) (start: u32) (size: u32) =
         size = size
     }
 
-entry do_register_alloc [n] [m] (instrs: [n]u32) (rd: [n]i64) (rs1: [n]i64) (rs2: [n]i64) (func_id: [m]u32) (func_start: [m]u32) (func_size: [m]u32) =
-    let instr_data = map4 make_instr instrs rd rs1 rs2
+entry do_register_alloc [n] [m] (instrs: [n]u32) (rd: [n]i64) (rs1: [n]i64) (rs2: [n]i64) (jt: [n]u32) (func_id: [m]u32) (func_start: [m]u32) (func_size: [m]u32) =
+    let instr_data = map5 make_instr instrs rd rs1 rs2 jt
     let func_tab = map3 make_functab func_id func_start func_size
+    let (instrs, functab, optimize_away) = optimize instr_data func_tab
+    let (instr_offset, lifetime_mask, registers) = (instrs, functab) |> register_alloc
     in
-    register_alloc instr_data func_tab
+    (instr_offset, lifetime_mask, registers, optimize_away)
