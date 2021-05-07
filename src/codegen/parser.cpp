@@ -401,7 +401,7 @@ ASTNode* Parser::parseFunction() {
 
     this->symtab.endFunction();
 
-    return new ASTNode(NodeType::FUNC_DECL, return_type, symbol_id, {argument_list.release(), function_body.release()});
+    return new ASTNode(NodeType::FUNC_DECL, return_type, symbol_id, {new ASTNode(NodeType::FUNC_DECL_DUMMY), argument_list.release(), function_body.release()});
 }
 
 ASTNode* Parser::parseFunctionList() {

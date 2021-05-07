@@ -29,7 +29,14 @@ let node_instr(node_type: NodeType) (data_type: DataType) (instr_offset: i64) : 
     case (#expr_stat, _, 0) ->          0b0000000_00000_00000_000_00000_0000000 -- ignored
 
     -- Scope control
-    case (#func_decl, _, _) ->              0b0000000_00000_00000_000_00000_1110011 -- TODO
+    case (#func_decl_dummy, _, 0) ->        0b1111111_00001_00010_010_11100_1110011 -- SW -4(sp), ra
+    case (#func_decl_dummy, _, 1) ->        0b1111111_01000_00010_010_11000_1110011 -- SW -8(sp), bp
+    case (#func_decl_dummy, _, 2) ->        0b0100000_01000_00010_011_00010_0110011 -- SUB sp, sp, bp
+    case (#func_decl_dummy, _, 3) ->        0b0000000_00010_01000_000_01000_0110011 -- ADD bp, bp, sp
+    case (#func_decl, _, 0) ->              0b0000000_01000_00010_000_00010_0110011 -- ADD sp, sp, bp
+    case (#func_decl, _, 1) ->              0b1111111_11100_00010_010_00001_0100011 -- LW ra, -4(sp)
+    case (#func_decl, _, 2) ->              0b1111111_11000_00010_010_01000_0100011 -- LW bp, -8(sp)
+    case (#func_decl, _, 3) ->              0b0000000_00000_00001_000_00000_1100111 -- JALR ra
     case (#func_arg, #int_ref, 0) ->        0b0000000_00000_00000_010_00000_0100011 -- SW offset 0
     case (#func_arg, #float_ref, 0) ->      0b0000000_00000_00000_010_00000_0100111 -- FSW offset 0
     case (#func_arg_float_in_int, _, 0) ->  0b0000000_00000_00000_010_00000_0100011 -- SW offset 0
@@ -111,9 +118,9 @@ let node_instr(node_type: NodeType) (data_type: DataType) (instr_offset: i64) : 
 
     -- Literals
     case (#lit_expr, #int, 0) ->        0b0000000_00000_00000_000_00000_0110111 -- LUI
-    case (#lit_expr, #int, 1) ->        0b0000000_00000_00000_110_00000_0010011 -- ORI
+    case (#lit_expr, #int, 1) ->        0b0000000_00000_00000_000_00000_0010011 -- ADDI
     case (#lit_expr, #float, 0) ->      0b0000000_00000_00000_000_00000_0110111 -- LUI
-    case (#lit_expr, #float, 1) ->      0b0000000_00000_00000_110_00000_0010011 -- ORI
+    case (#lit_expr, #float, 1) ->      0b0000000_00000_00000_000_00000_0010011 -- ADDI
     case (#lit_expr, #float, 2) ->      0b1111000_00000_00000_000_00000_1010011 -- FMV.W.X
 
     -- Casts (NOTE: filter out int->int or float->float casts in earlier stages, done with single map in preprocessing stage)
@@ -134,10 +141,15 @@ let has_instr (node_type: NodeType) (data_type: DataType) (instr_offset: i64) : 
         case (#invalid, _, 0) -> false
         case (#statement_list, _, 0) -> false
         case (#empty_stat, _, 0) -> false
-        case (#func_decl, _, 0) -> false
         case (#func_arg_list, _, 0) -> false
         case (#expr_stat, _, 0) -> false
         
+        case (#func_decl_dummy, _, 1) -> true
+        case (#func_decl_dummy, _, 2) -> true
+        case (#func_decl_dummy, _, 3) -> true
+        case (#func_decl, _, 1) -> true
+        case (#func_decl, _, 2) -> true
+        case (#func_decl, _, 3) -> true
         case (#if_else_stat, _, 1) -> true
         case (#while_stat, _, 1) -> true
         case (#eq_expr, #int, 1) -> true
@@ -270,12 +282,16 @@ let node_has_output (nodes: []Node) (node: Node) (instr_offset: i64) : bool =
 --         (((offset >> 20) & 0x1) << 31)
 --     )
 
+let signextend(x: u32) =
+    let signed_x = i32.u32 x in
+    u32.i32 (signed_x << 20 >> 20)
+    
 let instr_constant [max_vars] (node: Node) (instr_offset: i64) (symtab: Symtab[max_vars]) : u32 =
     match(node.node_type, node.resulting_type, instr_offset)
-        case (#lit_expr, _, 0) -> node.node_data & 0xFFFFF000
+        case (#lit_expr, _, 0) -> node.node_data - (signextend (node.node_data & 0xFFF)) & 0xFFFFF000
         case (#lit_expr, _, 1) -> (node.node_data & 0xFFF) << 20
-        case (#id_expr, _, 0) -> (-4 * ((symtab_local_offset symtab node.node_data) + 1)) << 20
-        case (#decl_expr, _, 0) -> (-4 * ((symtab_local_offset symtab node.node_data) + 1)) << 20
+        case (#id_expr, _, 0) -> (-4 * ((symtab_local_offset symtab node.node_data) + 2)) << 20
+        case (#decl_expr, _, 0) -> (-4 * ((symtab_local_offset symtab node.node_data) + 2)) << 20
         case _ -> 0
 
 let instr_jt (node: Node) (node_id: i64) (instr_offset: i64) (registers: []i64) : i64 =
@@ -292,6 +308,8 @@ let get_instr_loc (node: Node) (node_id: i64) (instr_no: i64) (instr_offset: i64
         registers[node_id * PARENT_IDX_PER_NODE + 1]
     else if instr_offset == 1 && node.node_type == #while_stat then
         registers[node_id * PARENT_IDX_PER_NODE + 2]
+    else if (instr_offset >= 2 && node.node_type == #func_decl_dummy) || node.node_type == #func_decl then
+        instr_no + 2
     else
         instr_no
 
@@ -351,7 +369,8 @@ let compile_node [tree_size] [max_vars] (tree: Tree[tree_size]) (symtab: Symtab[
                 (-1, node_get_parent_arg_idx tree.nodes node 0, EMPTY_INSTR, get_data_prop_value tree node 0 node_instr)
             ,
             if has_instr node.node_type node.resulting_type 1 then get_node_instr tree node (node_instr+1) node_index registers symtab 1 else (-1, -1, EMPTY_INSTR, 0),
-            if has_instr node.node_type node.resulting_type 2 then get_node_instr tree node (node_instr+2) node_index registers symtab 2 else (-1, -1, EMPTY_INSTR, 0)
+            if has_instr node.node_type node.resulting_type 2 then get_node_instr tree node (node_instr+2) node_index registers symtab 2 else (-1, -1, EMPTY_INSTR, 0),
+            if has_instr node.node_type node.resulting_type 3 then get_node_instr tree node (node_instr+3) node_index registers symtab 3 else (-1, -1, EMPTY_INSTR, 0)
         ]
 
 let check_idx_node_depth [tree_size] (tree: Tree[tree_size]) (depth: i32) (i: i64) =

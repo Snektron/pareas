@@ -50,7 +50,8 @@ enum class NodeType {
     ASSIGN_EXPR,
     DECL_EXPR,
     ID_EXPR,
-    WHILE_DUMMY
+    WHILE_DUMMY,
+    FUNC_DECL_DUMMY
 };
 
 extern const char* NODE_NAMES[];

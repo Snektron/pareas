@@ -6,7 +6,7 @@ let node_type_counts (t: NodeType) (d: DataType) : u32 =
         case (#invalid, _) -> 0
         case (#statement_list, _) -> 0
         case (#empty_stat, _) -> 0
-        case (#func_decl, _) -> 0 --TODO
+        case (#func_decl, _) -> 6 --Note: function return
         case (#func_arg, _) -> 1
         case (#func_arg_list, _) -> 0
         case (#expr_stat, _) -> 0
@@ -49,6 +49,7 @@ let node_type_counts (t: NodeType) (d: DataType) : u32 =
         case (#decl_expr, _) -> 1
         case (#id_expr, _) -> 1
         case (#while_dummy, _) -> 0
+        case (#func_decl_dummy, _) -> 6 -- Function stack frame creator
         case (#func_call_arg_float_in_int, _) -> 1
         case (#func_call_arg_stack, _) -> 2
         case (#func_arg_float_in_int, _) -> 1

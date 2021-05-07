@@ -51,6 +51,7 @@ let make_node_type (node_type: u8) : NodeType =
     case 39 -> #decl_expr
     case 40 -> #id_expr
     case 41 -> #while_dummy
+    case 42 -> #func_decl_dummy
     case _ -> #invalid
 
 let make_data_type (data_type: u8) : DataType =

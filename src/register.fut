@@ -76,7 +76,7 @@ let lifetime_analyze_valid [n] (instrs: [n]Instr) (symbol_registers: []SymbolDat
     let rs2_register = old_rs2_data.register
     let cleared_lifetime_mask = lifetime_mask |> clear_register rs1_register |> clear_register rs2_register
 
-    let rd_register = find_free_register instr.instr cleared_lifetime_mask 0
+    let rd_register = if instr.rd < 64 then i32.i64 instr.rd else find_free_register instr.instr cleared_lifetime_mask 0
     let new_lifetime_mask = cleared_lifetime_mask | (1u64 << u64.i32 rd_register)
     let register_info = [
         (if !(is_system_register instr.rd) then instr.rd - NUM_SYSTEM_REGS else -1, rd_register |> make_symbol_data),

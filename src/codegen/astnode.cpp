@@ -45,7 +45,8 @@ const char* NODE_NAMES[] = {
     "assignment expression",
     "declaration expression",
     "identifier expression",
-    "while dummy"
+    "while dummy",
+    "function declaration dummy"
 };
 
 ASTNode::ASTNode(NodeType type) : type(type) {}
