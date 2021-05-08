@@ -49,6 +49,9 @@ class SymbolTable {
         inline size_t maxVars() const {
             return this->data_types.size();
         }
+        inline size_t numFuncs() const {
+            return this->function_var_count.size();
+        }
         inline const uint8_t* getDataTypes() const {
             return this->data_types.data();
         }
@@ -57,6 +60,9 @@ class SymbolTable {
         }
         inline const uint32_t* getOffsets() const {
             return this->function_offsets.data();
+        }
+        inline const uint32_t* getFuncVarCount() const {
+            return this->function_var_count.data();
         }
 };
 

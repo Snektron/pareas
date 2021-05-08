@@ -123,10 +123,11 @@ let make_functab (id: u32) (start: u32) (size: u32) =
         size = size
     }
 
-entry do_register_alloc [n] [m] (instrs: [n]u32) (rd: [n]i64) (rs1: [n]i64) (rs2: [n]i64) (jt: [n]u32) (func_id: [m]u32) (func_start: [m]u32) (func_size: [m]u32) =
+entry do_register_alloc [n] [m] (instrs: [n]u32) (rd: [n]i64) (rs1: [n]i64) (rs2: [n]i64) (jt: [n]u32) (func_id: [m]u32) (func_start: [m]u32) (func_size: [m]u32) (func_symbols: [m]u32) =
     let instr_data = map5 make_instr instrs rd rs1 rs2 jt
     let func_tab = map3 make_functab func_id func_start func_size
     let (instrs, functab, optimize_away) = optimize instr_data func_tab
-    let (instr_offset, lifetime_mask, registers) = (instrs, functab) |> register_alloc
+    let (instr_offset, lifetime_mask, registers, overflows) = (instrs, functab) |> register_alloc
+    let new_instrs = fill_stack_frames func_tab func_symbols overflows instrs
     in
-    (instr_offset, lifetime_mask, registers, optimize_away)
+    (instr_offset, lifetime_mask, registers, optimize_away, new_instrs |> map (\i -> i.instr))

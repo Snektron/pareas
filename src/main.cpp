@@ -265,6 +265,8 @@ int main(int argc, const char* argv[]) {
                             futhark_new_u8_1d(context.get(), symtab.getDataTypes(), symtab.maxVars()));
         auto symtab_offsets = UniqueFPtr<futhark_u32_1d, futhark_free_u32_1d>(context.get(),
                             futhark_new_u32_1d(context.get(), symtab.getOffsets(), symtab.maxVars()));
+        auto function_symbols = UniqueFPtr<futhark_u32_1d, futhark_free_u32_1d>(context.get(),
+                            futhark_new_u32_1d(context.get(), symtab.getFuncVarCount(), symtab.numFuncs()));
 
         UniqueFPtr<futhark_opaque_Symtab, futhark_free_opaque_Symtab> gpu_symtab(context.get());
         if(!err)
@@ -293,10 +295,11 @@ int main(int argc, const char* argv[]) {
         UniqueFPtr<futhark_u64_1d, futhark_free_u64_1d> lifetime_masks(context.get());
         UniqueFPtr<futhark_u8_1d, futhark_free_u8_1d> register_map(context.get());
         UniqueFPtr<futhark_bool_1d, futhark_free_bool_1d> optimize_away(context.get());
+        UniqueFPtr<futhark_u32_1d, futhark_free_u32_1d> optimized_instr(context.get());
         if(!err)
-            err = futhark_entry_do_register_alloc(context.get(), &register_instr_offsets, &lifetime_masks, &register_map, &optimize_away,
+            err = futhark_entry_do_register_alloc(context.get(), &register_instr_offsets, &lifetime_masks, &register_map, &optimize_away, &optimized_instr,
                             instr_fut.get(), rd_fut.get(), rs1_fut.get(), rs2_fut.get(), jt_fut.get(),
-                            function_ids.get(), function_offsets.get(), function_sizes.get());
+                            function_ids.get(), function_offsets.get(), function_sizes.get(), function_symbols.get());
         
         if (!err)
             err = futhark_context_sync(context.get());
@@ -354,6 +357,7 @@ int main(int argc, const char* argv[]) {
         std::unique_ptr<uint64_t[]> reg_lifetime_masks(new uint64_t[num_functab_entries]);
         std::unique_ptr<uint8_t[]> reg_register_map(new uint8_t[num_register_map]);
         std::unique_ptr<bool[]> optimize_away_arr(new bool[num_values]);
+        std::unique_ptr<uint32_t[]> optimized_instr_arr(new uint32_t[num_values]);
 
         if(!err)
             futhark_values_i32_1d(context.get(), register_instr_offsets.get(), reg_instr_offsets.get());
@@ -363,6 +367,8 @@ int main(int argc, const char* argv[]) {
             futhark_values_u8_1d(context.get(), register_map.get(), reg_register_map.get());
         if(!err)
             futhark_values_bool_1d(context.get(), optimize_away.get(), optimize_away_arr.get());
+        if(!err)
+            futhark_values_u32_1d(context.get(), optimized_instr.get(), optimized_instr_arr.get());
 
         std::cout << std::endl << "Instruction offsets:" << std::endl;
         for(size_t i = 0; i < num_instr_counts; ++i) {
@@ -383,7 +389,7 @@ int main(int argc, const char* argv[]) {
         for(size_t i = 0; i < num_values; ++i) {
             std::cout << i
                 << "," << reg_instr_offsets[i] << " " << optimize_away_arr[i]
-                << "\t= " << std::bitset<32>(instr[i]) << " " << rd[i] << " " << rs1[i] << " " << rs2[i] << " " << jt[i] << std::endl;
+                << "\t= " << std::bitset<32>(optimized_instr_arr[i]) << " " << rd[i] << " " << rs1[i] << " " << rs2[i] << " " << jt[i] << std::endl;
         }
 
         std::cout << "Register mapping: " << std::endl;

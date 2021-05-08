@@ -112,7 +112,7 @@ let shift_right [n] 't (x: t) (xs: [n]t) : [n]t =
 let get_function_table [max_nodes] (tree: Tree[max_nodes]) (instr_count: [max_nodes]u32) =
     let (function_ids, offsets) = iota max_nodes |>
         filter (\i -> tree.nodes[i].node_type == #func_decl) |>
-        map (\i -> (tree.nodes[i].node_data, instr_count[i])) |>
+        map (\i -> (tree.nodes[i].node_data, instr_count[i] + 6)) |>
         unzip2
     let rotated_offsets =
         offsets |>

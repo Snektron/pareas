@@ -126,10 +126,44 @@ let register_alloc [n] [m] (instrs: [n]Instr, functions: [m]FuncInfo) =
         rotate (-1) |>
         map2 (\i x -> if i == 0 then 0 else x) (iota n)
 
+    let overflows = replicate m 0u32
+
     in
 
     (
         instr_offsets,
         lifetime_masks,
-        symbol_registers |> map (\i -> i.register)
+        symbol_registers |> map (\i -> i.register),
+        overflows
     )
+
+let make_empty_instr (opcode: u32) : Instr =
+    {
+        instr = opcode,
+        rd = 0,
+        rs1 = 0,
+        rs2 = 0,
+        jt = 0
+    }
+
+let OPCODE_LUI_BP : u32 =  0b0000000_00000_00000_000_01000_0110111
+let OPCODE_ADDI_BP : u32 = 0b0000000_00000_01000_000_01000_0010011
+
+let fill_stack_frames [n] [m] (functions: [m]FuncInfo) (func_symbols: [m]u32) (func_overflows: [m]u32) (instr: [n]Instr) =
+    let (scatter_offsets, scatter_data) = iota m |>
+        map (\i ->
+            let stack_size = (func_symbols[i] + func_overflows[i] + 2) * 4
+            let lower_bits = (stack_size & 0xFFF) << 20
+            let upper_bits = stack_size - (signextend (stack_size & 0xFFF)) & 0xFFFFF000
+            in
+            [
+                (i64.u32 functions[i].start + 2, make_empty_instr (OPCODE_LUI_BP | upper_bits)),
+                (i64.u32 functions[i].start + 3, make_empty_instr (OPCODE_ADDI_BP | lower_bits)),
+                (i64.u32 functions[i].start + i64.u32 functions[i].size - 6, make_empty_instr (OPCODE_LUI_BP | upper_bits)),
+                (i64.u32 functions[i].start + i64.u32 functions[i].size - 5, make_empty_instr (OPCODE_ADDI_BP | lower_bits))
+            ]
+        ) |>
+        flatten |>
+        unzip
+    in
+    scatter (copy instr) scatter_offsets scatter_data

@@ -176,6 +176,9 @@ let node_get_parent_arg_idx_sub (node: Node) (instr_offset: i64) : i64 =
         case (#greateq_expr, #int, 0) -> -1
         case (#lit_expr, _, 0) -> -1
         case (#assign_expr, _, 0) -> -1
+        case (#func_arg, _, 0) -> -1
+        case (#func_arg_float_in_int, _, 0) -> -1
+        case (#func_arg_stack, _, 0) -> -1
         case (_, _, 0) ->
             if node_has_return node.node_type node.resulting_type then
                 parent_arg_idx node
