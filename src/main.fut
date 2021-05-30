@@ -6,6 +6,7 @@ import "symtab"
 import "register"
 import "preprocess"
 import "optimizer"
+import "postprocess"
 
 let make_node_type (node_type: u8) : NodeType =
     match node_type
@@ -52,6 +53,7 @@ let make_node_type (node_type: u8) : NodeType =
     case 40 -> #id_expr
     case 41 -> #while_dummy
     case 42 -> #func_decl_dummy
+    case 43 -> #return_stat
     case _ -> #invalid
 
 let make_data_type (data_type: u8) : DataType =
@@ -102,10 +104,12 @@ entry make_function_table [n] (tree: Tree[n]) (instr_offset: [n]u32) =
 let split_instr (instr: Instr) =
     (instr.instr, instr.rd, instr.rs1, instr.rs2, instr.jt)
 
-entry main [n] [m] (tree: Tree[n]) (symtab: Symtab[m]) (instr_offset: [n]u32) =
+entry main [n] [m] [k] (tree: Tree[n]) (symtab: Symtab[m]) (instr_offset: [n]u32) (func_start: [k]u32) (func_size: [k]u32) =
     let max_instrs = if n == 0 then 0 else i64.u32 instr_offset[n-1]
-    let instr_offset_i64 = map i64.u32 instr_offset in
-    compile_tree tree symtab instr_offset_i64 max_instrs |> map split_instr |> unzip5
+    let instr_offset_i64 = map i64.u32 instr_offset
+    let func_ends = iota k |> map (\i -> func_start[i] + func_size[i])
+    in
+    compile_tree tree symtab instr_offset_i64 max_instrs func_start func_ends |> map split_instr |> unzip5
 
 let make_instr (instr: u32) (rd: i64) (rs1: i64) (rs2: i64) (jt: u32) =
     {
@@ -123,11 +127,25 @@ let make_functab (id: u32) (start: u32) (size: u32) =
         size = size
     }
 
+let fix_func_tab [n] (instr_offsets: [n]i32) (func_info: FuncInfo) =
+    let func_start = u32.i32 instr_offsets[i64.u32 func_info.start]
+    let func_end_loc = i64.u32 (func_info.start + func_info.start)
+    let func_end = if func_end_loc >= n then u32.i64 n else u32.i32 instr_offsets[func_end_loc]
+    let func_size = func_end - func_start
+    in
+    {
+        id = func_info.id,
+        start = func_start,
+        size = func_size
+    }
+
 entry do_register_alloc [n] [m] (instrs: [n]u32) (rd: [n]i64) (rs1: [n]i64) (rs2: [n]i64) (jt: [n]u32) (func_id: [m]u32) (func_start: [m]u32) (func_size: [m]u32) (func_symbols: [m]u32) =
     let instr_data = map5 make_instr instrs rd rs1 rs2 jt
     let func_tab = map3 make_functab func_id func_start func_size
     let (instrs, functab, optimize_away) = optimize instr_data func_tab
-    let (instr_offset, lifetime_mask, registers, overflows) = (instrs, functab) |> register_alloc
-    let new_instrs = fill_stack_frames func_tab func_symbols overflows instrs
+    let (instr_offset, lifetime_mask, registers, overflows, swapped, instrs) = (instrs, functab, optimize_away, func_symbols) |> register_alloc
+    let func_tab = map (fix_func_tab instr_offset) func_tab
+    let new_instrs = fill_stack_frames func_tab func_symbols overflows instrs |> finalize_instr
     in
-    (instr_offset, lifetime_mask, registers, optimize_away, new_instrs |> map (\i -> i.instr))
+    (instr_offset, lifetime_mask, registers, optimize_away, new_instrs |> map (\i -> i.instr), swapped,
+        new_instrs |> map (.rd), new_instrs |> map (.rs1), new_instrs |> map (.rs2), new_instrs |> map (.jt))

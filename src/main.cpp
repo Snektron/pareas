@@ -289,15 +289,21 @@ int main(int argc, const char* argv[]) {
         UniqueFPtr<futhark_u32_1d, futhark_free_u32_1d> jt_fut(context.get());
         if(!err)
             err = futhark_entry_main(context.get(), &instr_fut, &rd_fut, &rs1_fut, &rs2_fut, &jt_fut, gpu_tree.get(), gpu_symtab.get(),
-                            instr_offsets.get());
+                            instr_offsets.get(), function_offsets.get(), function_sizes.get());
         
         UniqueFPtr<futhark_i32_1d, futhark_free_i32_1d> register_instr_offsets(context.get());
         UniqueFPtr<futhark_u64_1d, futhark_free_u64_1d> lifetime_masks(context.get());
         UniqueFPtr<futhark_u8_1d, futhark_free_u8_1d> register_map(context.get());
         UniqueFPtr<futhark_bool_1d, futhark_free_bool_1d> optimize_away(context.get());
         UniqueFPtr<futhark_u32_1d, futhark_free_u32_1d> optimized_instr(context.get());
+        UniqueFPtr<futhark_bool_1d, futhark_free_bool_1d> register_swap(context.get());
+        UniqueFPtr<futhark_i64_1d, futhark_free_i64_1d> gpu_allocated_rd(context.get());
+        UniqueFPtr<futhark_i64_1d, futhark_free_i64_1d> gpu_allocated_rs1(context.get());
+        UniqueFPtr<futhark_i64_1d, futhark_free_i64_1d> gpu_allocated_rs2(context.get());
+        UniqueFPtr<futhark_u32_1d, futhark_free_u32_1d> gpu_allocated_jt(context.get());
         if(!err)
-            err = futhark_entry_do_register_alloc(context.get(), &register_instr_offsets, &lifetime_masks, &register_map, &optimize_away, &optimized_instr,
+            err = futhark_entry_do_register_alloc(context.get(), &register_instr_offsets, &lifetime_masks, &register_map, &optimize_away, &optimized_instr, &register_swap,
+                            &gpu_allocated_rd, &gpu_allocated_rs1, &gpu_allocated_rs2, &gpu_allocated_jt,
                             instr_fut.get(), rd_fut.get(), rs1_fut.get(), rs2_fut.get(), jt_fut.get(),
                             function_ids.get(), function_offsets.get(), function_sizes.get(), function_symbols.get());
         
@@ -329,6 +335,7 @@ int main(int argc, const char* argv[]) {
             err = futhark_values_u32_1d(context.get(), function_sizes.get(), functab_sizes.get());
 
         size_t num_values = *futhark_shape_u32_1d(context.get(), instr_fut.get());
+        size_t num_opt_values = *futhark_shape_u32_1d(context.get(), optimized_instr.get());
 
         std::unique_ptr<uint32_t[]> instr(new uint32_t[num_values]);
         std::unique_ptr<int64_t[]> rd(new int64_t[num_values]);
@@ -357,7 +364,12 @@ int main(int argc, const char* argv[]) {
         std::unique_ptr<uint64_t[]> reg_lifetime_masks(new uint64_t[num_functab_entries]);
         std::unique_ptr<uint8_t[]> reg_register_map(new uint8_t[num_register_map]);
         std::unique_ptr<bool[]> optimize_away_arr(new bool[num_values]);
-        std::unique_ptr<uint32_t[]> optimized_instr_arr(new uint32_t[num_values]);
+        std::unique_ptr<uint32_t[]> optimized_instr_arr(new uint32_t[num_opt_values]);
+        std::unique_ptr<bool[]> reg_swap_map(new bool[num_register_map]);
+        std::unique_ptr<int64_t[]> allocated_rd(new int64_t[num_opt_values]);
+        std::unique_ptr<int64_t[]> allocated_rs1(new int64_t[num_opt_values]);
+        std::unique_ptr<int64_t[]> allocated_rs2(new int64_t[num_opt_values]);
+        std::unique_ptr<uint32_t[]> allocated_jt(new uint32_t[num_opt_values]);
 
         if(!err)
             futhark_values_i32_1d(context.get(), register_instr_offsets.get(), reg_instr_offsets.get());
@@ -369,6 +381,16 @@ int main(int argc, const char* argv[]) {
             futhark_values_bool_1d(context.get(), optimize_away.get(), optimize_away_arr.get());
         if(!err)
             futhark_values_u32_1d(context.get(), optimized_instr.get(), optimized_instr_arr.get());
+        if(!err)
+            futhark_values_bool_1d(context.get(), register_swap.get(), reg_swap_map.get());
+        if(!err)
+            futhark_values_i64_1d(context.get(), gpu_allocated_rd.get(), allocated_rd.get());
+        if(!err)
+            futhark_values_i64_1d(context.get(), gpu_allocated_rs1.get(), allocated_rs1.get());
+        if(!err)
+            futhark_values_i64_1d(context.get(), gpu_allocated_rs2.get(), allocated_rs2.get());
+        if(!err)
+            futhark_values_u32_1d(context.get(), gpu_allocated_jt.get(), allocated_jt.get());
 
         std::cout << std::endl << "Instruction offsets:" << std::endl;
         for(size_t i = 0; i < num_instr_counts; ++i) {
@@ -385,16 +407,31 @@ int main(int argc, const char* argv[]) {
             std::cout << "Function " << functab_keys[i] << ": " << std::bitset<64>(reg_lifetime_masks[i]) << std::endl;
         }
 
-        std::cout << std::endl << "Instructions:" << std::endl;        
+        std::cout << std::endl << "Instructions:" << std::endl;
+        size_t last_idx = 0;        
         for(size_t i = 0; i < num_values; ++i) {
+            size_t actual_idx = reg_instr_offsets[i];
+            for(size_t j = last_idx + 1; j < actual_idx; ++j) {
+                std::cout << j
+                    << ",x x" 
+                    << "\t= " << std::bitset<32>(optimized_instr_arr[j]) << " x x x x" << std::endl;
+            }
+
             std::cout << i
                 << "," << reg_instr_offsets[i] << " " << optimize_away_arr[i]
-                << "\t= " << std::bitset<32>(optimized_instr_arr[i]) << " " << rd[i] << " " << rs1[i] << " " << rs2[i] << " " << jt[i] << std::endl;
+                << "\t= " << std::bitset<32>(optimized_instr_arr[actual_idx]) << " " << rd[i] << " " << rs1[i] << " " << rs2[i] << " " << jt[i] << std::endl;
+
+            last_idx = actual_idx;
         }
 
         std::cout << "Register mapping: " << std::endl;
         for(size_t i = 0; i < num_register_map; ++i) {
-            std::cout << (i+64) << " -> " << (size_t)reg_register_map[i] << std::endl;
+            std::cout << (i+64) << " -> " << (size_t)reg_register_map[i] << " " << (size_t)reg_swap_map[i] << std::endl;
+        }
+
+        std::cout << std::endl << "Final instructions: " << std::endl;
+        for(size_t i = 0; i < num_opt_values; ++i) {
+            std::cout << i << ": " << std::bitset<32>(optimized_instr_arr[i]) << " " << allocated_rd[i] << " " << allocated_rs1[i] << " " << allocated_rs2[i] << " " <<allocated_jt[i] << std::endl;
         }
 
 

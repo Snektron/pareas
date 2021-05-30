@@ -1,3 +1,3 @@
-function a(x <- int) <- int {
-    10000;
+function a() <- int {
+    return 2 + a(1);
 }

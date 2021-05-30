@@ -46,6 +46,10 @@ class SymbolTable {
         void endFunction();
         void print(std::ostream&) const;
 
+        inline size_t getCurrentFunction() const {
+            return this->func_id_map.size() - 1;
+        }
+
         inline size_t maxVars() const {
             return this->data_types.size();
         }

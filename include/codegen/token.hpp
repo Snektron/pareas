@@ -46,6 +46,7 @@ enum class TokenType {
     INT,
     FLOAT,
     FUNCTION,
+    RETURN,
 
     INTEGER,
     ID

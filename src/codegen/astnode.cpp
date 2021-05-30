@@ -46,7 +46,8 @@ const char* NODE_NAMES[] = {
     "declaration expression",
     "identifier expression",
     "while dummy",
-    "function declaration dummy"
+    "function declaration dummy",
+    "return statement"
 };
 
 ASTNode::ASTNode(NodeType type) : type(type) {}
@@ -82,6 +83,7 @@ void ASTNode::print(std::ostream& os, size_t level) const {
         case NodeType::LIT_EXPR:
         case NodeType::ID_EXPR:
         case NodeType::DECL_EXPR:
+        case NodeType::FUNC_CALL_EXPR:
             os << ", " << this->integer;
             break;
         default:
@@ -196,6 +198,7 @@ void ASTNode::resolveType() {
             assert_ref_of(0, 1);
             this->return_type = this->children[1]->return_type; //TODO: actually check this
             break;
+        case NodeType::FUNC_CALL_EXPR:
         case NodeType::LIT_EXPR:
         case NodeType::ID_EXPR:
         case NodeType::DECL_EXPR:
@@ -214,6 +217,14 @@ void ASTNode::resolveType() {
             }
         }
             break;
+        case NodeType::RETURN_STAT: {
+            this->return_type = DataType::VOID;
+            if(this->children.size() > 0) {
+                assert_type(0, {DataType::INT, DataType::FLOAT});
+                this->return_type = this->children[0]->return_type;
+            }
+            break;
+        }
         default:
             this->return_type = DataType::INVALID;
             break;

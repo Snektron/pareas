@@ -40,7 +40,8 @@ let node_instr(node_type: NodeType) (data_type: DataType) (instr_offset: i64) : 
     case (#func_arg, #int_ref, 0) ->        0b0000000_00000_00000_010_00000_0100011 -- SW offset 0
     case (#func_arg, #float_ref, 0) ->      0b0000000_00000_00000_010_00000_0100111 -- FSW offset 0
     case (#func_arg_float_in_int, _, 0) ->  0b0000000_00000_00000_010_00000_0100011 -- SW offset 0
-    case (#func_arg_stack, _, _) ->         0b0000000_00000_00000_000_00000_1110011 -- TODO
+    case (#func_arg_stack, _, 0) ->         0b0000000_00000_01000_010_00000_0100011 -- LW offset(bp)
+    case (#func_arg_stack, _, 1) ->         0b0000000_00000_00000_010_00000_0100011 -- SW offset 0
     case (#func_arg_list, _, _) ->          0b0000000_00000_00000_000_00000_0000000 -- ignored
 
     -- Control flow
@@ -49,6 +50,10 @@ let node_instr(node_type: NodeType) (data_type: DataType) (instr_offset: i64) : 
     case (#if_else_stat, _, 1) ->       0b0000000_00000_00000_000_00000_1101111 -- JAL x0
     case (#while_stat, _, 0) ->         0b0000000_00000_00000_000_00000_1100011 -- BEQ x0
     case (#while_stat, _, 1) ->         0b0000000_00000_00000_000_00000_1101111 -- JAL x0
+    case (#return_stat, #float, 0) ->   0b0010000_00000_00000_000_00000_1010011 -- FSGNJ.S ry, ry
+    case (#return_stat, #int, 0) ->     0b0000000_00000_00000_000_00000_0110011 -- ADD x0
+    case (#return_stat, #void, 0) ->    0b0000000_00000_00000_000_00000_0110011 -- ADD x0, x0
+    case (#return_stat, _, 1) ->        0b0000000_00000_00000_000_00000_1101111 -- JAL x0
 
     -- Binary integer arithmetic
     case (#add_expr, #int, 0) ->        0b0000000_00000_00000_000_00000_0110011 -- ADD
@@ -109,12 +114,16 @@ let node_instr(node_type: NodeType) (data_type: DataType) (instr_offset: i64) : 
     case (#assign_expr, #float, 1) ->   0b0010000_00000_00000_000_00000_1010011 -- FSGNJ.S ry, ry
 
     -- Function call
-    case (#func_call_expr, _, _) ->                 0b0000000_00000_00000_000_00000_1110011 -- TODO
+    case (#func_call_expr, _, 0) ->                 0b0000000_00000_00000_000_00001_1101111 -- JAL ra
+    case (#func_call_expr, #float, 2) ->            0b0010000_01010_01010_000_00000_1010011 -- FSGNJ.S r10, r10
+    case (#func_call_expr, #int, 2) ->              0b0000000_00000_01010_000_00000_0110011 -- ADD x0, r10
     case (#func_call_arg, #int, 0) ->               0b0000000_00000_00000_000_00000_0110011 -- ADD x0
     case (#func_call_arg, #float, 0) ->             0b0010000_00000_00000_000_00000_1010011 -- FSGNJ.S ry, ry
     case (#func_call_arg_float_in_int, _, 0) ->     0b1110000_00000_00000_000_00000_1010011 -- FMV.X.W
-    case (#func_call_arg_stack, _, _) ->            0b0000000_00000_00000_000_00000_1110011 -- TODO
-    case (#func_call_arg_list, _, _) ->             0b0000000_00000_00000_000_00000_1110011 -- TODO
+    case (#func_call_arg_stack, #int, 0) ->         0b0000000_00000_00000_010_00010_0100011 -- SW
+    case (#func_call_arg_stack, #float, 0) ->       0b0000000_00000_00000_010_00010_0100111 -- FSW
+    case (#func_call_arg_list, _, 0) ->             0b0000000_00000_00010_111_00010_0010011 -- ADDI sp, sp, -stack_args
+    case (#func_call_arg_list, _, 1) ->             0b0000000_00000_00010_110_00010_0010011 -- ADDI sp, sp, stack_args
 
     -- Literals
     case (#lit_expr, #int, 0) ->        0b0000000_00000_00000_000_00000_0110111 -- LUI
@@ -152,6 +161,7 @@ let has_instr (node_type: NodeType) (data_type: DataType) (instr_offset: i64) : 
         case (#func_decl, _, 3) -> true
         case (#if_else_stat, _, 1) -> true
         case (#while_stat, _, 1) -> true
+        case (#return_stat, _, 1) -> true
         case (#eq_expr, #int, 1) -> true
         case (#neq_expr, _, 1) -> true
         case (#lesseq_expr, #int, 1) -> true
@@ -159,6 +169,12 @@ let has_instr (node_type: NodeType) (data_type: DataType) (instr_offset: i64) : 
         case (#lit_expr, _, 1) -> true
         case (#lit_expr, #float, 2) -> true
         case (#assign_expr, _, 1) -> true
+        case (#func_arg_stack, _, 1) -> true
+        case (#func_call_arg_stack, _, 1) -> true
+        case (#func_call_arg_list, _, 1) -> true
+
+        case (#func_call_expr, #int, 2) -> true
+        case (#func_call_expr, #float, 2) -> true
         case (_, _, 0) -> true
         case _ -> false
 
@@ -179,6 +195,11 @@ let node_get_parent_arg_idx_sub (node: Node) (instr_offset: i64) : i64 =
         case (#func_arg, _, 0) -> -1
         case (#func_arg_float_in_int, _, 0) -> -1
         case (#func_arg_stack, _, 0) -> -1
+        case (#return_stat, _, 0) -> -1
+        case (#func_call_expr, _, 0) -> -1
+        case (#func_call_arg, _, 0) -> -1
+        case (#func_call_arg_float_in_int, _, 0) -> -1
+        case (#func_call_arg_stack, _, 0) -> -1
         case (_, _, 0) ->
             if node_has_return node.node_type node.resulting_type then
                 parent_arg_idx node
@@ -192,6 +213,8 @@ let node_get_parent_arg_idx_sub (node: Node) (instr_offset: i64) : i64 =
         case (#lit_expr, #int, 1) -> parent_arg_idx node
         case (#assign_expr, _, 1) -> parent_arg_idx node
 
+        case (#func_call_expr, #float, 2) -> parent_arg_idx node
+        case (#func_call_expr, #int, 2) -> parent_arg_idx node
         case (#lit_expr, #float, 2) -> parent_arg_idx node
         case _ -> -1
 
@@ -221,6 +244,8 @@ let node_get_instr_arg (node_id: i64) (node: Node) (registers: []i64) (arg_no: i
         case (#if_stat, _, 0, 0) -> registers[node_id * PARENT_IDX_PER_NODE]
         case (#if_else_stat, _, 0, 0) -> registers[node_id * PARENT_IDX_PER_NODE]
         case (#while_stat, _, 0, 0) -> registers[node_id * PARENT_IDX_PER_NODE + 1]
+        case (#return_stat, #int, 0, 0) -> registers[node_id * PARENT_IDX_PER_NODE]
+        case (#return_stat, #float, 0, 0) -> registers[node_id * PARENT_IDX_PER_NODE]
         case (#add_expr, _, _, 0) -> registers[node_id * PARENT_IDX_PER_NODE + arg_no]
         case (#sub_expr, _,_, 0) -> registers[node_id * PARENT_IDX_PER_NODE + arg_no]
         case (#mul_expr, _,_, 0) -> registers[node_id * PARENT_IDX_PER_NODE + arg_no]
@@ -243,6 +268,7 @@ let node_get_instr_arg (node_id: i64) (node: Node) (registers: []i64) (arg_no: i
         case (#func_call_arg, _, 0, 0) -> registers[node_id * PARENT_IDX_PER_NODE]
         case (#func_call_arg, #float, 1, 0) -> registers[node_id * PARENT_IDX_PER_NODE]
         case (#func_call_arg_float_in_int, _, 0, 0) -> registers[node_id * PARENT_IDX_PER_NODE]
+        case (#func_call_arg_stack, _, 1, 0) -> registers[node_id * PARENT_IDX_PER_NODE]
         case (#assign_expr, _,_, 0) -> registers[node_id * PARENT_IDX_PER_NODE + arg_no]
         case (#cast_expr, _, 0, 0) -> registers[node_id * PARENT_IDX_PER_NODE]
         case (#deref_expr, _, 0, 0) -> registers[node_id * PARENT_IDX_PER_NODE]
@@ -256,6 +282,8 @@ let node_get_instr_arg (node_id: i64) (node: Node) (registers: []i64) (arg_no: i
         case (#assign_expr, #float, 1, 1) -> registers[node_id * PARENT_IDX_PER_NODE + 1]
         case (#lit_expr, _, 0, 1) -> register (instr_no - 1)
         case (#lit_expr, #float, 0, 2) -> register (instr_no - 1)
+        case (#func_arg_stack, _, 0, 1) -> registers[node_id * PARENT_IDX_PER_NODE]
+        case (#func_arg_stack, _, 1, 1) -> register (instr_no - 1)
         case _ -> 0
 
 let node_has_output (nodes: []Node) (node: Node) (instr_offset: i64) : bool =
@@ -266,6 +294,8 @@ let node_has_output (nodes: []Node) (node: Node) (instr_offset: i64) : bool =
         case (#greateq_expr, #int, 0) -> true
         case (#lit_expr, _, 0) -> true
         case (#lit_expr, #float, 1) -> true
+        case (#return_stat, _, 0) -> true
+        case (#func_arg_stack, _, 0) -> true
         case _ -> false
 
 -- let make_branch_constant (node_id: i64) (registers: []i64) (delta: i64) (instr_loc: i64) (idx: i64) : u32 =
@@ -295,24 +325,42 @@ let instr_constant [max_vars] (node: Node) (instr_offset: i64) (symtab: Symtab[m
         case (#lit_expr, _, 1) -> (node.node_data & 0xFFF) << 20
         case (#id_expr, _, 0) -> (-4 * ((symtab_local_offset symtab node.node_data) + 2)) << 20
         case (#decl_expr, _, 0) -> (-4 * ((symtab_local_offset symtab node.node_data) + 2)) << 20
+        case (#func_arg_stack, _, 0) -> (4 * node.node_data) << 20
+        case (#func_call_arg_stack, _, 0) -> (4 * node.node_data) << 20
+        case (#func_call_arg_list, _, 0) -> (-(4 * node.node_data)) << 20
+        case (#func_call_arg_list, _, 1) -> (4 * node.node_data) << 20
         case _ -> 0
 
-let instr_jt (node: Node) (node_id: i64) (instr_offset: i64) (registers: []i64) : i64 =
+let instr_jt (node: Node) 
+ (node_id: i64) (instr_offset: i64) (registers: []i64) (func_starts: []u32) (func_ends: []u32): i64 =
     match(node.node_type, instr_offset)
         case (#if_stat, 0) -> registers[node_id * PARENT_IDX_PER_NODE + 1]
         case (#if_else_stat, 0) -> registers[node_id * PARENT_IDX_PER_NODE + 1] + 1
         case (#if_else_stat, 1) -> registers[node_id * PARENT_IDX_PER_NODE + 2]
         case (#while_stat, 0) -> registers[node_id * PARENT_IDX_PER_NODE + 2] + 1
         case (#while_stat, 1) -> registers[node_id * PARENT_IDX_PER_NODE]
+        case (#return_stat, 1) -> i64.u32 func_ends[i64.u32 node.node_data] - 6
+        case (#func_call_expr, 0) -> i64.u32 func_starts[i64.u32 node.node_data]
         case _ -> 0
 
-let get_instr_loc (node: Node) (node_id: i64) (instr_no: i64) (instr_offset: i64) (registers: []i64) =
+let get_instr_loc (node: Node) (nodes: []Node) (node_id: i64) (instr_no: i64) (instr_offset: i64) (registers: []i64) =
     if instr_offset == 1 && (node.node_type == #if_else_stat) then
         registers[node_id * PARENT_IDX_PER_NODE + 1]
     else if instr_offset == 1 && node.node_type == #while_stat then
         registers[node_id * PARENT_IDX_PER_NODE + 2]
     else if (instr_offset >= 2 && node.node_type == #func_decl_dummy) || node.node_type == #func_decl then
         instr_no + 2
+    else if instr_offset == 1 && (node.node_type == #func_call_arg_list) then
+        if node_id == 0 then
+            instr_no + 2
+        else
+            let prev_node = nodes[node_id - 1]
+            in
+            instr_no + 2 + (if prev_node.node_type == #func_call_arg || prev_node.node_type == #func_call_arg_float_in_int || prev_node.node_type == #func_call_arg_stack then
+                i64.i32 prev_node.child_idx
+            else
+                0
+            )
     else
         instr_no
 
@@ -335,17 +383,19 @@ let get_data_prop_value [tree_size] (tree: Tree[tree_size]) (node: Node) (rd: i6
             rd
 
 let get_output_register [tree_size] (tree: Tree[tree_size]) (node: Node) (instr_no: i64) (instr_offset: i64) =
-    match (node.node_type, node.resulting_type)
-        case (#func_call_arg, #int) -> i64.u32 node.node_data + 10
-        case (#func_call_arg, #float) -> i64.u32 node.node_data + 42
-        case (#func_call_arg_float_in_int, _) -> i64.u32 node.node_data + 10
+    match (node.node_type, node.resulting_type, instr_offset)
+        case (#func_call_arg, #int, 0) -> i64.u32 node.node_data + 10
+        case (#func_call_arg, #float, 0) -> i64.u32 node.node_data + 42
+        case (#func_call_arg_float_in_int, _, 0) -> i64.u32 node.node_data + 10
+        case (#return_stat, #float, 0) -> 32
+        case (#return_stat, _, 0) -> 10
         case _ -> if node_has_output tree.nodes node instr_offset then register instr_no else 0
 
-let get_node_instr [tree_size] [max_vars] (tree: Tree[tree_size]) (node: Node) (instr_no: i64) (node_index: i64) (registers: []i64) (symtab: Symtab[max_vars]) (instr_offset: i64): (i64, i64, Instr, i64) =
+let get_node_instr [tree_size] [max_vars] (tree: Tree[tree_size]) (node: Node) (instr_no: i64) (node_index: i64) (registers: []i64) (symtab: Symtab[max_vars]) (func_starts: []u32) (func_ends: []u32) (instr_offset: i64): (i64, i64, Instr, i64) =
     let node_type = node.node_type
     let data_type = node.resulting_type
     let rd = get_output_register tree node instr_no instr_offset
-    let instr_loc = get_instr_loc node node_index instr_no instr_offset registers
+    let instr_loc = get_instr_loc node tree.nodes node_index instr_no instr_offset registers
     in
         (
             instr_loc,
@@ -355,25 +405,25 @@ let get_node_instr [tree_size] [max_vars] (tree: Tree[tree_size]) (node: Node) (
                 rd = rd,
                 rs1 = node_get_instr_arg node_index node registers 0 instr_no instr_offset,
                 rs2 = node_get_instr_arg node_index node registers 1 instr_no instr_offset,
-                jt = u32.i64 (instr_jt node node_index instr_offset registers)
+                jt = u32.i64 (instr_jt node node_index instr_offset registers func_starts func_ends)
             },
             get_data_prop_value tree node rd instr_no
         )
 
-let compile_node [tree_size] [max_vars] (tree: Tree[tree_size]) (symtab: Symtab[max_vars]) (registers: []i64) (instr_offset: [tree_size]i64)
+let compile_node [tree_size] [max_vars] (tree: Tree[tree_size]) (symtab: Symtab[max_vars]) (registers: []i64) (instr_offset: [tree_size]i64) (func_starts: []u32) (func_ends: []u32)
         (node_index: i64) =
     let node = tree.nodes[node_index]
     let node_instr = instr_offset[node_index]
     in
         [
             if has_instr node.node_type node.resulting_type 0 then
-                get_node_instr tree node node_instr node_index registers symtab 0
+                get_node_instr tree node node_instr node_index registers symtab func_starts func_ends 0
             else
                 (-1, node_get_parent_arg_idx tree.nodes node 0, EMPTY_INSTR, get_data_prop_value tree node 0 node_instr)
             ,
-            if has_instr node.node_type node.resulting_type 1 then get_node_instr tree node (node_instr+1) node_index registers symtab 1 else (-1, -1, EMPTY_INSTR, 0),
-            if has_instr node.node_type node.resulting_type 2 then get_node_instr tree node (node_instr+2) node_index registers symtab 2 else (-1, -1, EMPTY_INSTR, 0),
-            if has_instr node.node_type node.resulting_type 3 then get_node_instr tree node (node_instr+3) node_index registers symtab 3 else (-1, -1, EMPTY_INSTR, 0)
+            if has_instr node.node_type node.resulting_type 1 then get_node_instr tree node (node_instr+1) node_index registers symtab func_starts func_ends 1 else (-1, -1, EMPTY_INSTR, 0),
+            if has_instr node.node_type node.resulting_type 2 then get_node_instr tree node (node_instr+2) node_index registers symtab func_starts func_ends 2 else (-1, -1, EMPTY_INSTR, 0),
+            if has_instr node.node_type node.resulting_type 3 then get_node_instr tree node (node_instr+3) node_index registers symtab func_starts func_ends 3 else (-1, -1, EMPTY_INSTR, 0)
         ]
 
 let check_idx_node_depth [tree_size] (tree: Tree[tree_size]) (depth: i32) (i: i64) =
@@ -382,7 +432,7 @@ let check_idx_node_depth [tree_size] (tree: Tree[tree_size]) (depth: i32) (i: i6
 let bit_width (x: i32): i32 =
     i32.num_bits - (i32.clz x)
 
-let compile_tree [tree_size] [max_vars] (tree: Tree[tree_size]) (symtab: Symtab[max_vars]) (instr_offset: [tree_size]i64) (max_instrs: i64) =
+let compile_tree [tree_size] [max_vars] [num_funcs] (tree: Tree[tree_size]) (symtab: Symtab[max_vars]) (instr_offset: [tree_size]i64) (max_instrs: i64) (func_starts: [num_funcs]u32) (func_ends: [num_funcs]u32) =
     let idx_array = iota tree_size |> radix_sort (bit_width tree.max_depth) (\bit idx -> i32.get_bit bit tree.nodes[idx].depth)
     let depth_starts = iota tree_size |> filter (\i -> i == 0 || tree.nodes[idx_array[i]].depth != tree.nodes[idx_array[i-1]].depth)
     let initial_registers = replicate (tree_size * PARENT_IDX_PER_NODE) 0i64
@@ -394,7 +444,7 @@ let compile_tree [tree_size] [max_vars] (tree: Tree[tree_size]) (symtab: Symtab[
             let end = if j == tree.max_depth then tree_size else depth_starts[j + 1]
             let (idx, parent_idx, instrs, new_regs) =
                 idx_array[start:end] |>
-                map (compile_node tree symtab (copy registers) instr_offset) |>
+                map (compile_node tree symtab (copy registers) instr_offset func_starts func_ends) |>
                 flatten |>
                 unzip4
             in

@@ -113,6 +113,8 @@ Token Lexer::next_id() {
         return Token(TokenType::FLOAT);
     else if(s == "function")
         return Token(TokenType::FUNCTION);
+    else if(s == "return")
+        return Token(TokenType::RETURN);
     else
         return Token(TokenType::ID, s);
 }

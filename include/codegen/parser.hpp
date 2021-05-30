@@ -27,6 +27,7 @@ class Parser {
         ASTNode* parseExpressionStatement();
         ASTNode* parseIfElseStatement();
         ASTNode* parseWhileStatement();
+        ASTNode* parseReturnStatement();
         ASTNode* parseStatement();
         ASTNode* parseStatementList();
         ASTNode* parseArgumentList(std::vector<DataType>&);

@@ -22,6 +22,7 @@ futhark_sources = [
     'src/instr_count.fut',
     'src/lisp.fut',
     'src/optimizer.fut',
+    'src/postprocess.fut',
     'src/preprocess.fut',
     'src/register.fut',
     'src/symtab.fut',

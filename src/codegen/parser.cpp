@@ -194,8 +194,9 @@ ASTNode* Parser::parseAtom() {
                 std::unique_ptr<ASTNode> arg_list_node(new ASTNode(NodeType::FUNC_CALL_ARG_LIST, arg_list));
 
                 uint32_t func_id = this->symtab.resolveFunction(id);
+                std::cout << "Resolved function to id " << func_id << std::endl;
                 DataType ret_type = this->symtab.getFunctionReturnType(func_id);
-                return new ASTNode(NodeType::FUNC_CALL_EXPR, ret_type, {arg_list_node.release()});
+                return new ASTNode(NodeType::FUNC_CALL_EXPR, ret_type, func_id, {arg_list_node.release()});
             }
             else {
                 Symbol symbol = this->symtab.resolveSymbol(id);
@@ -247,6 +248,19 @@ ASTNode* Parser::parseWhileStatement() {
     return new ASTNode(NodeType::WHILE_STAT, {new ASTNode(NodeType::WHILE_DUMMY), cond.release(), stat.release()});
 }
 
+ASTNode* Parser::parseReturnStatement() {
+    this->expect(TokenType::RETURN);
+    Token lookahead = this->lexer.lookahead();
+    uint32_t func_id = this->symtab.getCurrentFunction();
+    if(lookahead.type == TokenType::SEMICOLON) {
+        return new ASTNode(NodeType::RETURN_STAT, DataType::VOID, func_id, {});
+    }
+    else {
+        std::unique_ptr<ASTNode> expr(this->parseExpression());
+        return new ASTNode(NodeType::RETURN_STAT, DataType::VOID, func_id, {expr.release()});
+    }
+}
+
 ASTNode* Parser::parseStatement() {
     Token lookahead = this->lexer.lookahead();
 
@@ -273,6 +287,8 @@ ASTNode* Parser::parseStatement() {
         }
         case TokenType::WHILE:
             return this->parseWhileStatement();
+        case TokenType::RETURN:
+            return this->parseReturnStatement();
         default:
             throw ParseException("Parsing failed, unexpected token ", lookahead, ", expecting start of statement");
     }
@@ -296,6 +312,7 @@ ASTNode* Parser::parseStatementList() {
             case TokenType::ID:
             case TokenType::OPEN_CB:
             case TokenType::WHILE:
+            case TokenType::RETURN:
                 nodes.emplace_back(this->parseStatement());
                 break;
             default:

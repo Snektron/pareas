@@ -47,6 +47,7 @@ type NodeType =
     #id_expr |
     #while_dummy |
     #func_decl_dummy |
+    #return_stat |
     #func_call_arg_float_in_int |
     #func_call_arg_stack |
     #func_arg_float_in_int |

@@ -30,6 +30,16 @@ let copy_node_with_nodetype (n: Node) (t: NodeType) (d: u32) =
         node_data = d
     }
 
+let copy_node_with_nodedata (n: Node) (d: u32) = 
+    {
+        node_type = n.node_type,
+        resulting_type = n.resulting_type,
+        parent = n.parent,
+        depth = n.depth,
+        child_idx = n.child_idx,
+        node_data = d
+    }
+
 let copy_node_with_type (n: Node) (d: DataType) =
     {
         node_type = n.node_type,
@@ -100,5 +110,33 @@ let replace_arg_types [n] (tree: Tree[n]) =
         max_depth = tree.max_depth
     }
 
+let replace_arg_lists [n] (tree: Tree[n]) =
+    {
+        nodes = iota n |> map (\i ->
+                let node = tree.nodes[i] in
+                if i > 0 && node.node_type == #func_call_arg_list then
+                    let prev_node = tree.nodes[i-1]
+                    let num_stack_args = (if prev_node.node_type == #func_call_arg then
+                        if prev_node.resulting_type == #float then
+                            let total_args = prev_node.child_idx
+                            let float_args = i32.u32 prev_node.node_data
+                            let int_args = total_args - float_args
+                            in
+                            u32.i32 (i32.max (int_args-8) 0)
+                        else
+                            0
+                    else if prev_node.node_type == #func_call_arg_stack then
+                        prev_node.node_data + 1
+                    else
+                        0
+                    )
+                    in
+                    copy_node_with_nodedata node num_stack_args
+                else
+                    node
+            ),
+        max_depth = tree.max_depth
+    }
+
 let preprocess_tree [n] (tree: Tree[n]) =
-    tree |> replace_arg_types |> replace_float_compare_types
+    tree |> replace_arg_types |> replace_arg_lists |> replace_float_compare_types
