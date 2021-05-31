@@ -129,8 +129,8 @@ let make_functab (id: u32) (start: u32) (size: u32) =
 
 let fix_func_tab [n] (instr_offsets: [n]i32) (func_info: FuncInfo) =
     let func_start = u32.i32 instr_offsets[i64.u32 func_info.start]
-    let func_end_loc = i64.u32 (func_info.start + func_info.start)
-    let func_end = if func_end_loc >= n then u32.i64 n else u32.i32 instr_offsets[func_end_loc]
+    let func_end_loc = i64.u32 (func_info.start + func_info.size)
+    let func_end = if func_end_loc >= n then u32.i32 instr_offsets[n-1]+1 else u32.i32 instr_offsets[func_end_loc]
     let func_size = func_end - func_start
     in
     {
@@ -146,6 +146,7 @@ entry do_register_alloc [n] [m] (instrs: [n]u32) (rd: [n]i64) (rs1: [n]i64) (rs2
     let (instr_offset, lifetime_mask, registers, overflows, swapped, instrs) = (instrs, functab, optimize_away, func_symbols) |> register_alloc
     let func_tab = map (fix_func_tab instr_offset) func_tab
     let new_instrs = fill_stack_frames func_tab func_symbols overflows instrs |> finalize_instr
+    --let new_instrs = instrs
     in
     (instr_offset, lifetime_mask, registers, optimize_away, new_instrs |> map (\i -> i.instr), swapped,
         new_instrs |> map (.rd), new_instrs |> map (.rs1), new_instrs |> map (.rs2), new_instrs |> map (.jt))

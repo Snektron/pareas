@@ -47,13 +47,13 @@ let node_instr(node_type: NodeType) (data_type: DataType) (instr_offset: i64) : 
     -- Control flow
     case (#if_stat, _, 0) ->            0b0000000_00000_00000_000_00000_1100011 -- BEQ x0
     case (#if_else_stat, _, 0) ->       0b0000000_00000_00000_000_00000_1100011 -- BEQ x0
-    case (#if_else_stat, _, 1) ->       0b0000000_00000_00000_000_00000_1101111 -- JAL x0
+    case (#if_else_stat, _, 1) ->       0b0000000_00000_00000_000_00000_1100111 -- JALR x0
     case (#while_stat, _, 0) ->         0b0000000_00000_00000_000_00000_1100011 -- BEQ x0
-    case (#while_stat, _, 1) ->         0b0000000_00000_00000_000_00000_1101111 -- JAL x0
+    case (#while_stat, _, 1) ->         0b0000000_00000_00000_000_00000_1100111 -- JALR x0
     case (#return_stat, #float, 0) ->   0b0010000_00000_00000_000_00000_1010011 -- FSGNJ.S ry, ry
     case (#return_stat, #int, 0) ->     0b0000000_00000_00000_000_00000_0110011 -- ADD x0
     case (#return_stat, #void, 0) ->    0b0000000_00000_00000_000_00000_0110011 -- ADD x0, x0
-    case (#return_stat, _, 1) ->        0b0000000_00000_00000_000_00000_1101111 -- JAL x0
+    case (#return_stat, _, 1) ->        0b0000000_00000_00000_000_00000_1100111 -- JALR x0
 
     -- Binary integer arithmetic
     case (#add_expr, #int, 0) ->        0b0000000_00000_00000_000_00000_0110011 -- ADD
@@ -114,7 +114,7 @@ let node_instr(node_type: NodeType) (data_type: DataType) (instr_offset: i64) : 
     case (#assign_expr, #float, 1) ->   0b0010000_00000_00000_000_00000_1010011 -- FSGNJ.S ry, ry
 
     -- Function call
-    case (#func_call_expr, _, 0) ->                 0b0000000_00000_00000_000_00001_1101111 -- JAL ra
+    case (#func_call_expr, _, 0) ->                 0b0000000_00000_00000_000_00001_1100111 -- JALR ra
     case (#func_call_expr, #float, 2) ->            0b0010000_01010_01010_000_00000_1010011 -- FSGNJ.S r10, r10
     case (#func_call_expr, #int, 2) ->              0b0000000_00000_01010_000_00000_0110011 -- ADD x0, r10
     case (#func_call_arg, #int, 0) ->               0b0000000_00000_00000_000_00000_0110011 -- ADD x0

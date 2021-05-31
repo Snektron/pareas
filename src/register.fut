@@ -152,11 +152,14 @@ let current_func_offset(i: i64) (f: FuncInfo) =
     else
         u32.i64 i + f.start 
 
-let count_instr [n] (instrs: [n]Instr) (symb_data: []SymbolData) (instr: i64) : i32 =
-    1 -- Instruction itself
-    + (if (get_symbol_data symb_data instrs[instr].rd).swapped then 1 else 0) -- Result register swap
-    + (if (get_symbol_data symb_data instrs[instr].rs1).swapped then 1 else 0) --Instruction rs1 swap
-    + (if (get_symbol_data symb_data instrs[instr].rs2).swapped then 1 else 0) --Instruction rs2 swap
+let count_instr [n] (instrs: [n]Instr) (symb_data: []SymbolData) (enabled: [n]bool) (instr: i64) : i32 =
+    if enabled[instr] then
+        1 -- Instruction itself
+        + (if (get_symbol_data symb_data instrs[instr].rd).swapped then 1 else 0) -- Result register swap
+        + (if (get_symbol_data symb_data instrs[instr].rs1).swapped then 1 else 0) --Instruction rs1 swap
+        + (if (get_symbol_data symb_data instrs[instr].rs2).swapped then 1 else 0) --Instruction rs2 swap
+    else
+        0
 
 let regalloc_make_load (dest_reg: i64) (stack_offset: u32) : Instr =
     let instr_offset = (4*(stack_offset-1)) << 20
@@ -232,59 +235,67 @@ let register_alloc [n] [m] (instrs: [n]Instr, functions: [m]FuncInfo, enabled: [
                             segmented_scan (+) 0 func_start_bools
 
     let instr_offsets = iota n |>
-        map (count_instr instrs symbol_registers) |>
+        map (count_instr instrs symbol_registers enabled) |>
         scan (+) 0 |>
         rotate (-1) |>
         map2 (\i x -> if i == 0 then 0 else x) (iota n)
 
-    let new_instr_num = i64.i32 (if length instr_offsets == 0 then 0 else instr_offsets[(length instr_offsets)-1])
+    let new_instr_num = i64.i32 (if length instr_offsets == 0 then 0 else instr_offsets[(length instr_offsets)-1]+1)
     let new_instr = replicate new_instr_num EMPTY_INSTR
 
     let (new_instr_idx, new_instr_opcodes) = iota n |>
         map (\i ->
-            let instr = instrs[i]
-            let base_instr_offset = i64.i32 instr_offsets[i]
-            let (rs1_load_offset, rs1_stack_offset) = if instr.rs1 >= 64 && symbol_registers[instr.rs1 - 64].swapped then (base_instr_offset, u32.i64 spill_offsets[instr.rs1-64]) else (-1, 0)
-            let (rs2_load_offset, rs2_stack_offset) =
-                if instr.rs2 >= 64 && symbol_registers[instr.rs2 - 64].swapped then (
-                        base_instr_offset +
-                        if rs1_load_offset > 0 then 1 else 0
-                        ,u32.i64 spill_offsets[instr.rs2-64]
-                    )
-                else (-1, 0)
-            let main_instr_offset = base_instr_offset + (if rs1_load_offset > 0 then 1 else 0) + (if rs2_load_offset > 0 then 1 else 0)
-            let (rd_offset, rd_stack_offset) = if instr.rd >= 64 && symbol_registers[instr.rd - 64].swapped then (main_instr_offset + 1, u32.i64 spill_offsets[instr.rd-64]) else (-1,0)
-            let func_id = reverse_func_id_map[i]-1
+            if enabled[i] then
+                let instr = instrs[i]
+                let base_instr_offset = i64.i32 instr_offsets[i]
+                let (rs1_load_offset, rs1_stack_offset) = if instr.rs1 >= 64 && symbol_registers[instr.rs1 - 64].swapped then (base_instr_offset, u32.i64 spill_offsets[instr.rs1-64]) else (-1, 0)
+                let (rs2_load_offset, rs2_stack_offset) =
+                    if instr.rs2 >= 64 && symbol_registers[instr.rs2 - 64].swapped then (
+                            base_instr_offset +
+                            if rs1_load_offset > 0 then 1 else 0
+                            ,u32.i64 spill_offsets[instr.rs2-64]
+                        )
+                    else (-1, 0)
+                let main_instr_offset = base_instr_offset + (if rs1_load_offset > 0 then 1 else 0) + (if rs2_load_offset > 0 then 1 else 0)
+                let (rd_offset, rd_stack_offset) = if instr.rd >= 64 && symbol_registers[instr.rd - 64].swapped then (main_instr_offset + 1, u32.i64 spill_offsets[instr.rd-64]) else (-1,0)
+                let func_id = reverse_func_id_map[i]-1
 
-            let allocated_rd = if instr.rd < 64 then instr.rd else i64.u8 symbol_registers[instr.rd - 64].register
-            let allocated_rs1 = if instr.rs1 < 64 then instr.rs1 else
-                let reg_data = symbol_registers[instr.rs1 - 64]
-                in
-                if reg_data.swapped then
-                    if needs_float_register instr.instr 1 then
-                        37
+                let allocated_rd = if instr.rd < 64 then instr.rd else i64.u8 symbol_registers[instr.rd - 64].register
+                let allocated_rs1 = if instr.rs1 < 64 then instr.rs1 else
+                    let reg_data = symbol_registers[instr.rs1 - 64]
+                    in
+                    if reg_data.swapped then
+                        if needs_float_register instr.instr 1 then
+                            37
+                        else
+                            5
                     else
-                        5
-                else
-                    i64.u8 reg_data.register
-            let allocated_rs2 = if instr.rs2 < 64 then instr.rs2 else
-                let reg_data = symbol_registers[instr.rs2 - 64]
-                in
-                if reg_data.swapped then
-                    if needs_float_register instr.instr 2 then
-                        38
+                        i64.u8 reg_data.register
+                let allocated_rs2 = if instr.rs2 < 64 then instr.rs2 else
+                    let reg_data = symbol_registers[instr.rs2 - 64]
+                    in
+                    if reg_data.swapped then
+                        if needs_float_register instr.instr 2 then
+                            38
+                        else
+                            6
                     else
-                        6
-                else
-                    i64.u8 reg_data.register
+                        i64.u8 reg_data.register
 
-            in
-            [
-                (rs1_load_offset, regalloc_make_load 5 (rs1_stack_offset + stack_sizes[func_id])), --Load spill to rs1
-                (rs2_load_offset, regalloc_make_load 6 (rs2_stack_offset + stack_sizes[func_id])), --Load spill to rs2
-                (main_instr_offset, regalloc_make_instr instr allocated_rd allocated_rs1 allocated_rs2 instr_offsets), --Main instruction
-                (rd_offset, regalloc_make_store allocated_rd (rd_stack_offset + stack_sizes[func_id])) --Store spill
-            ]
+                in
+                [
+                    (rs1_load_offset, regalloc_make_load 5 (rs1_stack_offset + stack_sizes[func_id])), --Load spill to rs1
+                    (rs2_load_offset, regalloc_make_load 6 (rs2_stack_offset + stack_sizes[func_id])), --Load spill to rs2
+                    (main_instr_offset, regalloc_make_instr instr allocated_rd allocated_rs1 allocated_rs2 instr_offsets), --Main instruction
+                    (rd_offset, regalloc_make_store allocated_rd (rd_stack_offset + stack_sizes[func_id])) --Store spill
+                ]
+            else
+                [
+                    (-1, EMPTY_INSTR),
+                    (-1, EMPTY_INSTR),
+                    (-1, EMPTY_INSTR),
+                    (-1, EMPTY_INSTR)
+                ]
         ) |>
         flatten |>
         unzip2
@@ -324,6 +335,7 @@ let fill_stack_frames [n] [m] (functions: [m]FuncInfo) (func_symbols: [m]u32) (f
             let upper_bits = stack_size - (signextend (stack_size & 0xFFF)) & 0xFFFFF000
             in
             [
+                (i64.u32 functions[i].start, make_empty_instr functions[i].size),
                 (i64.u32 functions[i].start + 2, make_empty_instr (OPCODE_LUI_BP | upper_bits)),
                 (i64.u32 functions[i].start + 3, make_empty_instr (OPCODE_ADDI_BP | lower_bits)),
                 (i64.u32 functions[i].start + i64.u32 functions[i].size - 6, make_empty_instr (OPCODE_LUI_BP | upper_bits)),

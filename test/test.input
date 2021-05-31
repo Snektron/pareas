@@ -1,3 +1,5 @@
 function a() <- int {
-    return 2 + a(1);
+    if(2) {
+        3;
+    }
 }

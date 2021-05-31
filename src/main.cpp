@@ -408,20 +408,10 @@ int main(int argc, const char* argv[]) {
         }
 
         std::cout << std::endl << "Instructions:" << std::endl;
-        size_t last_idx = 0;        
         for(size_t i = 0; i < num_values; ++i) {
-            size_t actual_idx = reg_instr_offsets[i];
-            for(size_t j = last_idx + 1; j < actual_idx; ++j) {
-                std::cout << j
-                    << ",x x" 
-                    << "\t= " << std::bitset<32>(optimized_instr_arr[j]) << " x x x x" << std::endl;
-            }
-
             std::cout << i
                 << "," << reg_instr_offsets[i] << " " << optimize_away_arr[i]
-                << "\t= " << std::bitset<32>(optimized_instr_arr[actual_idx]) << " " << rd[i] << " " << rs1[i] << " " << rs2[i] << " " << jt[i] << std::endl;
-
-            last_idx = actual_idx;
+                << "\t= " << std::bitset<32>(instr[i]) << " " << rd[i] << " " << rs1[i] << " " << rs2[i] << " " << jt[i] << std::endl;
         }
 
         std::cout << "Register mapping: " << std::endl;
