@@ -415,16 +415,25 @@ let compile_node [tree_size] [max_vars] (tree: Tree[tree_size]) (symtab: Symtab[
     let node = tree.nodes[node_index]
     let node_instr = instr_offset[node_index]
     in
-        [
-            if has_instr node.node_type node.resulting_type 0 then
-                get_node_instr tree node node_instr node_index registers symtab func_starts func_ends 0
-            else
-                (-1, node_get_parent_arg_idx tree.nodes node 0, EMPTY_INSTR, get_data_prop_value tree node 0 node_instr)
-            ,
-            if has_instr node.node_type node.resulting_type 1 then get_node_instr tree node (node_instr+1) node_index registers symtab func_starts func_ends 1 else (-1, -1, EMPTY_INSTR, 0),
-            if has_instr node.node_type node.resulting_type 2 then get_node_instr tree node (node_instr+2) node_index registers symtab func_starts func_ends 2 else (-1, -1, EMPTY_INSTR, 0),
-            if has_instr node.node_type node.resulting_type 3 then get_node_instr tree node (node_instr+3) node_index registers symtab func_starts func_ends 3 else (-1, -1, EMPTY_INSTR, 0)
-        ]
+    iota 4i64 |>
+        map (\i ->
+                if has_instr node.node_type node.resulting_type i then
+                    get_node_instr tree node (node_instr+i) node_index registers symtab func_starts func_ends i
+                else if i == 0 then
+                    (-1, node_get_parent_arg_idx tree.nodes node 0, EMPTY_INSTR, get_data_prop_value tree node 0 node_instr)
+                else
+                    (-1, -1, EMPTY_INSTR, 0)
+            )
+        -- [
+        --     if has_instr node.node_type node.resulting_type 0 then
+        --         get_node_instr tree node node_instr node_index registers symtab func_starts func_ends 0
+        --     else
+        --         (-1, node_get_parent_arg_idx tree.nodes node 0, EMPTY_INSTR, get_data_prop_value tree node 0 node_instr)
+        --     ,
+        --     if has_instr node.node_type node.resulting_type 1 then get_node_instr tree node (node_instr+1) node_index registers symtab func_starts func_ends 1 else (-1, -1, EMPTY_INSTR, 0),
+        --     if has_instr node.node_type node.resulting_type 2 then get_node_instr tree node (node_instr+2) node_index registers symtab func_starts func_ends 2 else (-1, -1, EMPTY_INSTR, 0),
+        --     if has_instr node.node_type node.resulting_type 3 then get_node_instr tree node (node_instr+3) node_index registers symtab func_starts func_ends 3 else (-1, -1, EMPTY_INSTR, 0)
+        -- ]
 
 let check_idx_node_depth [tree_size] (tree: Tree[tree_size]) (depth: i32) (i: i64) =
     is_level tree.nodes[i] depth

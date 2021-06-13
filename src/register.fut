@@ -335,7 +335,7 @@ let fill_stack_frames [n] [m] (functions: [m]FuncInfo) (func_symbols: [m]u32) (f
             let upper_bits = stack_size - (signextend (stack_size & 0xFFF)) & 0xFFFFF000
             in
             [
-                (i64.u32 functions[i].start, make_empty_instr functions[i].size),
+                --(i64.u32 functions[i].start, make_empty_instr functions[i].size),
                 (i64.u32 functions[i].start + 2, make_empty_instr (OPCODE_LUI_BP | upper_bits)),
                 (i64.u32 functions[i].start + 3, make_empty_instr (OPCODE_ADDI_BP | lower_bits)),
                 (i64.u32 functions[i].start + i64.u32 functions[i].size - 6, make_empty_instr (OPCODE_LUI_BP | upper_bits)),
