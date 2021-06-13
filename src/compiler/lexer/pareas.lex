@@ -33,8 +33,8 @@ gt = />/
 gte = />=/
 lt = /</
 lte = /<=/
-exclaim = /!/ #
-tilde = /~/ #
+exclaim = /!/
+tilde = /~/
 semi = /;/
 comma = /,/
 colon = /:/
