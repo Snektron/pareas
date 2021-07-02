@@ -58,6 +58,9 @@ let status_type_error: status_code = 10
 let status_invalid_return: status_code = 11
 let status_missing_return: status_code = 12
 
+entry lex_match (input: []u8) (lt: lex_table []): bool =
+    lexer.check input lt
+
 entry main
     (input: []u8)
     (lt: lex_table [])

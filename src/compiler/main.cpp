@@ -81,6 +81,7 @@ struct Options {
     bool verbose;
     bool debug;
     bool dump_dot;
+    bool lexer_match;
 
     // Options available for the multicore backend
     int threads;
@@ -99,6 +100,7 @@ void print_usage(char* progname) {
         "-v --verbose                Enable Futhark logging.\n"
         "-d --debug                  Enable Futhark debug logging.\n"
         "--dump-dot                  Dump tree as dot graph.\n"
+        "--lexer-match               Check whether lexical analysis passes.\n"
     #if defined(FUTHARK_BACKEND_multicore)
         "Available backend options:\n"
         "-t --threads <amount>       Set the maximum number of threads that may be used\n"
@@ -126,6 +128,7 @@ bool parse_options(Options* opts, int argc, char* argv[]) {
         .verbose = false,
         .debug = false,
         .dump_dot = false,
+        .lexer_match = false,
         .threads = 0,
         .device_name = nullptr,
         .profile = false,
@@ -175,6 +178,8 @@ bool parse_options(Options* opts, int argc, char* argv[]) {
             opts->debug = true;
         } else if (arg == "--dump-dot") {
             opts->dump_dot = true;
+        } else if (arg == "--lexer-match") {
+            opts->lexer_match = true;
         } else if (!opts->input_path) {
             opts->input_path = argv[i];
         } else {
@@ -436,6 +441,33 @@ int main(int argc, char* argv[]) {
     auto stop = std::chrono::high_resolution_clock::now();
     fmt::print(std::cerr, "Upload time: {}\n", std::chrono::duration_cast<std::chrono::microseconds>(stop - start));
 
+    if (opts.lexer_match) {
+        start = std::chrono::high_resolution_clock::now();
+
+        bool result;
+        int err = futhark_entry_lex_match(
+            ctx.get(),
+            &result,
+            input_array.get(),
+            lex_table.get()
+        );
+
+        if (err != 0 || futhark_context_sync(ctx.get()) != 0)
+            throw futhark::Error(ctx);
+
+        stop = std::chrono::high_resolution_clock::now();
+        fmt::print(std::cerr, "Main kernel runtime: {}\n", std::chrono::duration_cast<std::chrono::microseconds>(stop - start));
+        fmt::print(std::cerr, "Result: {}\n", result);
+
+
+        if (opts.profile) {
+            auto report = MallocPtr<char>(futhark_context_report(ctx.get()));
+            fmt::print("Profile report:\n{}", report);
+        }
+
+        return EXIT_SUCCESS;
+    }
+
     auto node_types = futhark::UniqueArray<uint8_t, 1>(ctx);
     auto parents = futhark::UniqueArray<int32_t, 1>(ctx);
     auto data = futhark::UniqueArray<uint32_t, 1>(ctx);
@@ -500,5 +532,5 @@ int main(int argc, char* argv[]) {
     if (futhark_context_sync(ctx.get()) != 0)
         throw futhark::Error(ctx);
 
-    return !err ? EXIT_SUCCESS : EXIT_FAILURE;
+    return EXIT_SUCCESS;
 }

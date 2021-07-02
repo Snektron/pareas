@@ -30,6 +30,19 @@ let mk_lex_table [n] 'token
         identity_state = identity_state
     }
 
+-- | Checks whether the input matches the lexer, without returning tokens
+let check [n] [m] 'token (input: [n]u8) (table: lex_table [m] token): bool =
+    let merge (a: state) (b: state) =
+        let a = a & !produces_token_mask
+        let b = b & !produces_token_mask
+        in table.merge_table[state.to_i64 a, state.to_i64 b]
+    let final_state =
+        input
+        |> map (\x -> table.initial_state[u8.to_i64 x])
+        |> reduce merge table.identity_state
+    -- Input matches the lexer if the final state generates a token
+    in (final_state & produces_token_mask) != 0
+
 -- | Lex the input according to the lexer defined by lex_table.
 -- This function returns an array of (token, start-offset, length).
 let lex [n] [m] 'token (input: [n]u8) (table: lex_table [m] token): [](token, i32, i32) =
