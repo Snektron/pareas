@@ -93,7 +93,7 @@ let resolve_vars [n] (node_types: [n]production.t) (parents: [n]i32) (prev_sibli
             else if prev_siblings[prev_sibling] == -1 then parent
             -- Else point to the right leaf of the second sibling, which is the condition
             else right_leafs[prev_sibling]
-        else if node_types[parent] == production_stat_if || node_types[parent] == production_stat_if_else || node_types[parent] == production_stat_while then
+        else if node_types[parent] == production_stat_if || node_types[parent] == production_stat_if_else then
             -- For `<keyword> condition block...;` type statements, we want don't want declarations in the condition or children
             -- to be visible from a node after the statement, but we do want declarations in the condition to be visible in the
             -- children. We also don't want declarations in child A to be visible in child B, so if the parent of a node is
@@ -163,8 +163,6 @@ let resolve_args [n] (node_types: [n]production.t) (parents: [n]i32) (prev_sibli
     -- of the called function.
     let grandparents = map (\parent -> if parent == -1 then -1 else parents[parent]) parents
     -- Some useful masks
---      let grandparent_is_proto = map (\gp -> gp != -1 && node_types[gp] == production_atom_fn_proto) grandparents
---      let grandparent_is_call = map (\gp -> gp != -1 && node_types[gp] == production_atom_fn_call) grandparents
     let is_first_child = map (== -1) prev_siblings
     let is_last_child = map (== -1) next_siblings
     -- Scatter up that first parameter.

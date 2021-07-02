@@ -210,7 +210,7 @@ let fix_bin_ops [n] (node_types: [n]production.t) (parents: [n]i32) =
             -- Generate the new nodes list simply by scattering. To avoid a filter here, simply set the scatter target
             -- index of a node that shouldn't be moved up to out of bounds, which scatter will ignore for us.
             --
-            -- Use the old parents here so it also works for right-associative nodes.
+            -- Use the old parents here so it also works for right-associative nodes and also scatters up the list ends.
             |> map2 (\parent is_tail_node -> if is_tail_node then parent else -1) parents
             |> map i64.i32
         in scatter

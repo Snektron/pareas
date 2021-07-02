@@ -139,8 +139,8 @@ namespace pareas::parser::llp {
     uint64_t ParserRenderer::bracket_id(const Symbol& sym, bool left) const {
         auto id = this->symbol_mapping.at(sym);
 
-        // Left brackets get odd ID's, rightb rackets get even ID's.
-        // This way, we can perform a simply subtract and reduce by bit and to
+        // Left brackets get odd ID's, right brackets get even ID's.
+        // This way, we can perform a simple subtract and reduce by bit and to
         // check if all the brackets match up.
         return left ? id * 2 + 1 : id * 2;
     }
