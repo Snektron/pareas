@@ -1,5 +1,3 @@
 function a() <- int {
-    if(2) {
-        3;
-    }
+    a <- int = 2;
 }

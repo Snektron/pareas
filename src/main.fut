@@ -145,7 +145,7 @@ entry do_register_alloc [n] [m] (instrs: [n]u32) (rd: [n]i64) (rs1: [n]i64) (rs2
     let (instrs, functab, optimize_away) = optimize instr_data func_tab
     let (instr_offset, lifetime_mask, registers, overflows, swapped, instrs) = (instrs, functab, optimize_away, func_symbols) |> register_alloc
     let func_tab = map (fix_func_tab instr_offset) func_tab
-    let new_instrs = fill_stack_frames func_tab func_symbols overflows instrs |> finalize_instr
+    let new_instrs = fill_stack_frames func_tab func_symbols overflows instrs lifetime_mask |> finalize_instr
     --let new_instrs = instrs
     in
     (instr_offset, lifetime_mask, registers, optimize_away, new_instrs |> map (\i -> i.instr), swapped,

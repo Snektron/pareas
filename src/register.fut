@@ -18,7 +18,8 @@ let EMPTY_SYMBOL_DATA : SymbolData = {
 }
 
 let NUM_SYSTEM_REGS = 64i64
-let PRESERVED_REGISTER_MASK = 0xFFu64
+let PRESERVED_REGISTER_MASK = 0x0FFC0300_0FFC031Fu64
+let NONSCRATCH_REGISTERS = 0x0FFC0300_0FFC0200u64
 
 let is_system_register (register: i64) =
     register < NUM_SYSTEM_REGS
@@ -161,6 +162,22 @@ let count_instr [n] (instrs: [n]Instr) (symb_data: []SymbolData) (enabled: [n]bo
     else
         0
 
+let count_instr_add_preserve [n] [m] (functions: [m]FuncInfo) (preserve_masks: [m]u64) (instr_counts: [n]i32) =
+    let (preserve_offsets, preserve_data) = iota m |>
+        map (\i -> 
+            let regs_preserved = u64.popc preserve_masks[i]
+            let func_start_idx = i64.u32 (functions[i].start + 5)
+            let func_end_idx = i64.u32 (functions[i].start + functions[i].size - 6)
+            in
+            [
+                (func_start_idx, instr_counts[func_start_idx] + regs_preserved),
+                (func_end_idx, instr_counts[func_end_idx] + regs_preserved)
+            ]) |>
+        flatten |>
+        unzip2
+    in
+    scatter (copy instr_counts) preserve_offsets preserve_data
+
 let regalloc_make_load (dest_reg: i64) (stack_offset: u32) : Instr =
     let instr_offset = (4*(stack_offset-1)) << 20
     in
@@ -196,11 +213,12 @@ let regalloc_make_instr (instr: Instr) (rd_register: i64) (rs1_register: i64) (r
 
 let register_alloc [n] [m] (instrs: [n]Instr, functions: [m]FuncInfo, enabled: [n]bool, stack_sizes: [m]u32)=
     let max_func_size = functions |> map (.size) |> u32.maximum |> i64.u32
-    let lifetime_masks_init = replicate m 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00001111u64
+    let lifetime_masks_init = replicate m 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00011111u64
+    let preserve_masks_init = replicate m 0u64
     let symbol_registers_init = replicate n EMPTY_SYMBOL_DATA
     let register_state = replicate m (replicate 64 (-1i64))
 
-    let (lifetime_masks, symbol_registers, _) = loop (lifetime_masks, symbol_registers, register_state) = (lifetime_masks_init, symbol_registers_init, register_state) for i < max_func_size do
+    let (_, preserve_masks, symbol_registers, _) = loop (lifetime_masks, preserve_masks, symbol_registers, register_state) = (lifetime_masks_init, preserve_masks_init, symbol_registers_init, register_state) for i < max_func_size do
         let old_offsets = map (current_func_offset i) functions
         let reg_state_copy = copy register_state
         let (lifetime_masks, updated_symbols, swapped_registers, register_state) = map4 (lifetime_analyze instrs symbol_registers enabled) old_offsets lifetime_masks register_state functions |> unzip4
@@ -220,12 +238,16 @@ let register_alloc [n] [m] (instrs: [n]Instr, functions: [m]FuncInfo, enabled: [
             flatten
         let symb_data = updated_symbols |> flatten
         let (symbol_offsets, symbol_data) = concat swap_data symb_data |> unzip2
+        let preserve_masks = map2 (|) preserve_masks lifetime_masks
         in
         (
             lifetime_masks,
+            preserve_masks,
             scatter symbol_registers symbol_offsets symbol_data,
             register_state
         )
+
+    let preserve_masks = map (\i -> i & NONSCRATCH_REGISTERS) preserve_masks
 
     let func_start_bools = scatter (replicate n false) (functions |> map (.start) |> map i64.u32) (replicate m true)
     let reverse_func_id_map = func_start_bools |> map i64.bool |> scan (+) 0
@@ -236,6 +258,7 @@ let register_alloc [n] [m] (instrs: [n]Instr, functions: [m]FuncInfo, enabled: [
 
     let instr_offsets = iota n |>
         map (count_instr instrs symbol_registers enabled) |>
+        count_instr_add_preserve functions preserve_masks |>
         scan (+) 0 |>
         rotate (-1) |>
         map2 (\i x -> if i == 0 then 0 else x) (iota n)
@@ -308,7 +331,7 @@ let register_alloc [n] [m] (instrs: [n]Instr, functions: [m]FuncInfo, enabled: [
 
     (
         instr_offsets,
-        lifetime_masks,
+        preserve_masks,
         symbol_registers |> map (\i -> i.register),
         overflows,
         symbol_registers |> map (\i -> i.swapped),
@@ -326,11 +349,16 @@ let make_empty_instr (opcode: u32) : Instr =
 
 let OPCODE_LUI_BP : u32 =  0b0000000_00000_00000_000_01000_0110111
 let OPCODE_ADDI_BP : u32 = 0b0000000_00000_01000_000_01000_0010011
+let OPCODE_STORE : u32 =   0b0000000_00000_01000_010_00000_0100011
+let OPCODE_STOREF : u32 =  0b0000000_00000_01000_010_00000_0100111
+let OPCODE_LOAD : u32 =    0b0000000_00000_01000_010_00000_0000011
+let OPCODE_LOADF : u32 =   0b0000000_00000_01000_010_00000_0000111
 
-let fill_stack_frames [n] [m] (functions: [m]FuncInfo) (func_symbols: [m]u32) (func_overflows: [m]u32) (instr: [n]Instr) =
-    let (scatter_offsets, scatter_data) = iota m |>
+let fill_stack_frames [n] [m] (functions: [m]FuncInfo) (func_symbols: [m]u32) (func_overflows: [m]u32) (instr: [n]Instr) (preserve_masks: [m]u64) =
+    let scatter_info = iota m |>
         map (\i ->
-            let stack_size = (func_symbols[i] + func_overflows[i] + 2) * 4
+            let preserve_count = u32.i32 (u64.popc preserve_masks[i])
+            let stack_size = (func_symbols[i] + func_overflows[i] + preserve_count + 2) * 4
             let lower_bits = (stack_size & 0xFFF) << 20
             let upper_bits = stack_size - (signextend (stack_size & 0xFFF)) & 0xFFFFF000
             in
@@ -342,7 +370,58 @@ let fill_stack_frames [n] [m] (functions: [m]FuncInfo) (func_symbols: [m]u32) (f
                 (i64.u32 functions[i].start + i64.u32 functions[i].size - 5, make_empty_instr (OPCODE_ADDI_BP | lower_bits))
             ]
         ) |>
-        flatten |>
-        unzip
+        flatten
+
+    let preserve_info = iota m |>
+        map (\i ->
+            let preserve_stack_offset = (func_symbols[i] + func_overflows[i] + 2) * 4
+            let p_mask = preserve_masks[i]
+
+            in
+            iota 64 |>
+                map (\j ->
+                        let leading_regs = u64.popc (p_mask & ((1u64 << (u64.i64 j)) - 1u64))
+                        let offset = preserve_stack_offset + (u32.i32 leading_regs) * 4
+                        let store_offset_high = (offset & 0xFE0u32) << 25
+                        let store_offset_low = (offset & 0x1Fu32) << 7
+                        let store_src = ((u32.i64 j) % 32) << 20
+                        let store_const = store_offset_high | store_offset_low | store_src
+                        let opcode = if j >= 32 then OPCODE_STOREF else OPCODE_STORE
+
+                        in
+                        if p_mask & (1 << u64.i64 j) > 0 then
+                            (i64.u32 functions[i].start + i64.i32 leading_regs + 6, make_empty_instr (opcode | store_const))
+                        else
+                            (-1, EMPTY_INSTR)
+                    )
+            )
+        |> flatten
+    let load_info = iota m |>
+        map (\i ->
+            let preserve_stack_offset = (func_symbols[i] + func_overflows[i] + 2) * 4
+            let p_mask = preserve_masks[i]
+
+            in
+            iota 64 |>
+                map (\j ->
+                        let leading_regs = u64.popc (p_mask & ((1u64 << (u64.i64 j)) - 1u64))
+                        let offset = preserve_stack_offset + (u32.i32 leading_regs) * 4
+
+                        let load_offset = offset << 20
+                        let load_dst = ((u32.i64 j) % 32) << 7
+                        let load_const = load_offset | load_dst
+                        let opcode = if j >= 32 then OPCODE_LOADF else OPCODE_LOAD
+
+                        in
+                        if p_mask & (1 << u64.i64 j) > 0 then
+                            (i64.u32 functions[i].start + i64.u32 functions[i].size - i64.i32 leading_regs - 7, make_empty_instr (opcode | load_const))
+                        else
+                            (-1, EMPTY_INSTR)
+                    )
+            )
+        |> flatten
+
+    let all_info = concat (concat scatter_info preserve_info) load_info
+    let (all_offsets, all_data) = all_info |> unzip
     in
-    scatter (copy instr) scatter_offsets scatter_data
+    scatter (copy instr) all_offsets all_data
