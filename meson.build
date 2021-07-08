@@ -141,6 +141,8 @@ futhark_generated = custom_target(
 
 sources = [
     'src/compiler/main.cpp',
+    'src/compiler/frontend.cpp',
+    'src/compiler/ast.cpp',
 ]
 
 executable(

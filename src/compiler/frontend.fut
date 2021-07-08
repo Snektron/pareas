@@ -58,6 +58,40 @@ let status_type_error: status_code = 10
 let status_invalid_return: status_code = 11
 let status_missing_return: status_code = 12
 
+type token = (token.t, i32, i32)
+entry frontend_tokenize (input: []u8) (lt: lex_table []): []token =
+    tokenize input lt
+
+entry frontend_parse (tokens: []token) (sct: stack_change_table []) (pt: parse_table []): (bool, []production.t) =
+    let token_types = map (.0) tokens
+    in if pareas_parser.check token_types sct
+        then (true, pareas_parser.parse token_types pt)
+        else (false, [])
+
+entry frontend_build_parse_tree [n] (node_types: [n]production.t) (arities: arity_array): [n]i32 =
+    pareas_parser.build_parent_vector node_types arities
+
+entry frontend_fix_bin_ops [n] (node_types: [n]production.t) (parents: [n]i32): ([]production.t, []i32) =
+    let (node_types, parents) = fix_bin_ops node_types parents
+    let (node_types, parents) = fix_bin_ops node_types parents
+    let (parents, old_index) = compactify parents |> unzip
+    let node_types = gather node_types old_index
+    in (node_types, parents)
+
+entry frontend_fix_if_else [n] (node_types: [n]production.t) (parents: [n]i32): (bool, [n]production.t, [n]i32) =
+    fix_if_else node_types parents
+
+--  entry frontend_flatten_lists [n] (node_types: [n]production.t) (parents: [n]i32): ([n]production.t, [n]i32) =
+--      flatten_lists node_types parents
+
+--  entry frontend_fix_names [n] (node_types: [n]production.t) (parents: [n]i32): (bool, [n]production.t, [n]i32) =
+--      fix_names node_types parents
+
+--  entry frontend_fix_ascriptions [n] (node_types: [n]production.t) (parents: [n]i32): [n]i32 =
+--      fix_ascriptions node_types parents
+
+--  entry frontend_fix_args_and_params [n] (node_types: [n]production.t) (parents: [n]i32)
+
 entry main
     (input: []u8)
     (lt: lex_table [])

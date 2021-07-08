@@ -2,6 +2,7 @@
 #include "pareas_grammar.hpp"
 
 #include "pareas/compiler/futhark_interop.hpp"
+#include "pareas/compiler/ast.hpp"
 
 #include <fmt/format.h>
 #include <fmt/ostream.h>
@@ -50,27 +51,6 @@ const char* status_name(Status s) {
         case Status::TYPE_ERROR: return "Type error";
         case Status::INVALID_RETURN: return "Return expression has invalid type";
         case Status::MISSING_RETURN: return "Not all code paths in non-void function return a value";
-    }
-}
-
-// Keep in sync with src/compiler/datanode_types.fut
-enum class DataType : uint8_t {
-    INVALID = 0,
-    VOID = 1,
-    INT = 2,
-    FLOAT = 3,
-    INT_REF = 4,
-    FLOAT_REF = 5,
-};
-
-const char* data_type_name(DataType dt) {
-    switch (dt) {
-        case DataType::INVALID: return "invalid";
-        case DataType::VOID: return "void";
-        case DataType::INT: return "int";
-        case DataType::FLOAT: return "float";
-        case DataType::INT_REF: return "int ref";
-        case DataType::FLOAT_REF: return "float ref";
     }
 }
 
@@ -279,100 +259,23 @@ T upload_strtab(futhark::Context& ctx, const grammar::StrTab<U>& strtab, F uploa
     return tab;
 }
 
-void render_tree(
-    size_t n,
-    const grammar::Production* node_types,
-    const int32_t* parents,
-    const uint32_t* data,
-    const DataType* data_types,
-    const int32_t* depths,
-    const int32_t* child_indexes,
-    const int32_t* fn_tab
-) {
-    fmt::print("digraph prog {{\n");
+void download_and_dump_tokens(futhark::Context& ctx, futhark_u8_1d* tokens) {
+    int64_t n = futhark_shape_u8_1d(ctx.get(), tokens)[0];
 
-    for (size_t i = 0; i < n; ++i) {
-        auto prod = node_types[i];
-        auto parent = parents[i];
-        auto* name = grammar::production_name(prod);
+    auto host_tokens = std::vector<grammar::Token>(n);
 
-        if (parent != i) {
-            fmt::print("node{} [label=\"{}\nindex={}\ndepth={}\nchild index={}", i, name, i, depths[i], child_indexes[i]);
-
-            switch (prod) {
-                case grammar::Production::ATOM_NAME:
-                case grammar::Production::ATOM_DECL:
-                case grammar::Production::ATOM_DECL_EXPLICIT:
-                    fmt::print("\\n(offset={})", data[i]);
-                    break;
-                case grammar::Production::FN_DECL:
-                    fmt::print("\\n(num locals={})", fn_tab[data[i]]);
-                case grammar::Production::ATOM_FN_CALL:
-                    fmt::print("\\n(fn id={})", data[i]);
-                    break;
-                case grammar::Production::PARAM:
-                case grammar::Production::ARG:
-                    fmt::print("\\n(arg id={})", data[i]);
-                    break;
-                case grammar::Production::ATOM_INT:
-                    fmt::print("\\n(value={})", data[i]);
-                    break;
-                case grammar::Production::ATOM_FLOAT:
-                    fmt::print("\\n(value={})", *reinterpret_cast<const float*>(&data[i]));
-                    break;
-                default:
-                    if (data[i] != 0) {
-                        fmt::print("\\n(junk={})", data[i]);
-                    }
-            }
-
-            fmt::print("\\n[{}]", data_type_name(data_types[i]));
-            fmt::print("\"]\n");
-
-            if (parent >= 0) {
-                fmt::print("node{} -> node{};\n", parent, i);
-            } else {
-                fmt::print("start{0} [style=invis];\nstart{0} -> node{0};\n", i);
-            }
-        }
+    int err = futhark_values_u8_1d(
+        ctx.get(),
+        tokens,
+        reinterpret_cast<std::underlying_type_t<grammar::Token>*>(host_tokens.data())
+    );
+    if (err || futhark_context_sync(ctx.get())) {
+        throw futhark::Error(ctx);
     }
 
-    fmt::print("}}\n");
-}
-
-void download_and_render_tree(
-    futhark::Context& ctx,
-    futhark::UniqueArray<uint8_t, 1>& node_types,
-    futhark::UniqueArray<int32_t, 1>& parents,
-    futhark::UniqueArray<uint32_t, 1>& data,
-    futhark::UniqueArray<uint8_t, 1>& data_types,
-    futhark::UniqueArray<int32_t, 1>& depths,
-    futhark::UniqueArray<int32_t, 1>& child_indexes,
-    futhark::UniqueArray<int32_t, 1>& fn_tab
-) {
-    int64_t n = node_types.shape()[0];
-
-    auto host_node_types = node_types.download();
-    auto host_parents = parents.download();
-    auto host_data = data.download();
-    auto host_data_types = data_types.download();
-    auto host_depths = depths.download();
-    auto host_child_indexes = child_indexes.download();
-    auto host_fn_tab = fn_tab.download();
-
-    if (futhark_context_sync(ctx.get()))
-        throw futhark::Error(ctx);
-
-    render_tree(
-        n,
-        reinterpret_cast<grammar::Production*>(host_node_types.data()),
-        host_parents.data(),
-        host_data.data(),
-        reinterpret_cast<DataType*>(host_data_types.data()),
-        host_depths.data(),
-        host_child_indexes.data(),
-        host_fn_tab.data()
-    );
+    for (auto token : host_tokens) {
+        fmt::print("{}\n", grammar::token_name(token));
+    }
 }
 
 int main(int argc, char* argv[]) {
@@ -436,26 +339,21 @@ int main(int argc, char* argv[]) {
     auto stop = std::chrono::high_resolution_clock::now();
     fmt::print(std::cerr, "Upload time: {}\n", std::chrono::duration_cast<std::chrono::microseconds>(stop - start));
 
-    auto node_types = futhark::UniqueArray<uint8_t, 1>(ctx);
-    auto parents = futhark::UniqueArray<int32_t, 1>(ctx);
-    auto data = futhark::UniqueArray<uint32_t, 1>(ctx);
-    auto data_types = futhark::UniqueArray<uint8_t, 1>(ctx);
-    auto child_indexes = futhark::UniqueArray<int32_t, 1>(ctx);
-    auto depths = futhark::UniqueArray<int32_t, 1>(ctx);
-    auto fn_tab = futhark::UniqueArray<int32_t, 1>(ctx);
+    auto ast = DeviceAst(ctx.get());
+
     Status status;
 
     start = std::chrono::high_resolution_clock::now();
     int err = futhark_entry_main(
         ctx.get(),
         reinterpret_cast<std::underlying_type_t<Status>*>(&status),
-        &node_types,
-        &parents,
-        &data,
-        &data_types,
-        &depths,
-        &child_indexes,
-        &fn_tab,
+        &ast.node_types,
+        &ast.parents,
+        &ast.node_data,
+        &ast.data_types,
+        &ast.node_depths,
+        &ast.child_indexes,
+        &ast.fn_tab,
         input_array.get(),
         lex_table.get(),
         sct.get(),
@@ -473,19 +371,11 @@ int main(int argc, char* argv[]) {
     fmt::print(std::cerr, "Main kernel runtime: {}\n", std::chrono::duration_cast<std::chrono::microseconds>(stop - start));
 
     if (status == Status::OK) {
-        fmt::print(std::cerr, "{} nodes\n", node_types.shape()[0]);
+        fmt::print(std::cerr, "{} nodes\n", ast.num_nodes());
 
         if (opts.dump_dot) {
-            download_and_render_tree(
-                ctx,
-                node_types,
-                parents,
-                data,
-                data_types,
-                depths,
-                child_indexes,
-                fn_tab
-            );
+            auto host_ast = ast.download();
+            host_ast.dump_dot(std::cout);
         }
     } else {
         fmt::print(std::cerr, "Error: {}\n", status_name(status));
