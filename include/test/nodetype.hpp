@@ -1,0 +1,52 @@
+#ifndef _PAREAS_TEST_NODETYPE_HPP_
+#define _PAREAS_TEST_NODETYPE_HPP_
+
+enum class NodeType {
+    STATEMENT_LIST,
+    EMPTY_STAT,
+    FUNC_DECL,
+    FUNC_ARG,
+    FUNC_ARG_LIST,
+    EXPR_STAT,
+    IF_STAT,
+    IF_ELSE_STAT,
+    WHILE_STAT,
+    FUNC_CALL_EXPR,
+    FUNC_CALL_ARG,
+    FUNC_CALL_ARG_LIST,
+    ADD_EXPR,
+    SUB_EXPR,
+    MUL_EXPR,
+    DIV_EXPR,
+    MOD_EXPR,
+    BITAND_EXPR,
+    BITOR_EXPR,
+    BITXOR_EXPR,
+    LSHIFT_EXPR,
+    RSHIFT_EXPR,
+    URSHIFT_EXPR,
+    LAND_EXPR,
+    LOR_EXPR,
+    EQ_EXPR,
+    NEQ_EXPR,
+    LESS_EXPR,
+    GREAT_EXPR,
+    LESSEQ_EXPR,
+    GREATEQ_EXPR,
+    BITNOT_EXPR,
+    LNOT_EXPR,
+    NEG_EXPR,
+    LIT_EXPR,
+    CAST_EXPR,
+    DEREF_EXPR,
+    ASSIGN_EXPR,
+    DECL_EXPR,
+    ID_EXPR,
+    WHILE_DUMMY,
+    FUNC_DECL_DUMMY,
+    RETURN_STAT,
+
+    FUNC_DECL_LIST //Same as statement list, required to split func decls out during generation
+};
+
+#endif

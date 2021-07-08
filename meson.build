@@ -61,20 +61,31 @@ sources = [
 ]
 
 # Test executable
+test_old_sources = [
+    'src/test/old/coderenderer.cpp',
+    'src/test/old/commitrenderstate.cpp',
+    'src/test/old/idcreaterenderstate.cpp',
+    'src/test/old/idrenderstate.cpp',
+    'src/test/old/indentrenderstate.cpp',
+    'src/test/old/noderenderstate.cpp',
+    'src/test/old/randomfloatrenderstate.cpp',
+    'src/test/old/randomintrenderstate.cpp',
+    'src/test/old/renderstate.cpp',
+    'src/test/old/repeatrenderstate.cpp',
+    'src/test/old/scoperenderstate.cpp',
+    'src/test/old/testgen.cpp',
+    'src/test/old/textrenderstate.cpp'
+]
+
 test_sources = [
-    'src/test/coderenderer.cpp',
-    'src/test/commitrenderstate.cpp',
-    'src/test/idcreaterenderstate.cpp',
-    'src/test/idrenderstate.cpp',
-    'src/test/indentrenderstate.cpp',
-    'src/test/noderenderstate.cpp',
-    'src/test/randomfloatrenderstate.cpp',
-    'src/test/randomintrenderstate.cpp',
-    'src/test/renderstate.cpp',
-    'src/test/repeatrenderstate.cpp',
-    'src/test/scoperenderstate.cpp',
-    'src/test/testgen.cpp',
-    'src/test/textrenderstate.cpp'
+    'src/test/astgenerator.cpp',
+    'src/test/astnodetempl.cpp',
+    'src/test/defaulttreeprinter.cpp',
+    'src/test/exprastnodetempl.cpp',
+    'src/test/fixedastnodetempl.cpp',
+    'src/test/litastnodetempl.cpp',
+    'src/test/sourcefileprinter.cpp',
+    'src/test/testmain.cpp'
 ]
 
 executable(
@@ -84,6 +95,14 @@ executable(
     build_by_default: true,
     dependencies: dependencies,
     include_directories: [include_directories('src'), include_directories('include')],
+)
+
+executable(
+    'pareas-testgen-old',
+    test_old_sources,
+    install: true,
+    build_by_default: false,
+    include_directories: [include_directories('src'), include_directories('include')]
 )
 
 executable(

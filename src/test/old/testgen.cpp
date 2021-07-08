@@ -56,10 +56,11 @@ const RenderState* bias_not_last_picker(CodeRenderer& renderer, const std::vecto
 }
 
 template <const RenderState*(*Base_op)(CodeRenderer&, const std::vector<const RenderState*>&)>
-const RenderState* depth_based_option_picker(CodeRenderer& renderer, const std::vector<const RenderState*>& states) {
+const RenderState* expand_based_option_picker(CodeRenderer& renderer, const std::vector<const RenderState*>& states) {
     size_t depth = renderer.getDepth();
+    size_t width = renderer.getWidth(depth+1);
 
-    if(depth > renderer.getMaxDepth()) {
+    if(depth >= renderer.getMaxDepth() || width >= renderer.getMaxWidth()) {
         return states[0];
     }
     else
@@ -77,6 +78,7 @@ int main(int argc, char* argv[]) {
     size_t id_name_len = 10;
     size_t id_name_stddev = 2;
     size_t tree_max_depth = 10;
+    size_t tree_max_width = 10;
     size_t int_min_value = 0;
     size_t int_max_value = 10000;
     float float_min_value = 0;
@@ -118,17 +120,17 @@ int main(int argc, char* argv[]) {
     state_ptr random_int(new RandomIntRenderState(int_min_value, int_max_value));
     state_ptr random_int_id(new IDRenderState(random_int.get(), CATEGORY_INT));
     state_ptr int_parens(new NodeRenderState({open_par.get(), nullptr, close_par.get()}));
-    state_ptr int_atom(new OptionRenderState({random_int.get(), random_int_id.get(), int_parens.get()}, depth_based_option_picker<uniform_option_picker>));
+    state_ptr int_atom(new OptionRenderState({random_int.get(), random_int_id.get(), int_parens.get()}, expand_based_option_picker<uniform_option_picker>));
     
     state_ptr int_cast_expression_base(new NodeRenderState({nullptr, cast.get(), keyword_integer.get()}));
-    state_ptr int_cast_expression(new OptionRenderState({int_atom.get(), int_cast_expression_base.get()}, depth_based_option_picker<uniform_option_picker>));
+    state_ptr int_cast_expression(new OptionRenderState({int_atom.get(), int_cast_expression_base.get()}, expand_based_option_picker<uniform_option_picker>));
 
     state_ptr int_add_expression_base(new NodeRenderState({int_cast_expression.get(), add_ops.get(), nullptr}));
-    state_ptr int_add_expression(new OptionRenderState({int_cast_expression.get(), int_add_expression_base.get()}, depth_based_option_picker<uniform_option_picker>));
+    state_ptr int_add_expression(new OptionRenderState({int_cast_expression.get(), int_add_expression_base.get()}, expand_based_option_picker<uniform_option_picker>));
     int_add_expression_base->setChild(2, int_add_expression.get());
 
     state_ptr int_mul_expression_base(new NodeRenderState({int_add_expression.get(), mul_ops.get(), nullptr}));
-    state_ptr int_mul_expression(new OptionRenderState({int_add_expression.get(), int_mul_expression_base.get()}, depth_based_option_picker<uniform_option_picker>));
+    state_ptr int_mul_expression(new OptionRenderState({int_add_expression.get(), int_mul_expression_base.get()}, expand_based_option_picker<uniform_option_picker>));
     int_mul_expression_base->setChild(2, int_mul_expression.get());
     state_ptr& int_expression = int_mul_expression;
     int_parens->setChild(1, int_expression.get());
@@ -144,18 +146,18 @@ int main(int argc, char* argv[]) {
     state_ptr random_float(new TextRenderState("0@float"));
     state_ptr random_float_id(new IDRenderState(random_float.get(), CATEGORY_FLOAT));
     state_ptr float_parens(new NodeRenderState({open_par.get(), nullptr, close_par.get()}));
-    state_ptr float_atom(new OptionRenderState({random_float.get(), random_float_id.get(), float_parens.get()}, depth_based_option_picker<uniform_option_picker>));
+    state_ptr float_atom(new OptionRenderState({random_float.get(), random_float_id.get(), float_parens.get()}, expand_based_option_picker<uniform_option_picker>));
     
     state_ptr float_cast_expression_base(make_noderenderstate(int_atom, cast, keyword_float));
-    state_ptr float_cast_expression(new OptionRenderState({float_atom.get(), float_cast_expression_base.get()}, depth_based_option_picker<uniform_option_picker>));
+    state_ptr float_cast_expression(new OptionRenderState({float_atom.get(), float_cast_expression_base.get()}, expand_based_option_picker<uniform_option_picker>));
     int_cast_expression_base->setChild(0, float_atom.get());
 
     state_ptr float_add_expression_base(new NodeRenderState({float_cast_expression.get(), add_ops.get(), nullptr}));
-    state_ptr float_add_expression(new OptionRenderState({float_cast_expression.get(), float_add_expression_base.get()}, depth_based_option_picker<uniform_option_picker>));
+    state_ptr float_add_expression(new OptionRenderState({float_cast_expression.get(), float_add_expression_base.get()}, expand_based_option_picker<uniform_option_picker>));
     float_add_expression_base->setChild(2, float_add_expression.get());
 
     state_ptr float_mul_expression_base(new NodeRenderState({float_add_expression.get(), mul_ops_float.get(), nullptr}));
-    state_ptr float_mul_expression(new OptionRenderState({float_add_expression.get(), float_mul_expression_base.get()}, depth_based_option_picker<uniform_option_picker>));
+    state_ptr float_mul_expression(new OptionRenderState({float_add_expression.get(), float_mul_expression_base.get()}, expand_based_option_picker<uniform_option_picker>));
     float_mul_expression_base->setChild(2, float_mul_expression.get());
     state_ptr& float_expression = float_mul_expression;
     float_parens->setChild(1, float_expression.get());
@@ -194,6 +196,7 @@ int main(int argc, char* argv[]) {
     std::random_device seed_device;
     CodeRenderer renderer(root_node.get(), seed_device());
     renderer.setMaxDepth(tree_max_depth);
+    renderer.setMaxWidth(tree_max_width);
     renderer.enterScope();
     renderer.render(std::cout);
     renderer.exitScope();

@@ -67,12 +67,28 @@ void CodeRenderer::setMaxDepth(size_t depth) {
     this->max_depth = depth;
 }
 
+size_t CodeRenderer::getMaxWidth() const {
+    return this->max_width;
+}
+
+void CodeRenderer::setMaxWidth(size_t width) {
+    this->max_width = width;
+}
+
 size_t CodeRenderer::getDepth() const {
     return this->depth;
 }
 
 void CodeRenderer::setDepth(size_t depth) {
     this->depth = depth;
+}
+
+size_t CodeRenderer::getWidth(size_t depth) const {
+    return this->width_map.at(depth);
+}
+
+void CodeRenderer::setWidth(size_t depth, size_t width) {
+    this->width_map[depth] = width;
 }
 
 std::string CodeRenderer::getRandomID(size_t category, bool& valid) {

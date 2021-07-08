@@ -381,7 +381,7 @@ let fill_stack_frames [n] [m] (functions: [m]FuncInfo) (func_symbols: [m]u32) (f
             iota 64 |>
                 map (\j ->
                         let leading_regs = u64.popc (p_mask & ((1u64 << (u64.i64 j)) - 1u64))
-                        let offset = preserve_stack_offset + (u32.i32 leading_regs) * 4
+                        let offset = -(preserve_stack_offset + (u32.i32 leading_regs) * 4)
                         let store_offset_high = (offset & 0xFE0u32) << 25
                         let store_offset_low = (offset & 0x1Fu32) << 7
                         let store_src = ((u32.i64 j) % 32) << 20
@@ -405,7 +405,7 @@ let fill_stack_frames [n] [m] (functions: [m]FuncInfo) (func_symbols: [m]u32) (f
             iota 64 |>
                 map (\j ->
                         let leading_regs = u64.popc (p_mask & ((1u64 << (u64.i64 j)) - 1u64))
-                        let offset = preserve_stack_offset + (u32.i32 leading_regs) * 4
+                        let offset = -(preserve_stack_offset + (u32.i32 leading_regs) * 4)
 
                         let load_offset = offset << 20
                         let load_dst = ((u32.i64 j) % 32) << 7
