@@ -3,6 +3,7 @@
 
 #include "pareas/compiler/futhark_interop.hpp"
 #include "pareas/compiler/ast.hpp"
+#include "pareas/compiler/frontend.hpp"
 
 #include <fmt/format.h>
 #include <fmt/ostream.h>
@@ -19,41 +20,6 @@
 #include <cstring>
 #include <cassert>
 
-// Keep in sync with src/compiler/frontend.fut
-enum class Status : uint8_t {
-    OK = 0,
-    PARSE_ERROR = 1,
-    STRAY_ELSE_ERROR = 2,
-    INVALID_DECL = 3,
-    INVALID_PARAMS = 4,
-    INVALID_ASSIGN = 5,
-    INVALID_FN_PROTO = 6,
-    DUPLICATE_FN_OR_INVALID_CALL = 7,
-    INVALID_VARIABLE = 8,
-    INVALID_ARG_COUNT = 9,
-    TYPE_ERROR = 10,
-    INVALID_RETURN = 11,
-    MISSING_RETURN = 12,
-};
-
-const char* status_name(Status s) {
-    switch (s) {
-        case Status::OK: return "ok";
-        case Status::PARSE_ERROR: return "parse error";
-        case Status::STRAY_ELSE_ERROR: return "stray else/elif";
-        case Status::INVALID_DECL: return "Declaration cannot be both function and variable";
-        case Status::INVALID_PARAMS: return "Invalid function parameter list";
-        case Status::INVALID_ASSIGN: return "Invalid assignment lvalue";
-        case Status::INVALID_FN_PROTO: return "Invalid function prototype";
-        case Status::DUPLICATE_FN_OR_INVALID_CALL: return "Duplicate function declaration or call to undefined function";
-        case Status::INVALID_VARIABLE: return "Undeclared variable";
-        case Status::INVALID_ARG_COUNT: return "Invalid amount of arguments for function call";
-        case Status::TYPE_ERROR: return "Type error";
-        case Status::INVALID_RETURN: return "Return expression has invalid type";
-        case Status::MISSING_RETURN: return "Not all code paths in non-void function return a value";
-    }
-}
-
 struct Options {
     const char* input_path;
     const char* output_path;
@@ -61,6 +27,7 @@ struct Options {
     bool verbose;
     bool debug;
     bool dump_dot;
+    bool benchmark;
 
     // Options available for the multicore backend
     int threads;
@@ -79,6 +46,7 @@ void print_usage(char* progname) {
         "-v --verbose                Enable Futhark logging.\n"
         "-d --debug                  Enable Futhark debug logging.\n"
         "--dump-dot                  Dump tree as dot graph.\n"
+        "--benchmark                 Record benchmark information.\n"
     #if defined(FUTHARK_BACKEND_multicore)
         "Available backend options:\n"
         "-t --threads <amount>       Set the maximum number of threads that may be used\n"
@@ -155,6 +123,8 @@ bool parse_options(Options* opts, int argc, char* argv[]) {
             opts->debug = true;
         } else if (arg == "--dump-dot") {
             opts->dump_dot = true;
+        } else if (arg == "--benchmark") {
+            opts->benchmark = true;
         } else if (!opts->input_path) {
             opts->input_path = argv[i];
         } else {
@@ -201,83 +171,6 @@ struct Free {
 template <typename T>
 using MallocPtr = std::unique_ptr<T, Free<T>>;
 
-futhark::UniqueLexTable upload_lex_table(futhark::Context& ctx) {
-    auto initial_state = futhark::UniqueArray<uint16_t, 1>(
-        ctx,
-        reinterpret_cast<const grammar::LexTable::State*>(grammar::lex_table.initial_states),
-        grammar::LexTable::NUM_INITIAL_STATES
-    );
-
-    auto merge_table = futhark::UniqueArray<uint16_t, 2>(
-        ctx,
-        reinterpret_cast<const grammar::LexTable::State*>(grammar::lex_table.merge_table),
-        grammar::lex_table.n,
-        grammar::lex_table.n
-    );
-
-    auto final_state = futhark::UniqueArray<uint8_t, 1>(
-        ctx,
-        reinterpret_cast<const std::underlying_type_t<grammar::Token>*>(grammar::lex_table.final_states),
-        grammar::lex_table.n
-    );
-
-    auto lex_table = futhark::UniqueLexTable(ctx);
-
-    int err = futhark_entry_mk_lex_table(
-        ctx.get(),
-        &lex_table,
-        initial_state.get(),
-        merge_table.get(),
-        final_state.get()
-    );
-
-    if (err)
-        throw futhark::Error(ctx);
-
-    return lex_table;
-}
-
-template <typename T, typename U, typename F>
-T upload_strtab(futhark::Context& ctx, const grammar::StrTab<U>& strtab, F upload_fn) {
-    static_assert(sizeof(U) == sizeof(uint8_t));
-
-    auto table = futhark::UniqueArray<uint8_t, 1>(
-        ctx,
-        reinterpret_cast<const uint8_t*>(strtab.table),
-        strtab.n
-    );
-
-    auto offsets = futhark::UniqueArray<int32_t, 2>(ctx, strtab.offsets, grammar::NUM_TOKENS, grammar::NUM_TOKENS);
-    auto lengths = futhark::UniqueArray<int32_t, 2>(ctx, strtab.lengths, grammar::NUM_TOKENS, grammar::NUM_TOKENS);
-
-    auto tab = T(ctx);
-
-    int err = upload_fn(ctx.get(), &tab, table.get(), offsets.get(), lengths.get());
-    if (err != 0)
-        throw futhark::Error(ctx);
-
-    return tab;
-}
-
-void download_and_dump_tokens(futhark::Context& ctx, futhark_u8_1d* tokens) {
-    int64_t n = futhark_shape_u8_1d(ctx.get(), tokens)[0];
-
-    auto host_tokens = std::vector<grammar::Token>(n);
-
-    int err = futhark_values_u8_1d(
-        ctx.get(),
-        tokens,
-        reinterpret_cast<std::underlying_type_t<grammar::Token>*>(host_tokens.data())
-    );
-    if (err || futhark_context_sync(ctx.get())) {
-        throw futhark::Error(ctx);
-    }
-
-    for (auto token : host_tokens) {
-        fmt::print("{}\n", grammar::token_name(token));
-    }
-}
-
 int main(int argc, char* argv[]) {
     Options opts;
     if (!parse_options(&opts, argc, argv)) {
@@ -314,81 +207,40 @@ int main(int argc, char* argv[]) {
 
     auto ctx = futhark::Context(futhark_context_new(config.get()));
 
-    auto start = std::chrono::high_resolution_clock::now();
+    try {
+        auto ast = DeviceAst(ctx.get());
 
-    auto lex_table = upload_lex_table(ctx);
+        if (opts.benchmark) {
+            frontend::SeparateStatistics stats;
+            ast = frontend::compile_separate(ctx.get(), input, stats);
+            stats.dump(std::cerr);
+        } else {
+            frontend::CombinedStatistics stats;
+            ast = frontend::compile_combined(ctx.get(), input, stats);
+            stats.dump(std::cerr);
+        }
 
-    auto sct = upload_strtab<futhark::UniqueStackChangeTable>(
-        ctx,
-        grammar::stack_change_table,
-        futhark_entry_mk_stack_change_table
-    );
-
-    auto pt = upload_strtab<futhark::UniqueParseTable>(
-        ctx,
-        grammar::parse_table,
-        futhark_entry_mk_parse_table
-    );
-
-    auto arity_array = futhark::UniqueArray<int32_t, 1>(ctx, grammar::arities, grammar::NUM_PRODUCTIONS);
-    auto input_array = futhark::UniqueArray<uint8_t, 1>(ctx, reinterpret_cast<const uint8_t*>(input.data()), input.size());
-
-    if (futhark_context_sync(ctx.get()) != 0)
-        throw futhark::Error(ctx);
-
-    auto stop = std::chrono::high_resolution_clock::now();
-    fmt::print(std::cerr, "Upload time: {}\n", std::chrono::duration_cast<std::chrono::microseconds>(stop - start));
-
-    auto ast = DeviceAst(ctx.get());
-
-    Status status;
-
-    start = std::chrono::high_resolution_clock::now();
-    int err = futhark_entry_main(
-        ctx.get(),
-        reinterpret_cast<std::underlying_type_t<Status>*>(&status),
-        &ast.node_types,
-        &ast.parents,
-        &ast.node_data,
-        &ast.data_types,
-        &ast.node_depths,
-        &ast.child_indexes,
-        &ast.fn_tab,
-        input_array.get(),
-        lex_table.get(),
-        sct.get(),
-        pt.get(),
-        arity_array.get()
-    );
-
-    if (err != 0)
-        throw futhark::Error(ctx);
-
-    if (futhark_context_sync(ctx.get()) != 0)
-        throw futhark::Error(ctx);
-
-    stop = std::chrono::high_resolution_clock::now();
-    fmt::print(std::cerr, "Main kernel runtime: {}\n", std::chrono::duration_cast<std::chrono::microseconds>(stop - start));
-
-    if (status == Status::OK) {
         fmt::print(std::cerr, "{} nodes\n", ast.num_nodes());
 
         if (opts.dump_dot) {
             auto host_ast = ast.download();
             host_ast.dump_dot(std::cout);
         }
-    } else {
-        fmt::print(std::cerr, "Error: {}\n", status_name(status));
-        err = 1;
+
+        if (opts.profile) {
+            auto report = MallocPtr<char>(futhark_context_report(ctx.get()));
+            fmt::print("Profile report:\n{}", report);
+        }
+
+        if (futhark_context_sync(ctx.get()) != 0)
+            throw futhark::Error(ctx.get());
+    } catch (const frontend::CompileError& err) {
+        fmt::print(std::cerr, "Compile error: {}\n", err.what());
+        return EXIT_FAILURE;
+    } catch (const futhark::Error& err) {
+        fmt::print(std::cerr, "Futhark error: {}\n", err.what());
+        return EXIT_FAILURE;
     }
 
-    if (opts.profile) {
-        auto report = MallocPtr<char>(futhark_context_report(ctx.get()));
-        fmt::print("Profile report:\n{}", report);
-    }
-
-    if (futhark_context_sync(ctx.get()) != 0)
-        throw futhark::Error(ctx);
-
-    return !err ? EXIT_SUCCESS : EXIT_FAILURE;
+    return EXIT_SUCCESS;
 }
