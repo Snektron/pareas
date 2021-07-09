@@ -94,90 +94,24 @@ namespace {
 }
 
 namespace frontend {
-    const char* status_name(Status s) {
-        switch (s) {
-            case Status::OK: return "ok";
-            case Status::PARSE_ERROR: return "Parse error";
-            case Status::STRAY_ELSE_ERROR: return "Stray else/elif";
-            case Status::INVALID_DECL: return "Declaration cannot be both function and variable";
-            case Status::INVALID_PARAMS: return "Invalid function parameter list";
-            case Status::INVALID_ASSIGN: return "Invalid assignment lvalue";
-            case Status::INVALID_FN_PROTO: return "Invalid function prototype";
-            case Status::DUPLICATE_FN_OR_INVALID_CALL: return "Duplicate function declaration or call to undefined function";
-            case Status::INVALID_VARIABLE: return "Undeclared variable";
-            case Status::INVALID_ARG_COUNT: return "Invalid amount of arguments for function call";
-            case Status::TYPE_ERROR: return "Type error";
-            case Status::INVALID_RETURN: return "Return expression has invalid type";
-            case Status::MISSING_RETURN: return "Not all code paths in non-void function return a value";
+    const char* error_name(Error e) {
+        switch (e) {
+            case Error::PARSE_ERROR: return "Parse error";
+            case Error::STRAY_ELSE_ERROR: return "Stray else/elif";
+            case Error::INVALID_DECL: return "Declaration cannot be both function and variable";
+            case Error::INVALID_PARAMS: return "Invalid function parameter list";
+            case Error::INVALID_ASSIGN: return "Invalid assignment lvalue";
+            case Error::INVALID_FN_PROTO: return "Invalid function prototype";
+            case Error::DUPLICATE_FN_OR_INVALID_CALL: return "Duplicate function declaration or call to undefined function";
+            case Error::INVALID_VARIABLE: return "Undeclared variable";
+            case Error::INVALID_ARG_COUNT: return "Invalid amount of arguments for function call";
+            case Error::TYPE_ERROR: return "Type error";
+            case Error::INVALID_RETURN: return "Return expression has invalid type";
+            case Error::MISSING_RETURN: return "Not all code paths in non-void function return a value";
         }
     }
 
-    void CombinedStatistics::dump(std::ostream& os) const {
-        fmt::print(os, "table upload time: {}\n", this->table_upload);
-        fmt::print(os, "input upload time: {}\n", this->input_upload);
-        fmt::print(os, "compile time: {}\n", this->compile);
-        fmt::print(os, "total time: {}\n", this->total);
-    }
-
-    DeviceAst compile_combined(futhark_context* ctx, const std::string& input, CombinedStatistics& stats) {
-        auto timer = Timer(ctx);
-        auto start = Timer::Clock::now();
-
-        timer.reset();
-        auto lex_table = upload_lex_table(ctx);
-        auto sct = upload_strtab<futhark::UniqueStackChangeTable>(
-            ctx,
-            grammar::stack_change_table,
-            futhark_entry_mk_stack_change_table
-        );
-
-        auto pt = upload_strtab<futhark::UniqueParseTable>(
-            ctx,
-            grammar::parse_table,
-            futhark_entry_mk_parse_table
-        );
-
-        auto arity_array = futhark::UniqueArray<int32_t, 1>(ctx, grammar::arities, grammar::NUM_PRODUCTIONS);
-        stats.table_upload = timer.lap();
-
-        auto input_array = futhark::UniqueArray<uint8_t, 1>(ctx, reinterpret_cast<const uint8_t*>(input.data()), input.size());
-        stats.input_upload = timer.lap();
-
-        auto ast = DeviceAst(ctx);
-        Status status;
-
-        int err = futhark_entry_main(
-            ctx,
-            reinterpret_cast<std::underlying_type_t<Status>*>(&status),
-            &ast.node_types,
-            &ast.parents,
-            &ast.node_data,
-            &ast.data_types,
-            &ast.node_depths,
-            &ast.child_indexes,
-            &ast.fn_tab,
-            input_array.get(),
-            lex_table.get(),
-            sct.get(),
-            pt.get(),
-            arity_array.get()
-        );
-
-        if (err)
-            throw futhark::Error(ctx);
-
-        if (status != Status::OK)
-            throw CompileError(status);
-
-        stats.compile = timer.lap();
-
-        auto stop = Timer::Clock::now();
-        stats.total = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
-
-        return ast;
-    }
-
-    void SeparateStatistics::dump(std::ostream& os) const {
+    void Statistics::dump(std::ostream& os) const {
         fmt::print(os, "table upload time: {}\n", this->table_upload);
         fmt::print(os, "input upload time: {}\n", this->input_upload);
         fmt::print(os, "tokenize time: {}\n", this->tokenize);
@@ -206,7 +140,7 @@ namespace frontend {
         fmt::print(os, "total time: {}\n", this->total);
     }
 
-    DeviceAst compile_separate(futhark_context* ctx, const std::string& input, SeparateStatistics& stats) {
+    DeviceAst compile(futhark_context* ctx, const std::string& input, Statistics& stats) {
         auto timer = Timer(ctx);
         auto start = Timer::Clock::now();
 
@@ -246,7 +180,7 @@ namespace frontend {
             if (err)
                 throw futhark::Error(ctx);
             if (!valid)
-                throw CompileError(Status::PARSE_ERROR);
+                throw CompileError(Error::PARSE_ERROR);
             stats.parse = timer.lap();
         }
 
@@ -275,7 +209,7 @@ namespace frontend {
             if (err)
                 throw futhark::Error(ctx);
             if (!valid)
-                throw CompileError(Status::STRAY_ELSE_ERROR);
+                throw CompileError(Error::STRAY_ELSE_ERROR);
             stats.fix_if_else = timer.lap();
         }
 
@@ -296,7 +230,7 @@ namespace frontend {
             if (err)
                 throw futhark::Error(ctx);
             if (!valid)
-                throw CompileError(Status::INVALID_DECL);
+                throw CompileError(Error::INVALID_DECL);
             stats.fix_names = timer.lap();
         }
 
@@ -315,7 +249,7 @@ namespace frontend {
             if (err)
                 throw futhark::Error(ctx);
             if (!valid)
-                throw CompileError(Status::INVALID_FN_PROTO);
+                throw CompileError(Error::INVALID_FN_PROTO);
             stats.fix_fn_decls = timer.lap();
         }
 
@@ -335,7 +269,7 @@ namespace frontend {
             if (err)
                 throw futhark::Error(ctx);
             if (!valid)
-                throw CompileError(Status::INVALID_DECL);
+                throw CompileError(Error::INVALID_DECL);
             stats.fix_decls = timer.lap();
         }
 
@@ -363,7 +297,7 @@ namespace frontend {
             if (err)
                 throw futhark::Error(ctx);
             if (!valid)
-                throw CompileError(Status::INVALID_ASSIGN);
+                throw CompileError(Error::INVALID_ASSIGN);
             stats.check_assignments = timer.lap();
         }
 
@@ -392,7 +326,7 @@ namespace frontend {
             if (err)
                 throw futhark::Error(ctx);
             if (!valid)
-                throw CompileError(Status::INVALID_VARIABLE);
+                throw CompileError(Error::INVALID_VARIABLE);
             stats.resolve_vars = timer.lap();
         }
 
@@ -403,7 +337,7 @@ namespace frontend {
             if (err)
                 throw futhark::Error(ctx);
             if (!valid)
-                throw CompileError(Status::DUPLICATE_FN_OR_INVALID_CALL);
+                throw CompileError(Error::DUPLICATE_FN_OR_INVALID_CALL);
             stats.resolve_fns = timer.lap();
         }
 
@@ -414,7 +348,7 @@ namespace frontend {
             if (err)
                 throw futhark::Error(ctx);
             if (!valid)
-                throw CompileError(Status::INVALID_ARG_COUNT);
+                throw CompileError(Error::INVALID_ARG_COUNT);
             stats.resolve_args = timer.lap();
         }
 
@@ -425,7 +359,7 @@ namespace frontend {
             if (err)
                 throw futhark::Error(ctx);
             if (!valid)
-                throw CompileError(Status::TYPE_ERROR);
+                throw CompileError(Error::TYPE_ERROR);
             stats.resolve_data_types = timer.lap();
         }
 
@@ -435,7 +369,7 @@ namespace frontend {
             if (err)
                 throw futhark::Error(ctx);
             if (!valid)
-                throw CompileError(Status::INVALID_RETURN);
+                throw CompileError(Error::INVALID_RETURN);
             stats.check_return_types = timer.lap();
         }
 
@@ -445,7 +379,7 @@ namespace frontend {
             if (err)
                 throw futhark::Error(ctx);
             if (!valid)
-                throw CompileError(Status::INVALID_RETURN);
+                throw CompileError(Error::INVALID_RETURN);
             stats.check_convergence = timer.lap();
         }
 

@@ -10,9 +10,7 @@
 #include <iosfwd>
 
 namespace frontend {
-    // Keep in sync with src/compiler/frontend.fut
-    enum class Status : uint8_t {
-        OK = 0,
+    enum class Error : uint8_t {
         PARSE_ERROR = 1,
         STRAY_ELSE_ERROR = 2,
         INVALID_DECL = 3,
@@ -27,25 +25,14 @@ namespace frontend {
         MISSING_RETURN = 12,
     };
 
-    const char* status_name(Status s);
+    const char* error_name(Error e);
 
     struct CompileError: std::runtime_error {
-        CompileError(Status status):
-            std::runtime_error(status_name(status)) {}
+        CompileError(Error e):
+            std::runtime_error(error_name(e)) {}
     };
 
-    struct CombinedStatistics {
-        std::chrono::microseconds table_upload;
-        std::chrono::microseconds input_upload;
-        std::chrono::microseconds compile;
-        std::chrono::microseconds total;
-
-        void dump(std::ostream& os) const;
-    };
-
-    DeviceAst compile_combined(futhark_context* ctx, const std::string& input, CombinedStatistics& stats);
-
-    struct SeparateStatistics {
+    struct Statistics {
         std::chrono::microseconds table_upload;
         std::chrono::microseconds input_upload;
         std::chrono::microseconds tokenize;
@@ -76,7 +63,7 @@ namespace frontend {
         void dump(std::ostream& os) const;
     };
 
-    DeviceAst compile_separate(futhark_context* ctx, const std::string& input, SeparateStatistics& stats);
+    DeviceAst compile(futhark_context* ctx, const std::string& input, Statistics& stats);
 }
 
 #endif

@@ -208,15 +208,9 @@ int main(int argc, char* argv[]) {
     auto ctx = futhark::Context(futhark_context_new(config.get()));
 
     try {
-        auto ast = DeviceAst(ctx.get());
-
+        frontend::Statistics stats;
+        auto ast = frontend::compile(ctx.get(), input, stats);
         if (opts.benchmark) {
-            frontend::SeparateStatistics stats;
-            ast = frontend::compile_separate(ctx.get(), input, stats);
-            stats.dump(std::cerr);
-        } else {
-            frontend::CombinedStatistics stats;
-            ast = frontend::compile_combined(ctx.get(), input, stats);
             stats.dump(std::cerr);
         }
 
