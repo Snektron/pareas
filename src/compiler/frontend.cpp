@@ -230,19 +230,19 @@ namespace frontend {
         auto input_array = futhark::UniqueArray<uint8_t, 1>(ctx, reinterpret_cast<const uint8_t*>(input.data()), input.size());
         stats.input_upload = timer.lap();
 
-        auto ast = DeviceAst(ctx);
 
         auto tokens = futhark::UniqueTokenArray(ctx);
         {
-            int err = futhark_entry_frontend_tokenize(ctx, &tokens, input_array.get(), lex_table.get());
+            int err = futhark_entry_frontend_tokenize(ctx, &tokens, input_array, lex_table);
             if (err)
                 throw futhark::Error(ctx);
             stats.tokenize = timer.lap();
         }
 
+        auto node_types = futhark::UniqueArray<uint8_t, 1>(ctx);
         {
             bool valid = false;
-            int err = futhark_entry_frontend_parse(ctx, &valid, &ast.node_types, tokens.get(), sct.get(), pt.get());
+            int err = futhark_entry_frontend_parse(ctx, &valid, &node_types, tokens, sct, pt);
             if (err)
                 throw futhark::Error(ctx);
             if (!valid)
@@ -250,31 +250,28 @@ namespace frontend {
             stats.parse = timer.lap();
         }
 
+        auto parents = futhark::UniqueArray<int32_t, 1>(ctx);
         {
-            int err = futhark_entry_frontend_build_parse_tree(ctx, &ast.parents, ast.node_types, arity_array.get());
+            int err = futhark_entry_frontend_build_parse_tree(ctx, &parents, node_types, arity_array);
             if (err)
                 throw futhark::Error(ctx);
             stats.build_parse_tree = timer.lap();
         }
 
         {
-            auto* node_types = ast.node_types;
-            auto* parents = ast.parents;
-            int err = futhark_entry_frontend_fix_bin_ops(ctx, &ast.node_types, &ast.parents, node_types, parents);
-            futhark_free_u8_1d(ctx, node_types);
-            futhark_free_i32_1d(ctx, parents);
+            auto old_node_types = std::move(node_types);
+            auto old_parents = std::move(parents);
+            int err = futhark_entry_frontend_fix_bin_ops(ctx, &node_types, &parents, old_node_types, old_parents);
             if (err)
                 throw futhark::Error(ctx);
             stats.fix_bin_ops = timer.lap();
         }
 
         {
-            auto* node_types = ast.node_types;
-            auto* parents = ast.parents;
+            auto old_node_types = std::move(node_types);
+            auto old_parents = std::move(parents);
             bool valid;
-            int err = futhark_entry_frontend_fix_if_else(ctx, &valid, &ast.node_types, &ast.parents, node_types, parents);
-            futhark_free_u8_1d(ctx, node_types);
-            futhark_free_i32_1d(ctx, parents);
+            int err = futhark_entry_frontend_fix_if_else(ctx, &valid, &node_types, &parents, old_node_types, old_parents);
             if (err)
                 throw futhark::Error(ctx);
             if (!valid)
@@ -283,23 +280,19 @@ namespace frontend {
         }
 
         {
-            auto* node_types = ast.node_types;
-            auto* parents = ast.parents;
-            int err = futhark_entry_frontend_flatten_lists(ctx, &ast.node_types, &ast.parents, node_types, parents);
-            futhark_free_u8_1d(ctx, node_types);
-            futhark_free_i32_1d(ctx, parents);
+            auto old_node_types = std::move(node_types);
+            auto old_parents = std::move(parents);
+            int err = futhark_entry_frontend_flatten_lists(ctx, &node_types, &parents, old_node_types, old_parents);
             if (err)
                 throw futhark::Error(ctx);
             stats.flatten_lists = timer.lap();
         }
 
         {
-            auto* node_types = ast.node_types;
-            auto* parents = ast.parents;
+            auto old_node_types = std::move(node_types);
+            auto old_parents = std::move(parents);
             bool valid;
-            int err = futhark_entry_frontend_fix_names(ctx, &valid, &ast.node_types, &ast.parents, node_types, parents);
-            futhark_free_u8_1d(ctx, node_types);
-            futhark_free_i32_1d(ctx, parents);
+            int err = futhark_entry_frontend_fix_names(ctx, &valid, &node_types, &parents, old_node_types, old_parents);
             if (err)
                 throw futhark::Error(ctx);
             if (!valid)
@@ -308,19 +301,17 @@ namespace frontend {
         }
 
         {
-            auto* parents = ast.parents;
-            int err = futhark_entry_frontend_fix_ascriptions(ctx, &ast.parents, ast.node_types, parents);
-            futhark_free_i32_1d(ctx, parents);
+            auto old_parents = std::move(parents);
+            int err = futhark_entry_frontend_fix_ascriptions(ctx, &parents, node_types, old_parents);
             if (err)
                 throw futhark::Error(ctx);
             stats.fix_ascriptions = timer.lap();
         }
 
         {
-            auto* parents = ast.parents;
+            auto old_parents = std::move(parents);
             bool valid;
-            int err = futhark_entry_frontend_fix_fn_decls(ctx, &valid, &ast.parents, ast.node_types, parents);
-            futhark_free_i32_1d(ctx, parents);
+            int err = futhark_entry_frontend_fix_fn_decls(ctx, &valid, &parents, node_types, old_parents);
             if (err)
                 throw futhark::Error(ctx);
             if (!valid)
@@ -329,21 +320,18 @@ namespace frontend {
         }
 
         {
-            auto* node_types = ast.node_types;
-            int err = futhark_entry_frontend_fix_args_and_params(ctx, &ast.node_types, node_types, ast.parents);
-            futhark_free_u8_1d(ctx, node_types);
+            auto old_node_types = std::move(node_types);
+            int err = futhark_entry_frontend_fix_args_and_params(ctx, &node_types, old_node_types, parents);
             if (err)
                 throw futhark::Error(ctx);
             stats.fix_args_and_params = timer.lap();
         }
 
         {
-            auto* node_types = ast.node_types;
-            auto* parents = ast.parents;
+            auto old_node_types = std::move(node_types);
+            auto old_parents = std::move(parents);
             bool valid;
-            int err = futhark_entry_frontend_fix_decls(ctx, &valid, &ast.node_types, &ast.parents, node_types, parents);
-            futhark_free_u8_1d(ctx, node_types);
-            futhark_free_i32_1d(ctx, parents);
+            int err = futhark_entry_frontend_fix_decls(ctx, &valid, &node_types, &parents, old_node_types, old_parents);
             if (err)
                 throw futhark::Error(ctx);
             if (!valid)
@@ -352,22 +340,18 @@ namespace frontend {
         }
 
         {
-            auto* parents = ast.parents;
-            int err = futhark_entry_frontend_remove_marker_nodes(ctx, &ast.parents, ast.node_types, parents);
-            futhark_free_i32_1d(ctx, parents);
+            auto old_parents = std::move(parents);
+            int err = futhark_entry_frontend_remove_marker_nodes(ctx, &parents, node_types, old_parents);
             if (err)
                 throw futhark::Error(ctx);
             stats.remove_marker_nodes = timer.lap();
         }
 
         auto prev_siblings = futhark::UniqueArray<int32_t, 1>(ctx);
-
         {
-            auto* node_types = ast.node_types;
-            auto* parents = ast.parents;
-            int err = futhark_entry_frontend_compute_prev_sibling(ctx, &ast.node_types, &ast.parents, &prev_siblings, node_types, parents);
-            futhark_free_u8_1d(ctx, node_types);
-            futhark_free_i32_1d(ctx, parents);
+            auto old_node_types = std::move(node_types);
+            auto old_parents = std::move(parents);
+            int err = futhark_entry_frontend_compute_prev_sibling(ctx, &node_types, &parents, &prev_siblings, old_node_types, old_parents);
             if (err)
                 throw futhark::Error(ctx);
             stats.compute_prev_siblings = timer.lap();
@@ -375,7 +359,7 @@ namespace frontend {
 
         {
             bool valid;
-            int err = futhark_entry_frontend_check_assignments(ctx, &valid, ast.node_types, ast.parents, prev_siblings.get());
+            int err = futhark_entry_frontend_check_assignments(ctx, &valid, node_types, parents, prev_siblings);
             if (err)
                 throw futhark::Error(ctx);
             if (!valid)
@@ -384,30 +368,27 @@ namespace frontend {
         }
 
         {
-            auto* node_types = ast.node_types;
-            auto* parents = ast.parents;
-            auto* old_prev_siblings = prev_siblings.exchange(nullptr);
-            int err = futhark_entry_frontend_insert_derefs(ctx, &ast.node_types, &ast.parents, &prev_siblings, node_types, parents, old_prev_siblings);
-            futhark_free_u8_1d(ctx, node_types);
-            futhark_free_i32_1d(ctx, parents);
-            futhark_free_i32_1d(ctx, old_prev_siblings);
+            auto old_node_types = std::move(node_types);
+            auto old_parents = std::move(parents);
+            auto old_prev_siblings = std::move(prev_siblings);
+            int err = futhark_entry_frontend_insert_derefs(ctx, &node_types, &parents, &prev_siblings, old_node_types, old_parents, old_prev_siblings);
             if (err)
                 throw futhark::Error(ctx);
             stats.insert_derefs = timer.lap();
         }
 
+        auto node_data = futhark::UniqueArray<uint32_t, 1>(ctx);
         {
-            int err = futhark_entry_frontend_extract_lexemes(ctx, &ast.node_data, input_array.get(), tokens.get(), ast.node_types);
+            int err = futhark_entry_frontend_extract_lexemes(ctx, &node_data, input_array, tokens, node_types);
             if (err)
                 throw futhark::Error(ctx);
             stats.extract_lexemes = timer.lap();
         }
 
         auto resolution = futhark::UniqueArray<int32_t, 1>(ctx);
-
         {
             bool valid;
-            int err = futhark_entry_frontend_resolve_vars(ctx, &valid, &resolution, ast.node_types, ast.parents, prev_siblings.get(), ast.node_data);
+            int err = futhark_entry_frontend_resolve_vars(ctx, &valid, &resolution, node_types, parents, prev_siblings, node_data);
             if (err)
                 throw futhark::Error(ctx);
             if (!valid)
@@ -416,10 +397,9 @@ namespace frontend {
         }
 
         {
-            auto* old_resolution = resolution.exchange(nullptr);
+            auto old_resolution = std::move(resolution);
             bool valid;
-            int err = futhark_entry_frontend_resolve_fns(ctx, &valid, &resolution, ast.node_types, old_resolution, ast.node_data);
-            futhark_free_i32_1d(ctx, old_resolution);
+            int err = futhark_entry_frontend_resolve_fns(ctx, &valid, &resolution, node_types, old_resolution, node_data);
             if (err)
                 throw futhark::Error(ctx);
             if (!valid)
@@ -428,10 +408,9 @@ namespace frontend {
         }
 
         {
-            auto* old_resolution = resolution.exchange(nullptr);
+            auto old_resolution = std::move(resolution);
             bool valid;
-            int err = futhark_entry_frontend_resolve_args(ctx, &valid, &resolution, ast.node_types, ast.parents, prev_siblings.get(), old_resolution);
-            futhark_free_i32_1d(ctx, old_resolution);
+            int err = futhark_entry_frontend_resolve_args(ctx, &valid, &resolution, node_types, parents, prev_siblings, old_resolution);
             if (err)
                 throw futhark::Error(ctx);
             if (!valid)
@@ -439,9 +418,10 @@ namespace frontend {
             stats.resolve_args = timer.lap();
         }
 
+        auto data_types = futhark::UniqueArray<uint8_t, 1>(ctx);
         {
             bool valid;
-            int err = futhark_entry_frontend_resolve_data_types(ctx, &valid, &ast.data_types, ast.node_types, ast.parents, prev_siblings.get(), resolution.get());
+            int err = futhark_entry_frontend_resolve_data_types(ctx, &valid, &data_types, node_types, parents, prev_siblings, resolution.get());
             if (err)
                 throw futhark::Error(ctx);
             if (!valid)
@@ -451,7 +431,7 @@ namespace frontend {
 
         {
             bool valid;
-            int err = futhark_entry_frontend_check_return_types(ctx, &valid, ast.node_types, ast.parents, ast.data_types);
+            int err = futhark_entry_frontend_check_return_types(ctx, &valid, node_types, parents, data_types);
             if (err)
                 throw futhark::Error(ctx);
             if (!valid)
@@ -461,7 +441,7 @@ namespace frontend {
 
         {
             bool valid;
-            int err = futhark_entry_frontend_check_convergence(ctx, &valid, ast.node_types, ast.parents, prev_siblings.get(), ast.data_types);
+            int err = futhark_entry_frontend_check_convergence(ctx, &valid, node_types, parents, prev_siblings, data_types);
             if (err)
                 throw futhark::Error(ctx);
             if (!valid)
@@ -469,11 +449,9 @@ namespace frontend {
             stats.check_convergence = timer.lap();
         }
 
+        auto ast = DeviceAst(ctx);
         {
-            auto* node_types = ast.node_types;
-            auto* parents = ast.parents;
-            auto* node_data = ast.node_data;
-            auto* data_types = ast.data_types;
+            // Other arrays are destructed at the end of the function.
             int err = futhark_entry_frontend_build_ast(
                 ctx,
                 &ast.node_types,
@@ -487,13 +465,9 @@ namespace frontend {
                 parents,
                 node_data,
                 data_types,
-                prev_siblings.get(),
-                resolution.get()
+                prev_siblings,
+                resolution
             );
-            futhark_free_u8_1d(ctx, node_types);
-            futhark_free_i32_1d(ctx, parents);
-            futhark_free_u32_1d(ctx, node_data);
-            futhark_free_u8_1d(ctx, data_types);
             if (err)
                 throw futhark::Error(ctx);
             stats.build_ast = timer.lap();

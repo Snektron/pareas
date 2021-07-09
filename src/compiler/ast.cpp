@@ -139,16 +139,20 @@ DeviceAst::~DeviceAst() {
 }
 
 size_t DeviceAst::num_nodes() const {
+    if (!this->node_types)
+        return 0;
     return futhark_shape_u8_1d(this->ctx, this->node_types)[0];
 }
 
 size_t DeviceAst::num_functions() const {
+    if (!this->fn_tab)
+        return 0;
     return futhark_shape_i32_1d(this->ctx, this->fn_tab)[0];
 }
 
 HostAst DeviceAst::download() const {
-    size_t num_nodes = futhark_shape_u8_1d(this->ctx, this->node_types)[0];
-    size_t num_functions = futhark_shape_i32_1d(this->ctx, this->fn_tab)[0];
+    size_t num_nodes = this->num_nodes();
+    size_t num_functions = this->num_functions();
 
     auto ast = HostAst{
         .num_nodes = num_nodes,
