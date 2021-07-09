@@ -78,14 +78,26 @@ test_old_sources = [
 ]
 
 test_sources = [
+    'src/test/assignexprastnodetempl.cpp',
     'src/test/astgenerator.cpp',
     'src/test/astnodetempl.cpp',
+    'src/test/castexprastnodetempl.cpp',
+    'src/test/compexprastnodetempl.cpp',
+    'src/test/condastnodetempl.cpp',
+    'src/test/declareexprastnodetempl.cpp',
+    'src/test/derefexprastnodetempl.cpp',
     'src/test/defaulttreeprinter.cpp',
     'src/test/exprastnodetempl.cpp',
     'src/test/fixedastnodetempl.cpp',
+    'src/test/funccallastnodetempl.cpp',
+    'src/test/funcdeclastnodetempl.cpp',
+    'src/test/idexprastnodetempl.cpp',
     'src/test/litastnodetempl.cpp',
+    'src/test/returnastnodetempl.cpp',
     'src/test/sourcefileprinter.cpp',
-    'src/test/testmain.cpp'
+    'src/test/statementlistastnodetempl.cpp',
+    'src/test/testmain.cpp',
+    'src/test/unaryexprastnodetempl.cpp'
 ]
 
 executable(

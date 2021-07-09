@@ -87,6 +87,9 @@ void DefaultTreePrinter::print(ASTNode* root) {
             os << root->node_data;
         }
     }
+    if(root->node_str.size() > 0) {
+        os << ", " << root->node_str;
+    }
     this->os << ")" << std::endl;
 
     ++this->indent;

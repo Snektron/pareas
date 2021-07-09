@@ -7,8 +7,9 @@ class FixedASTNodeTempl : public ASTNodeTempl {
     private:
         std::vector<std::vector<NodeType>> child_types;
         std::vector<std::vector<DataType>> child_type_options;
+        bool commit;
     public:
-        FixedASTNodeTempl(const std::vector<std::vector<NodeType>>&, const std::vector<std::vector<DataType>>&);
+        FixedASTNodeTempl(const std::vector<std::vector<NodeType>>&, const std::vector<std::vector<DataType>>&, bool);
         virtual ~FixedASTNodeTempl() = default;
 
         virtual ASTNode* generate(NodeType, ASTGenerator*);
