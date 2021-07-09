@@ -56,12 +56,13 @@ namespace futhark {
         }
 
         UniqueOpaqueArray(UniqueOpaqueArray&& other):
-            ctx(std::exchange(other.ctx, nullptr)), data(std::exchange(other.data, nullptr)) {
+            ctx(other.ctx), data(std::exchange(other.data, nullptr)) {
         }
 
         UniqueOpaqueArray& operator=(UniqueOpaqueArray&& other) {
             std::swap(this->data, other.data);
             std::swap(this->ctx, other.ctx);
+            return *this;
         }
 
         UniqueOpaqueArray(const UniqueOpaqueArray&) = delete;
@@ -85,8 +86,12 @@ namespace futhark {
             return &this->data;
         }
 
-        Array* exchange(Array* other) {
-            return std::exchange(this->data, other);
+        operator Array*() {
+            return this->data;
+        }
+
+        operator const Array*() const {
+            return this->data;
         }
     };
 
@@ -131,8 +136,12 @@ namespace futhark {
             return &this->handle;
         }
 
-        Array* exchange(Array* other) {
-            return this->handle.exchange(other);
+        operator Array*() {
+            return this->handle;
+        }
+
+        operator const Array*() const {
+            return this->handle;
         }
 
         void values(T* out) const {

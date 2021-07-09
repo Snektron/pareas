@@ -4,6 +4,7 @@
 #include "pareas/compiler/futhark_interop.hpp"
 #include "pareas/compiler/ast.hpp"
 #include "pareas/compiler/frontend.hpp"
+#include "pareas/compiler/profiler.hpp"
 
 #include <fmt/format.h>
 #include <fmt/ostream.h>
@@ -24,17 +25,17 @@ struct Options {
     const char* input_path;
     const char* output_path;
     bool help;
-    bool verbose;
-    bool debug;
     bool dump_dot;
-    bool benchmark;
+    unsigned profile;
+    bool futhark_verbose;
+    bool futhark_debug;
 
     // Options available for the multicore backend
     int threads;
 
     // Options abailable for the OpenCL and CUDA backends
     const char* device_name;
-    bool profile;
+    bool futhark_profile;
 };
 
 void print_usage(char* progname) {
@@ -43,21 +44,22 @@ void print_usage(char* progname) {
         "Available options:\n"
         "-o --output <output path>   Write the output to <output path>. (default: b.out)\n"
         "-h --help                   Show this message and exit.\n"
-        "-v --verbose                Enable Futhark logging.\n"
-        "-d --debug                  Enable Futhark debug logging.\n"
         "--dump-dot                  Dump tree as dot graph.\n"
-        "--benchmark                 Record benchmark information.\n"
+        "-p --profile <level>        Record (non-futhark) profiling information.\n"
+        "                            (default: 0, =disabled)\n"
+        "--futhark-verbose           Enable Futhark logging.\n"
+        "--futhark-debug             Enable Futhark debug logging.\n"
     #if defined(FUTHARK_BACKEND_multicore)
         "Available backend options:\n"
         "-t --threads <amount>       Set the maximum number of threads that may be used\n"
         "                            (default: amount of cores).\n"
     #elif defined(FUTHARK_BACKEND_opencl) || defined(FUTHARK_BACKEND_cuda)
         "Available backend options:\n"
-        "--device <name>             Select the device that kernels are executed on. Any\n"
+        "-d --device <name>          Select the device that kernels are executed on. Any\n"
         "                            device which name contains <name> may be used. The\n"
         "                            special value #k may be used to select the k-th\n"
         "                            device reported by the platform.\n"
-        "-p --profile                Enable Futhark profiling and print report at exit.\n"
+        "--futhark-profile           Enable Futhark profiling and print report at exit.\n"
     #endif
         "\n"
         "When <input path> and/or <output path> are '-', standard input and standard\n"
@@ -71,15 +73,17 @@ bool parse_options(Options* opts, int argc, char* argv[]) {
         .input_path = nullptr,
         .output_path = "b.out",
         .help = false,
-        .verbose = false,
-        .debug = false,
         .dump_dot = false,
+        .profile = 0,
+        .futhark_verbose = false,
+        .futhark_debug = false,
         .threads = 0,
         .device_name = nullptr,
-        .profile = false,
+        .futhark_profile = false,
     };
 
     const char* threads_arg = nullptr;
+    const char* profile_arg = nullptr;
 
     for (int i = 1; i < argc; ++i) {
         auto arg = std::string_view(argv[i]);
@@ -95,7 +99,7 @@ bool parse_options(Options* opts, int argc, char* argv[]) {
                 continue;
             }
         #elif defined(FUTHARK_BACKEND_opencl) || defined(FUTHARK_BACKEND_cuda)
-            if (arg == "--device") {
+            if (arg == "-d" || arg == "--device") {
                 if (++i >= argc) {
                     fmt::print(std::cerr, "Error: Expected argument <name> to option {}\n", arg);
                     return false;
@@ -103,8 +107,8 @@ bool parse_options(Options* opts, int argc, char* argv[]) {
 
                 opts->device_name = argv[i];
                 continue;
-            } else if (arg == "-p" || arg == "--profile") {
-                opts->profile = true;
+            } else if (arg == "--futhark-profile") {
+                opts->futhark_profile = true;
                 continue;
             }
         #endif
@@ -117,14 +121,19 @@ bool parse_options(Options* opts, int argc, char* argv[]) {
             opts->output_path = argv[i];
         } else if (arg == "-h" || arg == "--help") {
             opts->help = true;
-        } else if (arg == "-v" || arg == "--verbose") {
-            opts->verbose = true;
-        } else if (arg == "-d" || arg == "--debug") {
-            opts->debug = true;
         } else if (arg == "--dump-dot") {
             opts->dump_dot = true;
-        } else if (arg == "--benchmark") {
-            opts->benchmark = true;
+        } else if (arg == "-p" || arg == "--profile") {
+            if (++i >= argc) {
+                fmt::print(std::cerr, "Error: Expected argument <level> to option {}\n", arg);
+                return false;
+            }
+
+            profile_arg = argv[i];
+        } else if (arg == "--futhark-verbose") {
+            opts->futhark_verbose = true;
+        } else if (arg == "--futhark-debug") {
+            opts->futhark_debug = true;
         } else if (!opts->input_path) {
             opts->input_path = argv[i];
         } else {
@@ -158,6 +167,15 @@ bool parse_options(Options* opts, int argc, char* argv[]) {
         }
     }
 
+    if (profile_arg) {
+        const auto* end = profile_arg + std::strlen(profile_arg);
+        auto [p, ec] = std::from_chars(profile_arg, end, opts->profile);
+        if (ec != std::errc() || p != end) {
+            fmt::print(std::cerr, "Error: Invalid value '{}' for option --profile\n", profile_arg);
+            return false;
+        }
+    }
+
     return true;
 }
 
@@ -181,6 +199,8 @@ int main(int argc, char* argv[]) {
         return EXIT_SUCCESS;
     }
 
+    auto p = Profiler(opts.profile);
+
     auto in = std::ifstream(opts.input_path, std::ios::binary);
     if (!in) {
         fmt::print(std::cerr, "Error: Failed to open input file '{}'\n", opts.input_path);
@@ -190,10 +210,10 @@ int main(int argc, char* argv[]) {
     auto input = std::string(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
     in.close();
 
+    p.begin();
     auto config = futhark::ContextConfig(futhark_context_config_new());
-
-    futhark_context_config_set_logging(config.get(), opts.verbose);
-    futhark_context_config_set_debugging(config.get(), opts.debug);
+    futhark_context_config_set_logging(config.get(), opts.futhark_verbose);
+    futhark_context_config_set_debugging(config.get(), opts.futhark_debug);
 
     #if defined(FUTHARK_BACKEND_multicore)
         futhark_context_config_set_num_threads(config.get(), opts.threads);
@@ -202,23 +222,19 @@ int main(int argc, char* argv[]) {
             futhark_context_config_set_device(config.get(), opts.device_name);
         }
 
-        futhark_context_config_set_profiling(config.get(), opts.profile);
+        futhark_context_config_set_profiling(config.get(), opts.futhark_profile);
     #endif
 
     auto ctx = futhark::Context(futhark_context_new(config.get()));
+    p.end("context init", ctx.get());
 
     try {
-        auto ast = DeviceAst(ctx.get());
+        p.begin(ctx.get());
+        auto ast = frontend::compile(ctx.get(), input, p);
+        p.end("frontend", ctx.get());
 
-        if (opts.benchmark) {
-            frontend::SeparateStatistics stats;
-            ast = frontend::compile_separate(ctx.get(), input, stats);
-            stats.dump(std::cerr);
-        } else {
-            frontend::CombinedStatistics stats;
-            ast = frontend::compile_combined(ctx.get(), input, stats);
-            stats.dump(std::cerr);
-        }
+        if (opts.profile > 0)
+            p.dump(std::cout);
 
         fmt::print(std::cerr, "{} nodes\n", ast.num_nodes());
 
@@ -227,9 +243,9 @@ int main(int argc, char* argv[]) {
             host_ast.dump_dot(std::cout);
         }
 
-        if (opts.profile) {
+        if (opts.futhark_profile) {
             auto report = MallocPtr<char>(futhark_context_report(ctx.get()));
-            fmt::print("Profile report:\n{}", report);
+            fmt::print("Futhark profile report:\n{}", report);
         }
 
         if (futhark_context_sync(ctx.get()) != 0)

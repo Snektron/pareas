@@ -143,6 +143,7 @@ sources = [
     'src/compiler/main.cpp',
     'src/compiler/frontend.cpp',
     'src/compiler/ast.cpp',
+    'src/compiler/profiler.cpp',
 ]
 
 executable(
