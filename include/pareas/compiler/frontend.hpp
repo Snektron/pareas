@@ -4,6 +4,7 @@
 #include "futhark_generated.h"
 
 #include "pareas/compiler/ast.hpp"
+#include "pareas/compiler/profiler.hpp"
 
 #include <chrono>
 #include <stdexcept>
@@ -32,38 +33,7 @@ namespace frontend {
             std::runtime_error(error_name(e)) {}
     };
 
-    struct Statistics {
-        std::chrono::microseconds table_upload;
-        std::chrono::microseconds input_upload;
-        std::chrono::microseconds tokenize;
-        std::chrono::microseconds parse;
-        std::chrono::microseconds build_parse_tree;
-        std::chrono::microseconds fix_bin_ops;
-        std::chrono::microseconds fix_if_else;
-        std::chrono::microseconds flatten_lists;
-        std::chrono::microseconds fix_names;
-        std::chrono::microseconds fix_ascriptions;
-        std::chrono::microseconds fix_fn_decls;
-        std::chrono::microseconds fix_args_and_params;
-        std::chrono::microseconds fix_decls;
-        std::chrono::microseconds remove_marker_nodes;
-        std::chrono::microseconds compute_prev_siblings;
-        std::chrono::microseconds check_assignments;
-        std::chrono::microseconds insert_derefs;
-        std::chrono::microseconds extract_lexemes;
-        std::chrono::microseconds resolve_vars;
-        std::chrono::microseconds resolve_fns;
-        std::chrono::microseconds resolve_args;
-        std::chrono::microseconds resolve_data_types;
-        std::chrono::microseconds check_return_types;
-        std::chrono::microseconds check_convergence;
-        std::chrono::microseconds build_ast;
-        std::chrono::microseconds total;
-
-        void dump(std::ostream& os) const;
-    };
-
-    DeviceAst compile(futhark_context* ctx, const std::string& input, Statistics& stats);
+    DeviceAst compile(futhark_context* ctx, const std::string& input, Profiler& p);
 }
 
 #endif

@@ -62,6 +62,7 @@ namespace futhark {
         UniqueOpaqueArray& operator=(UniqueOpaqueArray&& other) {
             std::swap(this->data, other.data);
             std::swap(this->ctx, other.ctx);
+            return *this;
         }
 
         UniqueOpaqueArray(const UniqueOpaqueArray&) = delete;
