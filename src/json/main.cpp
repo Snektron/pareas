@@ -2,12 +2,12 @@
 #include "json_grammar.hpp"
 
 #include "pareas/json/futhark_interop.hpp"
+#include "pareas/profiler/profiler.hpp"
 
 #include <fmt/format.h>
 #include <fmt/ostream.h>
 #include <fmt/chrono.h>
 
-#include <chrono>
 #include <iostream>
 #include <fstream>
 #include <charconv>
@@ -18,16 +18,15 @@
 struct Options {
     const char* input_path;
     bool help;
-    bool verbose;
-    bool debug;
-    bool dump_dot;
+    bool futhark_verbose;
+    bool futhark_debug;
 
     // Options available for the multicore backend
     int threads;
 
     // Options abailable for the OpenCL and CUDA backends
     const char* device_name;
-    bool profile;
+    bool futhark_profile;
 };
 
 void print_usage(char* progname) {
@@ -35,9 +34,8 @@ void print_usage(char* progname) {
         "Usage: {} [options...] <input path>\n"
         "Available options:\n"
         "-h --help                   Show this message and exit.\n"
-        "-v --verbose                Enable Futhark logging.\n"
-        "-d --debug                  Enable Futhark debug logging.\n"
-        "--dump-dot                  Dump tree as dot graph.\n"
+        "--futhark-verbose           Enable Futhark logging.\n"
+        "--futhark-debug             Enable Futhark debug logging.\n"
     #if defined(FUTHARK_BACKEND_multicore)
         "Available backend options:\n"
         "-t --threads <amount>       Set the maximum number of threads that may be used\n"
@@ -48,7 +46,7 @@ void print_usage(char* progname) {
         "                            device which name contains <name> may be used. The\n"
         "                            special value #k may be used to select the k-th\n"
         "                            device reported by the platform.\n"
-        "-p --profile                Enable Futhark profiling and print report at exit.\n"
+        "--futhark-profile           Enable Futhark profiling and print report at exit.\n"
     #endif
         "\n"
         "When <input path> is '-', standard input is used\n",
@@ -60,12 +58,11 @@ bool parse_options(Options* opts, int argc, char* argv[]) {
     *opts = {
         .input_path = nullptr,
         .help = false,
-        .verbose = false,
-        .debug = false,
-        .dump_dot = false,
+        .futhark_verbose = false,
+        .futhark_debug = false,
         .threads = 0,
         .device_name = nullptr,
-        .profile = false,
+        .futhark_profile = false,
     };
 
     const char* threads_arg = nullptr;
@@ -84,7 +81,7 @@ bool parse_options(Options* opts, int argc, char* argv[]) {
                 continue;
             }
         #elif defined(FUTHARK_BACKEND_opencl) || defined(FUTHARK_BACKEND_cuda)
-            if (arg == "--device") {
+            if (arg == "-d" || arg == "--device") {
                 if (++i >= argc) {
                     fmt::print(std::cerr, "Error: Expected argument <name> to option {}\n", arg);
                     return false;
@@ -92,8 +89,8 @@ bool parse_options(Options* opts, int argc, char* argv[]) {
 
                 opts->device_name = argv[i];
                 continue;
-            } else if (arg == "-p" || arg == "--profile") {
-                opts->profile = true;
+            } else if (arg == "--futhark-profile") {
+                opts->futhark_profile = true;
                 continue;
             }
         #endif
@@ -101,11 +98,9 @@ bool parse_options(Options* opts, int argc, char* argv[]) {
         if (arg == "-h" || arg == "--help") {
             opts->help = true;
         } else if (arg == "-v" || arg == "--verbose") {
-            opts->verbose = true;
-        } else if (arg == "-d" || arg == "--debug") {
-            opts->debug = true;
-        } else if (arg == "--dump-dot") {
-            opts->dump_dot = true;
+            opts->futhark_verbose = true;
+        } else if (arg == "--futhark-debug") {
+            opts->futhark_debug = true;
         } else if (!opts->input_path) {
             opts->input_path = argv[i];
         } else {
@@ -205,17 +200,6 @@ T upload_strtab(futhark::Context& ctx, const json::StrTab<U>& strtab, F upload_f
     return tab;
 }
 
-void download_and_dump_tokens(futhark::Context& ctx, futhark::UniqueArray<uint8_t, 1>& tokens) {
-    auto host_tokens = tokens.download();
-
-    if (futhark_context_sync(ctx.get()))
-        throw futhark::Error(ctx);
-
-    for (auto token : host_tokens) {
-        fmt::print("{}\n", json::token_name(static_cast<json::Token>(token)));
-    }
-}
-
 int main(int argc, char* argv[]) {
     Options opts;
     if (!parse_options(&opts, argc, argv)) {
@@ -226,6 +210,8 @@ int main(int argc, char* argv[]) {
         return EXIT_SUCCESS;
     }
 
+    auto p = pareas::Profiler(9999);
+
     auto in = std::ifstream(opts.input_path, std::ios::binary);
     if (!in) {
         fmt::print(std::cerr, "Error: Failed to open input file '{}'\n", opts.input_path);
@@ -235,10 +221,11 @@ int main(int argc, char* argv[]) {
     auto input = std::string(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
     in.close();
 
+    p.begin();
     auto config = futhark::ContextConfig(futhark_context_config_new());
 
-    futhark_context_config_set_logging(config.get(), opts.verbose);
-    futhark_context_config_set_debugging(config.get(), opts.debug);
+    futhark_context_config_set_logging(config.get(), opts.futhark_verbose);
+    futhark_context_config_set_debugging(config.get(), opts.futhark_debug);
 
     #if defined(FUTHARK_BACKEND_multicore)
         futhark_context_config_set_num_threads(config.get(), opts.threads);
@@ -247,13 +234,17 @@ int main(int argc, char* argv[]) {
             futhark_context_config_set_device(config.get(), opts.device_name);
         }
 
-        futhark_context_config_set_profiling(config.get(), opts.profile);
+        futhark_context_config_set_profiling(config.get(), opts.futhark_profile);
     #endif
 
     auto ctx = futhark::Context(futhark_context_new(config.get()));
+    p.set_sync_callback([ctx = ctx.get()]{
+        if (futhark_context_sync(ctx))
+            throw futhark::Error(ctx);
+    });
+    p.end("context init");
 
-    auto start = std::chrono::high_resolution_clock::now();
-
+    p.begin();
     auto lex_table = upload_lex_table(ctx);
 
     auto sct = upload_strtab<futhark::UniqueStackChangeTable>(
@@ -269,16 +260,16 @@ int main(int argc, char* argv[]) {
     );
 
     auto arity_array = futhark::UniqueArray<int32_t, 1>(ctx, json::arities, json::NUM_PRODUCTIONS);
+    p.end("table upload");
+
+    p.begin();
     auto input_array = futhark::UniqueArray<uint8_t, 1>(ctx, reinterpret_cast<const uint8_t*>(input.data()), input.size());
+    p.end("input upload");
 
     if (futhark_context_sync(ctx.get()) != 0)
         throw futhark::Error(ctx);
 
-    auto stop = std::chrono::high_resolution_clock::now();
-    fmt::print(std::cerr, "Upload time: {}\n", std::chrono::duration_cast<std::chrono::microseconds>(stop - start));
-
-    start = std::chrono::high_resolution_clock::now();
-
+    p.begin();
     bool result;
     int err = futhark_entry_main(
         ctx.get(),
@@ -289,25 +280,17 @@ int main(int argc, char* argv[]) {
         pt.get(),
         arity_array.get()
     );
+    p.end("parse");
+
+    p.dump(std::cout);
 
     if (err != 0)
         throw futhark::Error(ctx);
 
-    if (futhark_context_sync(ctx.get()) != 0)
-        throw futhark::Error(ctx);
-
-    stop = std::chrono::high_resolution_clock::now();
-    fmt::print(std::cerr, "Main kernel runtime: {}\n", std::chrono::duration_cast<std::chrono::microseconds>(stop - start));
-
-    fmt::print("Result: {}\n", result);
-
-    if (opts.profile) {
+    if (opts.futhark_profile) {
         auto report = MallocPtr<char>(futhark_context_report(ctx.get()));
         fmt::print("Profile report:\n{}", report);
     }
 
-    if (futhark_context_sync(ctx.get()) != 0)
-        throw futhark::Error(ctx);
-
-    return EXIT_SUCCESS;
+    return result ? EXIT_SUCCESS : EXIT_FAILURE;
 }
