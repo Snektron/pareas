@@ -94,7 +94,7 @@ grammar_cpp = grammar[1]
 grammar_fut = grammar[2]
 grammar_asm = grammar[3]
 
-futhark_sources = files(
+futhark_sources = [
     'lib/github.com/diku-dk/sorts/radix_sort.fut',
     'lib/github.com/diku-dk/segmented/segmented.fut',
     'src/compiler/string.fut',
@@ -118,7 +118,7 @@ futhark_sources = files(
     'src/compiler/passes/type_resolution.fut',
     'src/compiler/passes/check_return_paths.fut',
     'src/compiler/passes/ids.fut',
-)
+]
 
 futhark_compile_command = [
     find_program('src/tools/compile_futhark.py'),

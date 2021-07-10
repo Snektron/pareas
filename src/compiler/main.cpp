@@ -27,6 +27,7 @@ struct Options {
     bool help;
     bool dump_dot;
     unsigned profile;
+    bool verbose_tree;
     bool futhark_verbose;
     bool futhark_debug;
 
@@ -40,12 +41,13 @@ struct Options {
 
 void print_usage(char* progname) {
     fmt::print(
-        "Usage: {} [options...] <input path>\n"
+        "Usage: {} [options...] <input path>\n"
         "Available options:\n"
         "-o --output <output path>   Write the output to <output path>. (default: b.out)\n"
         "-h --help                   Show this message and exit.\n"
         "--dump-dot                  Dump tree as dot graph.\n"
         "-p --profile <level>        Record (non-futhark) profiling information.\n"
+        "--verbose-tree              Dump some information about the tree to stderr.\n"
         "                            (default: 0, =disabled)\n"
         "--futhark-verbose           Enable Futhark logging.\n"
         "--futhark-debug             Enable Futhark debug logging.\n"
@@ -75,6 +77,7 @@ bool parse_options(Options* opts, int argc, char* argv[]) {
         .help = false,
         .dump_dot = false,
         .profile = 0,
+        .verbose_tree = false,
         .futhark_verbose = false,
         .futhark_debug = false,
         .threads = 0,
@@ -130,6 +133,8 @@ bool parse_options(Options* opts, int argc, char* argv[]) {
             }
 
             profile_arg = argv[i];
+        } else if (arg == "--verbose-tree") {
+            opts->verbose_tree = true;
         } else if (arg == "--futhark-verbose") {
             opts->futhark_verbose = true;
         } else if (arg == "--futhark-debug") {
@@ -240,10 +245,15 @@ int main(int argc, char* argv[]) {
         if (opts.profile > 0)
             p.dump(std::cout);
 
-        fmt::print(std::cerr, "{} nodes\n", ast.num_nodes());
+        if (opts.verbose_tree) {
+            fmt::print(std::cerr, "Num nodes: {}\n", ast.num_nodes());
+            fmt::print(std::cerr, "Num functions: {}\n", ast.num_functions());
+        }
 
         if (opts.dump_dot) {
+            p.begin();
             auto host_ast = ast.download();
+            p.end("ast download");
             host_ast.dump_dot(std::cout);
         }
 
