@@ -65,15 +65,16 @@ pareas_prof_dep = declare_dependency(
 )
 
 # Compiler
-dependencies = [pareas_prof_dep, fmt_dep, dependency('threads')]
+futhark_deps = [dependency('threads')]
 
 # Build futhark library
+futhark_wrapper_exe = find_program('src/tools/compile_futhark.py')
 futhark_backend = get_option('futhark-backend')
 
 if futhark_backend == 'opencl'
-    dependencies += dependency('OpenCL')
+    futhark_deps += dependency('OpenCL')
 elif futhark_backend == 'cuda'
-    dependencies += dependency('cuda', modules: ['cuda', 'cudart', 'nvrtc'])
+    futhark_deps += dependency('cuda', modules: ['cuda', 'cudart', 'nvrtc'])
 endif
 
 grammar = custom_target(
@@ -121,7 +122,7 @@ futhark_sources = [
 ]
 
 futhark_compile_command = [
-    find_program('src/tools/compile_futhark.py'),
+    futhark_wrapper_exe,
     '--futhark', find_program('futhark'),
     '--futhark-backend', futhark_backend,
     '--output', '@OUTDIR@/futhark_generated',
@@ -159,6 +160,6 @@ pareas_exe = executable(
     [grammar_hpp, grammar_cpp, grammar_asm, sources, futhark_generated],
     install: true,
     build_by_default: not meson.is_subproject(),
-    dependencies: dependencies,
+    dependencies: [pareas_prof_dep, fmt_dep, futhark_deps],
     include_directories: inc,
 )
