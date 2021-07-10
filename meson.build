@@ -158,7 +158,6 @@ sources = files(
 pareas_exe = executable(
     'pareas',
     [grammar_hpp, grammar_cpp, grammar_asm, sources, futhark_generated],
-    install: true,
     build_by_default: not meson.is_subproject(),
     dependencies: [pareas_prof_dep, fmt_dep, futhark_deps],
     include_directories: inc,
