@@ -1,13 +1,14 @@
 #ifndef _PAREAS_COMPILER_PROFILER_HPP
 #define _PAREAS_COMPILER_PROFILER_HPP
 
-#include "futhark_generated.h"
-
 #include <iosfwd>
 #include <chrono>
 #include <vector>
+#include <functional>
 
 struct Profiler {
+    using SyncCallback = std::function<void()>;
+
     using Clock = std::chrono::high_resolution_clock;
 
     struct HistoryEntry {
@@ -19,13 +20,16 @@ struct Profiler {
     unsigned max_level;
     unsigned level;
 
+    SyncCallback sync_callback;
     std::vector<Clock::time_point> starts;
     std::vector<HistoryEntry> history;
 
     Profiler(unsigned max_level);
 
-    void begin(futhark_context* ctx = nullptr);
-    void end(const char* name, futhark_context* ctx = nullptr);
+    void set_sync_callback(SyncCallback sync_callback = null_callback);
+
+    void begin();
+    void end(const char* name);
 
     void dump(std::ostream& os);
 
@@ -36,12 +40,7 @@ struct Profiler {
         this->end(name);
     }
 
-    template <typename F>
-    void measure(const char* name, futhark_context* ctx, F f) {
-        this->begin(ctx);
-        f();
-        this->end(name, ctx);
-    }
+    static void null_callback() {}
 };
 
 #endif

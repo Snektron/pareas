@@ -1,5 +1,4 @@
 #include "pareas/compiler/profiler.hpp"
-#include "pareas/compiler/futhark_interop.hpp"
 
 #include <fmt/ostream.h>
 #include <fmt/chrono.h>
@@ -9,28 +8,31 @@
 
 Profiler::Profiler(unsigned max_level):
     max_level(max_level),
-    level(0) {
+    level(0),
+    sync_callback(null_callback) {
 }
 
-void Profiler::begin(futhark_context* ctx) {
+void Profiler::set_sync_callback(SyncCallback sync_callback) {
+    this->sync_callback = sync_callback;
+}
+
+void Profiler::begin() {
     ++this->level;
     if (this->level > this->max_level)
         return;
 
-    if (ctx && futhark_context_sync(ctx))
-        throw futhark::Error(ctx);
+    this->sync_callback();
 
     auto start = Clock::now();
     this->starts.push_back(start);
 }
 
-void Profiler::end(const char* name, futhark_context* ctx) {
+void Profiler::end(const char* name) {
     --this->level;
     if (this->level >= this->max_level)
         return;
 
-    if (ctx && futhark_context_sync(ctx))
-        throw futhark::Error(ctx);
+    this->sync_callback();
 
     auto end = Clock::now();
     auto start = this->starts.back();
