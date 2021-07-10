@@ -4,7 +4,7 @@
 #include "pareas/compiler/futhark_interop.hpp"
 #include "pareas/compiler/ast.hpp"
 #include "pareas/compiler/frontend.hpp"
-#include "pareas/compiler/profiler.hpp"
+#include "pareas/profiler/profiler.hpp"
 
 #include <fmt/format.h>
 #include <fmt/ostream.h>
@@ -199,7 +199,7 @@ int main(int argc, char* argv[]) {
         return EXIT_SUCCESS;
     }
 
-    auto p = Profiler(opts.profile);
+    auto p = pareas::Profiler(opts.profile);
 
     auto in = std::ifstream(opts.input_path, std::ios::binary);
     if (!in) {

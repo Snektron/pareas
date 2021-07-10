@@ -56,8 +56,15 @@ pareas_lpg_exe = executable(
     include_directories: inc,
 )
 
+# Profiling library
+pareas_prof_dep = declare_dependency(
+    include_directories: inc,
+    sources: files('src/profiler/profiler.cpp'),
+    dependencies: fmt_dep,
+)
+
 # Compiler
-dependencies = [fmt_dep, dependency('threads')]
+dependencies = [pareas_prof_dep, fmt_dep, dependency('threads')]
 
 # Build futhark library
 futhark_backend = get_option('futhark-backend')
@@ -143,7 +150,6 @@ sources = files(
     'src/compiler/main.cpp',
     'src/compiler/frontend.cpp',
     'src/compiler/ast.cpp',
-    'src/compiler/profiler.cpp',
 )
 
 pareas_exe = executable(

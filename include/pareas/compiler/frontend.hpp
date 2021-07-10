@@ -4,7 +4,7 @@
 #include "futhark_generated.h"
 
 #include "pareas/compiler/ast.hpp"
-#include "pareas/compiler/profiler.hpp"
+#include "pareas/profiler/profiler.hpp"
 
 #include <chrono>
 #include <stdexcept>
@@ -33,7 +33,7 @@ namespace frontend {
             std::runtime_error(error_name(e)) {}
     };
 
-    DeviceAst compile(futhark_context* ctx, const std::string& input, Profiler& p);
+    DeviceAst compile(futhark_context* ctx, const std::string& input, pareas::Profiler& p);
 }
 
 #endif

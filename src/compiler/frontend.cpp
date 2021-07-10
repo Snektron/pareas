@@ -84,7 +84,7 @@ namespace frontend {
         }
     }
 
-    DeviceAst compile(futhark_context* ctx, const std::string& input, Profiler& p) {
+    DeviceAst compile(futhark_context* ctx, const std::string& input, pareas::Profiler& p) {
         p.begin();
         p.begin();
         auto lex_table = upload_lex_table(ctx);
