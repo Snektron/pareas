@@ -149,22 +149,6 @@ namespace futhark {
             if (err != 0)
                 throw Error(this->handle.ctx);
         }
-
-        std::vector<T> download() const {
-            auto* shape = this->shape();
-            int64_t total_size = 1;
-            for (size_t i = 0; i < N; ++i) {
-                total_size *= shape[i];
-            }
-
-            auto result = std::vector<T>(total_size);
-            this->values(result.data());
-            return result;
-        }
-
-        const int64_t* shape() const {
-            return ArrayTraits<T, N>::shape_fn(this->handle.ctx, this->handle.data);
-        }
     };
 
     template <>
