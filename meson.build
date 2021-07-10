@@ -52,6 +52,7 @@ lpg_sources = files(
 pareas_lpg_exe = executable(
     'pareas-lpg',
     lpg_sources,
+    build_by_default: not meson.is_subproject(),
     dependencies: fmt_dep,
     include_directories: inc,
 )
@@ -79,6 +80,7 @@ grammar = custom_target(
     'grammar',
     input: ['src/compiler/lexer/pareas.lex', 'src/compiler/parser/pareas.g'],
     output: ['pareas_grammar.hpp', 'pareas_grammar.cpp', 'pareas_grammar.fut', 'pareas_grammar.S', 'pareas_grammar.dat'],
+    build_by_default: false,
     command: [
         pareas_lpg_exe,
         '--lexer', '@INPUT0@',
@@ -156,7 +158,7 @@ pareas_exe = executable(
     'pareas',
     [grammar_hpp, grammar_cpp, grammar_asm, sources, futhark_generated],
     install: true,
-    build_by_default: true,
+    build_by_default: not meson.is_subproject(),
     dependencies: dependencies,
     include_directories: inc,
 )
