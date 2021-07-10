@@ -29,23 +29,28 @@ entry make_symtab [m] (data_types: [m]u8) (offsets: [m]u32) : Symtab[m] =
         variables = map2 make_variable data_types offsets
     }
 
-entry make_tree [n] (max_depth: i32) (node_types: [n]u8) (data_types: [n]u8) (parents: [n]i32)
+--Stage 1, preprocessor
+entry stage_preprocess [n] (max_depth: i32) (node_types: [n]u8) (data_types: [n]u8) (parents: [n]i32)
                     (depth: [n]i32) (child_idx: [n]i32) (node_data: [n]u32): Tree[n] =
     {
         nodes = zip5 data_types parents depth child_idx node_data |> map2 make_node node_types,
         max_depth = max_depth
-    } |> preprocess_tree
+    }
+    |> preprocess_tree
 
-entry make_instr_counts [n] (tree: Tree[n]) =
+--Stage 2: instruction counting
+entry stage_instr_count [n] (tree: Tree[n]) =
     instr_count tree
 
+--Stage 2.2: function table creation
 entry make_function_table [n] (tree: Tree[n]) (instr_offset: [n]u32) =
     get_function_table tree instr_offset
 
 let split_instr (instr: Instr) =
     (instr.instr, instr.rd, instr.rs1, instr.rs2, instr.jt)
 
-entry main [n] [m] [k] (tree: Tree[n]) (symtab: Symtab[m]) (instr_offset: [n]u32) (func_start: [k]u32) (func_size: [k]u32) =
+--Stage 3: instruction gen
+entry stage_instr_gen [n] [m] [k] (tree: Tree[n]) (symtab: Symtab[m]) (instr_offset: [n]u32) (func_start: [k]u32) (func_size: [k]u32) =
     let max_instrs = if n == 0 then 0 else i64.u32 instr_offset[n-1]
     let instr_offset_i64 = map i64.u32 instr_offset
     let func_ends = iota k |> map (\i -> func_start[i] + func_size[i])
@@ -68,6 +73,9 @@ let make_functab (id: u32) (start: u32) (size: u32) =
         size = size
     }
 
+let split_functab (func_info: FuncInfo) =
+    (func_info.id, func_info.start, func_info.size)
+
 let fix_func_tab [n] (instr_offsets: [n]i32) (func_info: FuncInfo) =
     let func_start = u32.i32 instr_offsets[i64.u32 func_info.start]
     let func_end_loc = i64.u32 (func_info.start + func_info.size)
@@ -80,14 +88,36 @@ let fix_func_tab [n] (instr_offsets: [n]i32) (func_info: FuncInfo) =
         size = func_size
     }
 
-entry do_register_alloc [n] [m] (instrs: [n]u32) (rd: [n]i64) (rs1: [n]i64) (rs2: [n]i64) (jt: [n]u32) (func_id: [m]u32) (func_start: [m]u32) (func_size: [m]u32) (func_symbols: [m]u32) =
+entry stage_optimize [n] [m] (instrs: [n]u32) (rd: [n]i64) (rs1: [n]i64) (rs2: [n]i64) (jt: [n]u32) (func_id: [m]u32) (func_start: [m]u32) (func_size: [m]u32) =
     let instr_data = map5 make_instr instrs rd rs1 rs2 jt
     let func_tab = map3 make_functab func_id func_start func_size
     let (instrs, functab, optimize_away) = optimize instr_data func_tab
-    let (instr_offset, lifetime_mask, registers, overflows, swapped, instrs) = (instrs, functab, optimize_away, func_symbols) |> register_alloc
-    let func_tab = map (fix_func_tab instr_offset) func_tab
-    let new_instrs = fill_stack_frames func_tab func_symbols overflows instrs lifetime_mask |> finalize_instr
-    --let new_instrs = instrs
+
+    let (res_instr, res_rd, res_rs1, res_rs2, res_jt) = instrs |> map split_instr |> unzip5
+    let (res_id, res_start, res_size) = functab |> map split_functab |> unzip3
     in
-    (instr_offset, lifetime_mask, registers, optimize_away, new_instrs |> map (\i -> i.instr), swapped,
-        new_instrs |> map (.rd), new_instrs |> map (.rs1), new_instrs |> map (.rs2), new_instrs |> map (.jt))
+    (res_instr, res_rd, res_rs1, res_rs2, res_jt, res_id, res_start, res_size, optimize_away)
+
+
+entry stage_regalloc [n] [m] (instrs: [n]u32) (rd: [n]i64) (rs1: [n]i64) (rs2: [n]i64) (jt: [n]u32) (func_id: [m]u32) (func_start: [m]u32) (func_size: [m]u32) (func_symbols: [m]u32) (optimize_away: [n]bool) =
+    let instrs = map5 make_instr instrs rd rs1 rs2 jt
+    let func_tab = map3 make_functab func_id func_start func_size
+
+    let (instr_offset, lifetime_mask, registers, overflows, swapped, instrs) = (instrs, func_tab, optimize_away, func_symbols) |> register_alloc
+    let func_tab = map (fix_func_tab instr_offset) func_tab
+    let new_instrs = fill_stack_frames func_tab func_symbols overflows instrs lifetime_mask
+    
+    let (res_instr, res_rd, res_rs1, res_rs2, res_jt) = new_instrs |> map split_instr |> unzip5
+    let (res_id, res_start, res_size) = func_tab |> map split_functab |> unzip3
+    in
+    (res_instr, res_rd, res_rs1, res_rs2, res_jt, res_id, res_start, res_size)
+
+entry stage_postprocess [n] (instrs: [n]u32) (rd: [n]i64) (rs1: [n]i64) (rs2: [n]i64) (jt: [n]u32) =
+    let instrs = map5 make_instr instrs rd rs1 rs2 jt
+
+    let result = instrs |> finalize_instr
+    let (res_instrs, _, _, _, _) = result |> map split_instr |> unzip5
+
+    in
+
+    res_instrs
