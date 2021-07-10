@@ -85,7 +85,7 @@ grammar = custom_target(
         pareas_lpg_exe,
         '--lexer', '@INPUT0@',
         '--parser', '@INPUT1@',
-        '-o', 'pareas_grammar',
+        '-o', '@OUTDIR@/pareas_grammar',
         '--namespace', 'grammar',
     ],
 )
@@ -124,7 +124,7 @@ futhark_compile_command = [
     find_program('src/tools/compile_futhark.py'),
     '--futhark', find_program('futhark'),
     '--futhark-backend', futhark_backend,
-    '--output', 'futhark_generated',
+    '--output', '@OUTDIR@/futhark_generated',
     '--dir', '@PRIVATE_DIR@',
     '--main', 'src/compiler/frontend.fut',
 ]
