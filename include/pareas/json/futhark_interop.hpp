@@ -1,9 +1,7 @@
-#ifndef _PAREAS_JSON_FUTHARK_INTEROP_HPP
-#define _PAREAS_JSON_FUTHARK_INTEROP_HPP
+#ifndef _PAREAS_COMPILER_FUTHARK_INTEROP_HPP
+#define _PAREAS_COMPILER_FUTHARK_INTEROP_HPP
 
-// This file is just copied for now.
-
-#include "json_futhark_generated.h"
+#include "futhark_generated.h"
 
 #include <memory>
 #include <string>
@@ -40,9 +38,6 @@ namespace futhark {
     }
 
     struct Error: std::runtime_error {
-        Error(Context& ctx):
-            std::runtime_error(get_error_str(ctx.get())) {}
-
         Error(futhark_context* ctx):
             std::runtime_error(get_error_str(ctx)) {}
     };
@@ -52,21 +47,22 @@ namespace futhark {
         futhark_context* ctx;
         Array* data;
 
-        UniqueOpaqueArray(Context& ctx, Array* data):
-            ctx(ctx.get()), data(data) {
+        UniqueOpaqueArray(futhark_context* ctx, Array* data):
+            ctx(ctx), data(data) {
         }
 
-        explicit UniqueOpaqueArray(Context& ctx):
-            ctx(ctx.get()), data(nullptr) {
+        explicit UniqueOpaqueArray(futhark_context* ctx):
+            ctx(ctx), data(nullptr) {
         }
 
         UniqueOpaqueArray(UniqueOpaqueArray&& other):
-            ctx(std::exchange(other.ctx, nullptr)), data(std::exchange(other.data, nullptr)) {
+            ctx(other.ctx), data(std::exchange(other.data, nullptr)) {
         }
 
         UniqueOpaqueArray& operator=(UniqueOpaqueArray&& other) {
             std::swap(this->data, other.data);
             std::swap(this->ctx, other.ctx);
+            return *this;
         }
 
         UniqueOpaqueArray(const UniqueOpaqueArray&) = delete;
@@ -89,11 +85,20 @@ namespace futhark {
         Array** operator&() {
             return &this->data;
         }
+
+        operator Array*() {
+            return this->data;
+        }
+
+        operator const Array*() const {
+            return this->data;
+        }
     };
 
     using UniqueLexTable = UniqueOpaqueArray<futhark_opaque_lex_table, futhark_free_opaque_lex_table>;
     using UniqueParseTable = UniqueOpaqueArray<futhark_opaque_parse_table, futhark_free_opaque_parse_table>;
     using UniqueStackChangeTable = UniqueOpaqueArray<futhark_opaque_stack_change_table, futhark_free_opaque_stack_change_table>;
+    using UniqueTokenArray = UniqueOpaqueArray<futhark_opaque_arr_token_1d, futhark_free_opaque_arr_token_1d>;
 
     template <typename T, size_t N>
     struct ArrayTraits;
@@ -104,17 +109,17 @@ namespace futhark {
 
         UniqueOpaqueArray<Array, ArrayTraits<T, N>::free_fn> handle;
 
-        UniqueArray(Context& ctx, Array* data):
+        UniqueArray(futhark_context* ctx, Array* data):
             handle(ctx, data) {
         }
 
-        explicit UniqueArray(Context& ctx):
+        explicit UniqueArray(futhark_context* ctx):
             handle(ctx, nullptr) {
         }
 
         template <typename... Sizes>
-        UniqueArray(Context& ctx, const T* data, Sizes... dims):
-            handle(ctx, ArrayTraits<T, N>::new_fn(ctx.get(), data, dims...)) {
+        UniqueArray(futhark_context* ctx, const T* data, Sizes... dims):
+            handle(ctx, ArrayTraits<T, N>::new_fn(ctx, data, dims...)) {
             if (!this->handle.data)
                 throw Error(this->handle.ctx);
         }
@@ -129,6 +134,20 @@ namespace futhark {
 
         Array** operator&() {
             return &this->handle;
+        }
+
+        operator Array*() {
+            return this->handle;
+        }
+
+        operator const Array*() const {
+            return this->handle;
+        }
+
+        void values(T* out) const {
+            int err = ArrayTraits<T, N>::values_fn(this->handle.ctx, this->handle.data, out);
+            if (err != 0)
+                throw Error(this->handle.ctx);
         }
 
         const int64_t* shape() const {

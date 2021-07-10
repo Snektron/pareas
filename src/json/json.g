@@ -5,7 +5,7 @@ value [number] -> 'number';
 value [true] -> 'true';
 value [false] -> 'false';
 value [nul] -> 'nul';
-value [obj] -> 'lbrace' maybe_values 'rbrace';
+value [object] -> 'lbrace' maybe_values 'rbrace';
 value [array] -> 'lbracket' maybe_values 'rbracket';
 
 maybe_values [values] -> value value_list;

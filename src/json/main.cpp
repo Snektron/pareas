@@ -8,6 +8,8 @@
 #include <fmt/ostream.h>
 #include <fmt/chrono.h>
 
+#include <memory>
+#include <stdexcept>
 #include <iostream>
 #include <fstream>
 #include <charconv>
@@ -20,6 +22,7 @@ struct Options {
     bool help;
     bool futhark_verbose;
     bool futhark_debug;
+    bool dump_dot;
 
     // Options available for the multicore backend
     int threads;
@@ -36,6 +39,7 @@ void print_usage(char* progname) {
         "-h --help                   Show this message and exit.\n"
         "--futhark-verbose           Enable Futhark logging.\n"
         "--futhark-debug             Enable Futhark debug logging.\n"
+        "--dump-dot                  Dump JSON tree as dot graph. Disables profiling.\n"
     #if defined(FUTHARK_BACKEND_multicore)
         "Available backend options:\n"
         "-t --threads <amount>       Set the maximum number of threads that may be used\n"
@@ -60,6 +64,7 @@ bool parse_options(Options* opts, int argc, char* argv[]) {
         .help = false,
         .futhark_verbose = false,
         .futhark_debug = false,
+        .dump_dot = false,
         .threads = 0,
         .device_name = nullptr,
         .futhark_profile = false,
@@ -97,10 +102,12 @@ bool parse_options(Options* opts, int argc, char* argv[]) {
 
         if (arg == "-h" || arg == "--help") {
             opts->help = true;
-        } else if (arg == "-v" || arg == "--verbose") {
+        } else if (arg == "--futhark-verbose") {
             opts->futhark_verbose = true;
         } else if (arg == "--futhark-debug") {
             opts->futhark_debug = true;
+        } else if (arg == "--dump-dot") {
+            opts->dump_dot = true;
         } else if (!opts->input_path) {
             opts->input_path = argv[i];
         } else {
@@ -142,7 +149,7 @@ struct Free {
 template <typename T>
 using MallocPtr = std::unique_ptr<T, Free<T>>;
 
-futhark::UniqueLexTable upload_lex_table(futhark::Context& ctx) {
+futhark::UniqueLexTable upload_lex_table(futhark_context* ctx) {
     auto initial_state = futhark::UniqueArray<uint16_t, 1>(
         ctx,
         reinterpret_cast<const json::LexTable::State*>(json::lex_table.initial_states),
@@ -165,7 +172,7 @@ futhark::UniqueLexTable upload_lex_table(futhark::Context& ctx) {
     auto lex_table = futhark::UniqueLexTable(ctx);
 
     int err = futhark_entry_mk_lex_table(
-        ctx.get(),
+        ctx,
         &lex_table,
         initial_state.get(),
         merge_table.get(),
@@ -179,7 +186,7 @@ futhark::UniqueLexTable upload_lex_table(futhark::Context& ctx) {
 }
 
 template <typename T, typename U, typename F>
-T upload_strtab(futhark::Context& ctx, const json::StrTab<U>& strtab, F upload_fn) {
+T upload_strtab(futhark_context* ctx, const json::StrTab<U>& strtab, F upload_fn) {
     static_assert(sizeof(U) == sizeof(uint8_t));
 
     auto table = futhark::UniqueArray<uint8_t, 1>(
@@ -193,11 +200,132 @@ T upload_strtab(futhark::Context& ctx, const json::StrTab<U>& strtab, F upload_f
 
     auto tab = T(ctx);
 
-    int err = upload_fn(ctx.get(), &tab, table.get(), offsets.get(), lengths.get());
+    int err = upload_fn(ctx, &tab, table.get(), offsets.get(), lengths.get());
     if (err != 0)
         throw futhark::Error(ctx);
 
     return tab;
+}
+
+struct JsonTree {
+    size_t num_nodes;
+    std::unique_ptr<json::Production[]> node_types;
+    std::unique_ptr<int32_t[]> parents;
+};
+
+void dump_dot(const JsonTree& j, std::ostream& os) {
+    fmt::print(os, "digraph json {{\n");
+
+    for (size_t i = 0; i < j.num_nodes; ++i) {
+        auto prod = j.node_types[i];
+        auto parent = j.parents[i];
+        auto* name = json::production_name(prod);
+
+        if (parent == i)
+            continue;
+
+        fmt::print(os, "node{} [label=\"{}\nindex={}\"]\n", i, name, i);
+
+        if (parent >= 0) {
+            fmt::print(os, "node{} -> node{};\n", parent, i);
+        } else {
+            fmt::print(os, "start{0} [style=invis];\nstart{0} -> node{0};\n", i);
+        }
+    }
+
+    fmt::print(os, "}}\n");
+}
+
+JsonTree parse(futhark_context* ctx, const std::string& input, pareas::Profiler& p) {
+    p.begin();
+    p.begin();
+    auto lex_table = upload_lex_table(ctx);
+
+    auto sct = upload_strtab<futhark::UniqueStackChangeTable>(
+        ctx,
+        json::stack_change_table,
+        futhark_entry_mk_stack_change_table
+    );
+
+    auto pt = upload_strtab<futhark::UniqueParseTable>(
+        ctx,
+        json::parse_table,
+        futhark_entry_mk_parse_table
+    );
+
+    auto arity_array = futhark::UniqueArray<int32_t, 1>(ctx, json::arities, json::NUM_PRODUCTIONS);
+    p.end("table");
+
+    p.begin();
+    auto input_array = futhark::UniqueArray<uint8_t, 1>(ctx, reinterpret_cast<const uint8_t*>(input.data()), input.size());
+    p.end("input");
+    p.end("upload");
+
+    p.begin();
+
+    auto tokens = futhark::UniqueArray<uint8_t, 1>(ctx);
+    p.measure("tokenize", [&]{
+        int err = futhark_entry_json_lex(ctx, &tokens, input_array, lex_table);
+        if (err)
+            throw futhark::Error(ctx);
+    });
+
+    auto node_types = futhark::UniqueArray<uint8_t, 1>(ctx);
+    p.measure("parse", [&]{
+        bool valid = false;
+        int err = futhark_entry_json_parse(ctx, &valid, &node_types, tokens, sct, pt);
+        if (err)
+            throw futhark::Error(ctx);
+        if (!valid)
+            throw std::runtime_error("Parse error");
+    });
+
+    auto parents = futhark::UniqueArray<int32_t, 1>(ctx);
+    p.measure("build parse tree", [&]{
+        int err = futhark_entry_json_build_parse_tree(ctx, &parents, node_types, arity_array);
+        if (err)
+            throw futhark::Error(ctx);
+    });
+
+    p.measure("restructure", [&]{
+        auto old_node_types = std::move(node_types);
+        auto old_parents = std::move(parents);
+        int err = futhark_entry_json_restructure(ctx, &node_types, &parents, old_node_types, old_parents);
+        if (err)
+            throw futhark::Error(ctx);
+    });
+
+    p.measure("validate", [&]{
+        bool valid;
+        int err = futhark_entry_json_validate(ctx, &valid, node_types, parents);
+        if (err)
+            throw futhark::Error(ctx);
+        if (!valid)
+            throw std::runtime_error("Invalid structure");
+    });
+
+    p.end("json");
+
+    size_t num_nodes = node_types.shape()[0];
+
+    auto ast = JsonTree {
+        .num_nodes = num_nodes,
+        .node_types = std::make_unique<json::Production[]>(num_nodes),
+        .parents = std::make_unique<int32_t[]>(num_nodes),
+    };
+
+    int err = futhark_values_u8_1d(
+        ctx,
+        node_types,
+        reinterpret_cast<std::underlying_type_t<json::Production>*>(ast.node_types.get())
+    );
+
+    err |= futhark_values_i32_1d(ctx, parents, ast.parents.get());
+
+    if (err)
+        throw futhark::Error(ctx);
+
+    return ast;
 }
 
 int main(int argc, char* argv[]) {
@@ -244,53 +372,25 @@ int main(int argc, char* argv[]) {
     });
     p.end("context init");
 
-    p.begin();
-    auto lex_table = upload_lex_table(ctx);
+    try {
+        auto ast = parse(ctx.get(), input, p);
 
-    auto sct = upload_strtab<futhark::UniqueStackChangeTable>(
-        ctx,
-        json::stack_change_table,
-        futhark_entry_mk_stack_change_table
-    );
+        if (opts.dump_dot)
+            dump_dot(ast, std::cout);
+        else
+            p.dump(std::cout);
 
-    auto pt = upload_strtab<futhark::UniqueParseTable>(
-        ctx,
-        json::parse_table,
-        futhark_entry_mk_parse_table
-    );
-
-    auto arity_array = futhark::UniqueArray<int32_t, 1>(ctx, json::arities, json::NUM_PRODUCTIONS);
-    p.end("table upload");
-
-    p.begin();
-    auto input_array = futhark::UniqueArray<uint8_t, 1>(ctx, reinterpret_cast<const uint8_t*>(input.data()), input.size());
-    p.end("input upload");
-
-    if (futhark_context_sync(ctx.get()) != 0)
-        throw futhark::Error(ctx);
-
-    p.begin();
-    bool result;
-    int err = futhark_entry_main(
-        ctx.get(),
-        &result,
-        input_array.get(),
-        lex_table.get(),
-        sct.get(),
-        pt.get(),
-        arity_array.get()
-    );
-    p.end("parse");
-
-    p.dump(std::cout);
-
-    if (err != 0)
-        throw futhark::Error(ctx);
-
-    if (opts.futhark_profile) {
-        auto report = MallocPtr<char>(futhark_context_report(ctx.get()));
-        fmt::print("Profile report:\n{}", report);
+        if (opts.futhark_profile) {
+            auto report = MallocPtr<char>(futhark_context_report(ctx.get()));
+            fmt::print(std::cerr, "Profile report:\n{}", report);
+        }
+    } catch (const std::runtime_error& err) {
+        fmt::print(std::cerr, "Error: {}\n", err.what());
+        return EXIT_FAILURE;
+    } catch (const futhark::Error& err) {
+        fmt::print(std::cerr, "Futhark error: {}\n", err.what());
+        return EXIT_FAILURE;
     }
 
-    return result ? EXIT_SUCCESS : EXIT_FAILURE;
+    return EXIT_SUCCESS;
 }
