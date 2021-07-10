@@ -8,75 +8,16 @@ import "preprocess"
 import "optimizer"
 import "postprocess"
 
-let make_node_type (node_type: u8) : NodeType =
-    match node_type
-    case 0 -> #invalid
-    case 1 -> #statement_list
-    case 2 -> #empty_stat
-    case 3 -> #func_decl
-    case 4 -> #func_arg
-    case 5 -> #func_arg_list
-    case 6 -> #expr_stat
-    case 7 -> #if_stat
-    case 8 -> #if_else_stat
-    case 9 -> #while_stat
-    case 10 -> #func_call_expr
-    case 11 -> #func_call_arg
-    case 12 -> #func_call_arg_list
-    case 13 -> #add_expr
-    case 14 -> #sub_expr
-    case 15 -> #mul_expr
-    case 16 -> #div_expr
-    case 17 -> #mod_expr
-    case 18 -> #bitand_expr
-    case 19 -> #bitor_expr
-    case 20 -> #bitxor_expr
-    case 21 -> #lshift_expr
-    case 22 -> #rshift_expr
-    case 23 -> #urshift_expr
-    case 24 -> #land_expr
-    case 25 -> #lor_expr
-    case 26 -> #eq_expr
-    case 27 -> #neq_expr
-    case 28 -> #less_expr
-    case 29 -> #great_expr
-    case 30 -> #lesseq_expr
-    case 31 -> #greateq_expr
-    case 32 -> #bitnot_expr
-    case 33 -> #lnot_expr
-    case 34 -> #neg_expr
-    case 35 -> #lit_expr
-    case 36 -> #cast_expr
-    case 37 -> #deref_expr
-    case 38 -> #assign_expr
-    case 39 -> #decl_expr
-    case 40 -> #id_expr
-    case 41 -> #while_dummy
-    case 42 -> #func_decl_dummy
-    case 43 -> #return_stat
-    case _ -> #invalid
-
-let make_data_type (data_type: u8) : DataType =
-    match data_type
-    case 0 -> #invalid
-    case 1 -> #void
-    case 2 -> #int
-    case 3 -> #float
-    case 4 -> #int_ref
-    case 5 -> #float_ref
-    case _ -> #invalid
-
-
 let make_variable (data_type: u8) (offset: u32) : Variable =
     {
-        decl_type = make_data_type data_type,
+        decl_type = i32.u8 data_type,
         offset = offset
     }
 
 let make_node (node_type: u8) (data_type: u8, parent: i32, depth: i32, child_idx: i32, node_data: u32) : Node =
     {
-        node_type = make_node_type node_type,
-        resulting_type = make_data_type data_type,
+        node_type = i32.u8 node_type,
+        resulting_type = i32.u8 data_type,
         parent = parent,
         depth = depth,
         child_idx = child_idx,

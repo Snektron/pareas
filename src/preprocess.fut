@@ -2,8 +2,8 @@ import "tree"
 import "datatypes"
 
 let INVALID_NODE : Node = {
-    node_type = #invalid,
-    resulting_type = #invalid,
+    node_type = node_type_invalid,
+    resulting_type = datatype_invalid,
     parent = 0,
     depth = 0,
     child_idx = 0,
@@ -11,14 +11,7 @@ let INVALID_NODE : Node = {
 }
 
 let is_compare_node (t: NodeType) =
-    match t
-        case #eq_expr -> true
-        case #neq_expr -> true
-        case #less_expr -> true
-        case #great_expr -> true
-        case #lesseq_expr -> true
-        case #greateq_expr -> true
-        case _ -> false
+    t >= node_type_eq_expr && t <= node_type_greateq_expr
 
 let copy_node_with_nodetype (n: Node) (t: NodeType) (d: u32) = 
     {
@@ -55,8 +48,8 @@ let replace_float_compare_types [n] (tree: Tree[n]) =
     map (\i ->
         if i.parent == INVALID_NODE_IDX then
             (-1i64, INVALID_NODE)
-        else if is_compare_node tree.nodes[i.parent].node_type && i.resulting_type == #float then
-            (i64.i32 i.parent, copy_node_with_type tree.nodes[i.parent] #float_ref)
+        else if is_compare_node tree.nodes[i.parent].node_type && i.resulting_type == datatype_float then
+            (i64.i32 i.parent, copy_node_with_type tree.nodes[i.parent] datatype_float_ref)
         else
             (-1i64, INVALID_NODE)
     ) |>
@@ -74,7 +67,7 @@ let replace_float_compare_types [n] (tree: Tree[n]) =
 -- Else stack
 
 let calling_convention_node_replace_sub (n: Node) (def: NodeType) (fltint: NodeType) (stack: NodeType) =
-    if n.resulting_type == #float_ref || n.resulting_type == #float then
+    if n.resulting_type == datatype_float_ref || n.resulting_type == datatype_float then
         if n.node_data < 8 then
             n
         else
@@ -97,10 +90,10 @@ let calling_convention_node_replace_sub (n: Node) (def: NodeType) (fltint: NodeT
             copy_node_with_nodetype n stack (u32.i32 (reg_offset - 8))
 
 let calling_convention_node_replace (n: Node) =
-    if n.node_type == #func_call_arg then
-        calling_convention_node_replace_sub n #func_call_arg #func_call_arg_float_in_int #func_call_arg_stack
-    else if n.node_type == #func_arg then
-        calling_convention_node_replace_sub n #func_arg #func_arg_float_in_int #func_arg_stack
+    if n.node_type == node_type_func_call_arg then
+        calling_convention_node_replace_sub n node_type_func_call_arg node_type_func_call_arg_float_in_int node_type_func_call_arg_stack
+    else if n.node_type == node_type_func_arg then
+        calling_convention_node_replace_sub n node_type_func_arg node_type_func_arg_float_in_int node_type_func_arg_stack
     else
         n
 
@@ -114,10 +107,10 @@ let replace_arg_lists [n] (tree: Tree[n]) =
     {
         nodes = iota n |> map (\i ->
                 let node = tree.nodes[i] in
-                if i > 0 && node.node_type == #func_call_arg_list then
+                if i > 0 && node.node_type == node_type_func_call_arg_list then
                     let prev_node = tree.nodes[i-1]
-                    let num_stack_args = (if prev_node.node_type == #func_call_arg then
-                        if prev_node.resulting_type == #float then
+                    let num_stack_args = (if prev_node.node_type == node_type_func_call_arg then
+                        if prev_node.resulting_type == datatype_float then
                             let total_args = prev_node.child_idx
                             let float_args = i32.u32 prev_node.node_data
                             let int_args = total_args - float_args
@@ -125,7 +118,7 @@ let replace_arg_lists [n] (tree: Tree[n]) =
                             u32.i32 (i32.max (int_args-8) 0)
                         else
                             0
-                    else if prev_node.node_type == #func_call_arg_stack then
+                    else if prev_node.node_type == node_type_func_call_arg_stack then
                         prev_node.node_data + 1
                     else
                         0
