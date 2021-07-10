@@ -18,7 +18,7 @@ inc = include_directories('include')
 
 fmt_dep = subproject('fmt').get_variable('fmt_dep')
 
-lpg_sources = [
+lpg_sources = files(
     'src/lpg/cli_util.cpp',
     'src/lpg/error_reporter.cpp',
     'src/lpg/main.cpp',
@@ -47,17 +47,24 @@ lpg_sources = [
     'src/lpg/parser/llp/psls_table.cpp',
     'src/lpg/parser/llp/render.cpp',
     'src/lpg/parser/llp/test_parser.cpp',
-]
+)
 
-pareas_lpg = executable(
+pareas_lpg_exe = executable(
     'pareas-lpg',
     lpg_sources,
     dependencies: fmt_dep,
     include_directories: inc,
 )
 
+# Profiling library
+pareas_prof_dep = declare_dependency(
+    include_directories: inc,
+    sources: files('src/profiler/profiler.cpp'),
+    dependencies: fmt_dep,
+)
+
 # Compiler
-dependencies = [fmt_dep, dependency('threads')]
+dependencies = [pareas_prof_dep, fmt_dep, dependency('threads')]
 
 # Build futhark library
 futhark_backend = get_option('futhark-backend')
@@ -73,7 +80,7 @@ grammar = custom_target(
     input: ['src/compiler/lexer/pareas.lex', 'src/compiler/parser/pareas.g'],
     output: ['pareas_grammar.hpp', 'pareas_grammar.cpp', 'pareas_grammar.fut', 'pareas_grammar.S', 'pareas_grammar.dat'],
     command: [
-        pareas_lpg,
+        pareas_lpg_exe,
         '--lexer', '@INPUT0@',
         '--parser', '@INPUT1@',
         '-o', 'pareas_grammar',
@@ -85,7 +92,7 @@ grammar_cpp = grammar[1]
 grammar_fut = grammar[2]
 grammar_asm = grammar[3]
 
-futhark_sources = [
+futhark_sources = files(
     'lib/github.com/diku-dk/sorts/radix_sort.fut',
     'lib/github.com/diku-dk/segmented/segmented.fut',
     'src/compiler/string.fut',
@@ -109,7 +116,7 @@ futhark_sources = [
     'src/compiler/passes/type_resolution.fut',
     'src/compiler/passes/check_return_paths.fut',
     'src/compiler/passes/ids.fut',
-]
+)
 
 futhark_compile_command = [
     find_program('src/tools/compile_futhark.py'),
@@ -139,14 +146,13 @@ futhark_generated = custom_target(
 
 # Final executable
 
-sources = [
+sources = files(
     'src/compiler/main.cpp',
     'src/compiler/frontend.cpp',
     'src/compiler/ast.cpp',
-    'src/compiler/profiler.cpp',
-]
+)
 
-executable(
+pareas_exe = executable(
     'pareas',
     [grammar_hpp, grammar_cpp, grammar_asm, sources, futhark_generated],
     install: true,

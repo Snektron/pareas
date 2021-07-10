@@ -4,7 +4,7 @@
 #include "pareas/compiler/futhark_interop.hpp"
 #include "pareas/compiler/ast.hpp"
 #include "pareas/compiler/frontend.hpp"
-#include "pareas/compiler/profiler.hpp"
+#include "pareas/profiler/profiler.hpp"
 
 #include <fmt/format.h>
 #include <fmt/ostream.h>
@@ -199,7 +199,7 @@ int main(int argc, char* argv[]) {
         return EXIT_SUCCESS;
     }
 
-    auto p = Profiler(opts.profile);
+    auto p = pareas::Profiler(opts.profile);
 
     auto in = std::ifstream(opts.input_path, std::ios::binary);
     if (!in) {
@@ -226,12 +226,16 @@ int main(int argc, char* argv[]) {
     #endif
 
     auto ctx = futhark::Context(futhark_context_new(config.get()));
-    p.end("context init", ctx.get());
+    p.set_sync_callback([ctx = ctx.get()]{
+        if (futhark_context_sync(ctx))
+            throw futhark::Error(ctx);
+    });
+    p.end("context init");
 
     try {
-        p.begin(ctx.get());
+        p.begin();
         auto ast = frontend::compile(ctx.get(), input, p);
-        p.end("frontend", ctx.get());
+        p.end("frontend");
 
         if (opts.profile > 0)
             p.dump(std::cout);

@@ -84,9 +84,9 @@ namespace frontend {
         }
     }
 
-    DeviceAst compile(futhark_context* ctx, const std::string& input, Profiler& p) {
-        p.begin(ctx);
-        p.begin(ctx);
+    DeviceAst compile(futhark_context* ctx, const std::string& input, pareas::Profiler& p) {
+        p.begin();
+        p.begin();
         auto lex_table = upload_lex_table(ctx);
         auto sct = upload_strtab<futhark::UniqueStackChangeTable>(
             ctx,
@@ -101,24 +101,24 @@ namespace frontend {
         );
 
         auto arity_array = futhark::UniqueArray<int32_t, 1>(ctx, grammar::arities, grammar::NUM_PRODUCTIONS);
-        p.end("table", ctx);
-        p.begin(ctx);
+        p.end("table");
+        p.begin();
 
         auto input_array = futhark::UniqueArray<uint8_t, 1>(ctx, reinterpret_cast<const uint8_t*>(input.data()), input.size());
-        p.end("input", ctx);
-        p.end("upload", ctx);
+        p.end("input");
+        p.end("upload");
 
-        p.begin(ctx);
+        p.begin();
 
         auto tokens = futhark::UniqueTokenArray(ctx);
-        p.measure("tokenize", ctx, [&]{
+        p.measure("tokenize", [&]{
             int err = futhark_entry_frontend_tokenize(ctx, &tokens, input_array, lex_table);
             if (err)
                 throw futhark::Error(ctx);
         });
 
         auto node_types = futhark::UniqueArray<uint8_t, 1>(ctx);
-        p.measure("parse", ctx, [&]{
+        p.measure("parse", [&]{
             bool valid = false;
             int err = futhark_entry_frontend_parse(ctx, &valid, &node_types, tokens, sct, pt);
             if (err)
@@ -128,14 +128,14 @@ namespace frontend {
         });
 
         auto parents = futhark::UniqueArray<int32_t, 1>(ctx);
-        p.measure("build parse tree", ctx, [&]{
+        p.measure("build parse tree", [&]{
             int err = futhark_entry_frontend_build_parse_tree(ctx, &parents, node_types, arity_array);
             if (err)
                 throw futhark::Error(ctx);
         });
 
-        p.begin(ctx);
-        p.measure("fix bin ops", ctx, [&]{
+        p.begin();
+        p.measure("fix bin ops", [&]{
             auto old_node_types = std::move(node_types);
             auto old_parents = std::move(parents);
             int err = futhark_entry_frontend_fix_bin_ops(ctx, &node_types, &parents, old_node_types, old_parents);
@@ -143,7 +143,7 @@ namespace frontend {
                 throw futhark::Error(ctx);
         });
 
-        p.measure("fix conditionals", ctx, [&]{
+        p.measure("fix conditionals", [&]{
             auto old_node_types = std::move(node_types);
             auto old_parents = std::move(parents);
             bool valid;
@@ -154,7 +154,7 @@ namespace frontend {
                 throw CompileError(Error::STRAY_ELSE_ERROR);
         });
 
-        p.measure("flatten lists", ctx, [&]{
+        p.measure("flatten lists", [&]{
             auto old_node_types = std::move(node_types);
             auto old_parents = std::move(parents);
             int err = futhark_entry_frontend_flatten_lists(ctx, &node_types, &parents, old_node_types, old_parents);
@@ -162,7 +162,7 @@ namespace frontend {
                 throw futhark::Error(ctx);
         });
 
-        p.measure("fix names", ctx, [&]{
+        p.measure("fix names", [&]{
             auto old_node_types = std::move(node_types);
             auto old_parents = std::move(parents);
             bool valid;
@@ -173,14 +173,14 @@ namespace frontend {
                 throw CompileError(Error::INVALID_DECL);
         });
 
-        p.measure("fix ascriptions", ctx, [&]{
+        p.measure("fix ascriptions", [&]{
             auto old_parents = std::move(parents);
             int err = futhark_entry_frontend_fix_ascriptions(ctx, &parents, node_types, old_parents);
             if (err)
                 throw futhark::Error(ctx);
         });
 
-        p.measure("fix fn decls", ctx, [&]{
+        p.measure("fix fn decls", [&]{
             auto old_parents = std::move(parents);
             bool valid;
             int err = futhark_entry_frontend_fix_fn_decls(ctx, &valid, &parents, node_types, old_parents);
@@ -190,14 +190,14 @@ namespace frontend {
                 throw CompileError(Error::INVALID_FN_PROTO);
         });
 
-        p.measure("fix args and params", ctx, [&]{
+        p.measure("fix args and params", [&]{
             auto old_node_types = std::move(node_types);
             int err = futhark_entry_frontend_fix_args_and_params(ctx, &node_types, old_node_types, parents);
             if (err)
                 throw futhark::Error(ctx);
         });
 
-        p.measure("fix decls", ctx, [&]{
+        p.measure("fix decls", [&]{
             auto old_node_types = std::move(node_types);
             auto old_parents = std::move(parents);
             bool valid;
@@ -208,7 +208,7 @@ namespace frontend {
                 throw CompileError(Error::INVALID_DECL);
         });
 
-        p.measure("remove marker nodes", ctx, [&]{
+        p.measure("remove marker nodes", [&]{
             auto old_parents = std::move(parents);
             int err = futhark_entry_frontend_remove_marker_nodes(ctx, &parents, node_types, old_parents);
             if (err)
@@ -216,7 +216,7 @@ namespace frontend {
         });
 
         auto prev_siblings = futhark::UniqueArray<int32_t, 1>(ctx);
-        p.measure("compute prev siblings", ctx, [&]{
+        p.measure("compute prev siblings", [&]{
             auto old_node_types = std::move(node_types);
             auto old_parents = std::move(parents);
             int err = futhark_entry_frontend_compute_prev_sibling(ctx, &node_types, &parents, &prev_siblings, old_node_types, old_parents);
@@ -224,7 +224,7 @@ namespace frontend {
                 throw futhark::Error(ctx);
         });
 
-        p.measure("check assignments", ctx, [&]{
+        p.measure("check assignments", [&]{
             bool valid;
             int err = futhark_entry_frontend_check_assignments(ctx, &valid, node_types, parents, prev_siblings);
             if (err)
@@ -234,8 +234,8 @@ namespace frontend {
         });
         p.end("syntax");
 
-        p.begin(ctx);
-        p.measure("insert derefs", ctx, [&]{
+        p.begin();
+        p.measure("insert derefs", [&]{
             auto old_node_types = std::move(node_types);
             auto old_parents = std::move(parents);
             auto old_prev_siblings = std::move(prev_siblings);
@@ -245,14 +245,14 @@ namespace frontend {
         });
 
         auto node_data = futhark::UniqueArray<uint32_t, 1>(ctx);
-        p.measure("extract lexemes", ctx, [&]{
+        p.measure("extract lexemes", [&]{
             int err = futhark_entry_frontend_extract_lexemes(ctx, &node_data, input_array, tokens, node_types);
             if (err)
                 throw futhark::Error(ctx);
         });
 
         auto resolution = futhark::UniqueArray<int32_t, 1>(ctx);
-        p.measure("resolve vars", ctx, [&]{
+        p.measure("resolve vars", [&]{
             bool valid;
             int err = futhark_entry_frontend_resolve_vars(ctx, &valid, &resolution, node_types, parents, prev_siblings, node_data);
             if (err)
@@ -261,7 +261,7 @@ namespace frontend {
                 throw CompileError(Error::INVALID_VARIABLE);
         });
 
-        p.measure("resolve fns", ctx, [&]{
+        p.measure("resolve fns", [&]{
             auto old_resolution = std::move(resolution);
             bool valid;
             int err = futhark_entry_frontend_resolve_fns(ctx, &valid, &resolution, node_types, old_resolution, node_data);
@@ -271,7 +271,7 @@ namespace frontend {
                 throw CompileError(Error::DUPLICATE_FN_OR_INVALID_CALL);
         });
 
-        p.measure("resolve args", ctx, [&]{
+        p.measure("resolve args", [&]{
             auto old_resolution = std::move(resolution);
             bool valid;
             int err = futhark_entry_frontend_resolve_args(ctx, &valid, &resolution, node_types, parents, prev_siblings, old_resolution);
@@ -282,7 +282,7 @@ namespace frontend {
         });
 
         auto data_types = futhark::UniqueArray<uint8_t, 1>(ctx);
-        p.measure("resolve dtypes", ctx, [&]{
+        p.measure("resolve dtypes", [&]{
             bool valid;
             int err = futhark_entry_frontend_resolve_data_types(ctx, &valid, &data_types, node_types, parents, prev_siblings, resolution.get());
             if (err)
@@ -291,7 +291,7 @@ namespace frontend {
                 throw CompileError(Error::TYPE_ERROR);
         });
 
-        p.measure("check return dtypes", ctx, [&]{
+        p.measure("check return dtypes", [&]{
             bool valid;
             int err = futhark_entry_frontend_check_return_types(ctx, &valid, node_types, parents, data_types);
             if (err)
@@ -300,7 +300,7 @@ namespace frontend {
                 throw CompileError(Error::INVALID_RETURN);
         });
 
-        p.measure("check convergence", ctx, [&]{
+        p.measure("check convergence", [&]{
             bool valid;
             int err = futhark_entry_frontend_check_convergence(ctx, &valid, node_types, parents, prev_siblings, data_types);
             if (err)
@@ -310,7 +310,7 @@ namespace frontend {
         });
 
         auto ast = DeviceAst(ctx);
-        p.measure("build ast", ctx, [&]{
+        p.measure("build ast", [&]{
             // Other arrays are destructed at the end of the function.
             int err = futhark_entry_frontend_build_ast(
                 ctx,
@@ -332,8 +332,8 @@ namespace frontend {
                 throw futhark::Error(ctx);
         });
 
-        p.end("sema", ctx);
-        p.end("compile", ctx);
+        p.end("sema");
+        p.end("compile");
 
         return ast;
     }

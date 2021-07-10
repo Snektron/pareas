@@ -211,7 +211,7 @@ let squish_decl_ascripts [n] (node_types: [n]production.t) (parents: [n]i32): ([
 -- or an `atom_name`.
 -- Note: Performing this function after `remove_marker_nodes` makes `(a: int) = x` valid, but it saves a
 -- reduce_by_index and so is probably justified.
--- TODO: Maybe chcek with `insert_derefs`?
+-- TODO: Maybe check with `insert_derefs`?
 -- TODO: Also check whether declarations are _only_ LHS of assigns, and not free standing.
 let check_assignments [n] (node_types: [n]production.t) (parents: [n]i32) (prev_sibling: [n]i32): bool =
     prev_sibling
