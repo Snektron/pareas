@@ -230,8 +230,7 @@ json_futhark_generated = custom_target(
 pareas_json_exe = executable(
     'pareas-json',
     [json_grammar_hpp, json_grammar_cpp, json_grammar_asm, json_sources, json_futhark_generated],
-    install: true,
-    build_by_default: true,
+    build_by_default: not meson.is_subproject(),
     dependencies: [pareas_prof_dep, fmt_dep, futhark_deps],
     include_directories: inc,
 )
