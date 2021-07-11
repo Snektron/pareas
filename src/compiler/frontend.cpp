@@ -306,7 +306,7 @@ namespace frontend {
             if (err)
                 throw futhark::Error(ctx);
             if (!valid)
-                throw CompileError(Error::INVALID_RETURN);
+                throw CompileError(Error::MISSING_RETURN);
         });
 
         auto ast = DeviceAst(ctx);
