@@ -192,7 +192,7 @@ json_grammar = custom_target(
         pareas_lpg_exe,
         '--lexer', '@INPUT0@',
         '--parser', '@INPUT1@',
-        '-o', 'json_grammar',
+        '-o', '@OUTDIR@/json_grammar',
         '--namespace', 'json',
     ],
 )
@@ -205,7 +205,7 @@ json_futhark_compile_command = [
     futhark_wrapper,
     '--futhark', futhark,
     '--futhark-backend', futhark_backend,
-    '--output', 'json_futhark_generated',
+    '--output', '@OUTDIR@/json_futhark_generated',
     '--dir', '@PRIVATE_DIR@',
     '--main', 'src/json/main.fut',
 ]
