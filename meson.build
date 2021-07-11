@@ -13,7 +13,9 @@ add_project_arguments(
     language: ['c', 'cpp'],
 )
 
-dependencies = []
+fmt_dep = subproject('fmt').get_variable('fmt_dep')
+
+dependencies = [fmt_dep]
 
 # Futhark sources
 futhark_sources = [
@@ -57,6 +59,7 @@ sources = [
     'src/codegen/parser.cpp',
     'src/codegen/symtab.cpp',
     'src/codegen/token.cpp',
+    'src/profiler/profiler.cpp',
     'src/main.cpp'
 ]
 
@@ -97,6 +100,7 @@ test_sources = [
     'src/test/sourcefileprinter.cpp',
     'src/test/statementlistastnodetempl.cpp',
     'src/test/testmain.cpp',
+    'src/test/treeproperties.cpp',
     'src/test/unaryexprastnodetempl.cpp'
 ]
 

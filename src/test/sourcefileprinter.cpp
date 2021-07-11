@@ -5,6 +5,7 @@
 
 #include <iostream>
 #include <cstring>
+#include <iomanip>
 
 const char* OPERATORS[] = {
     "",
@@ -45,7 +46,7 @@ const char* OPERATORS[] = {
     "@",
     "",
     "=",
-    "<-",
+    ":",
     "",
     "",
     "",
@@ -191,7 +192,7 @@ void SourceFilePrinter::printIndent() {
 void SourceFilePrinter::printFuncDecl(ASTNode* node) {
     this->os << "function " << node->node_str;
     this->print(node->children[1]);
-    this->os << " <- ";
+    this->os << " : ";
     this->printDataType(node->data_type);
     this->os << " {" << std::endl;
 
@@ -275,12 +276,13 @@ void SourceFilePrinter::printBinaryExpression(ASTNode* node) {
         this->os << ")";
     this->os << OPERATORS[static_cast<size_t>(node->node_type)];
 
-    if(PRECEDENCE[static_cast<size_t>(node->node_type)] <= PRECEDENCE[static_cast<size_t>(node->children[1]->node_type)])
+    bool should_bracket = PRECEDENCE[static_cast<size_t>(node->node_type)] <= PRECEDENCE[static_cast<size_t>(node->children[1]->node_type)];
+    if(should_bracket)
         this->os << "(";
 
     this->print(node->children[1]);
 
-    if(PRECEDENCE[static_cast<size_t>(node->node_type)] <= PRECEDENCE[static_cast<size_t>(node->children[1]->node_type)])
+    if(should_bracket)
         this->os << ")";
 }
 
@@ -331,7 +333,7 @@ void SourceFilePrinter::printLiteral(ASTNode* node) {
     if(node->data_type == DataType::FLOAT) {
         float f;
         std::memcpy(&f, &node->node_data, sizeof(uint32_t));
-        os << f;
+        os << std::fixed << std::setprecision(3) << f;
     }
     else {
         os << node->node_data;

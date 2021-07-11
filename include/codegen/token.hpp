@@ -16,10 +16,14 @@ enum class TokenType {
     BITAND,
     BITOR,
     BITXOR,
+    LSHIFT,
+    RSHIFT,
+    URSHIFT,
 
     ASSIGN,
 
     NOT,
+    BITNOT,
 
     EQ,
     NEQ,
@@ -45,6 +49,7 @@ enum class TokenType {
     WHILE,
     INT,
     FLOAT,
+    VOID,
     FUNCTION,
     RETURN,
 

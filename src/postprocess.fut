@@ -110,7 +110,7 @@ let finalize_jumps [n] (instr : [n]Instr) =
     let new_instr = scatter (copy new_instr) jump_offsets jump_instr
     in
     --iota n |> map (\i -> copy_instr_with_jt instr[i] (u32.i64 instr_offsets[i]))
-    new_instr
+    (new_instr, instr_offsets |> map i32.i64)
 
 let finalize_instr_opcode (opcode: u32) (rd: i64) (rs1: i64) (rs2: i64) : u32 =
     let rd = rd & 0x1F
@@ -126,7 +126,6 @@ let finalize_instr_opcode (opcode: u32) (rd: i64) (rs1: i64) (rs2: i64) : u32 =
 
 let finalize_instr [n] (instr: [n]Instr) =
     instr |> 
-        finalize_jumps |>
         map (\i ->
             {
                 instr = finalize_instr_opcode i.instr i.rd i.rs1 i.rs2,

@@ -18,9 +18,13 @@ class Parser {
         void expect(TokenType);
 
         ASTNode* parseAssign();
+        ASTNode* parseLogical();
+        ASTNode* parseBitwise();
         ASTNode* parseCompare();
+        ASTNode* parseShift();
         ASTNode* parseAdd();
         ASTNode* parseMul();
+        ASTNode* parseUnary();
         ASTNode* parseCast();
         ASTNode* parseAtom();
         ASTNode* parseExpression();

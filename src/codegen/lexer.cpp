@@ -33,6 +33,8 @@ char Lexer::read() {
         if(this->input.eof())
             return '\0';
         char c = this->input.get();
+        if(c == '\n')
+            ++this->linenr;
         if(this->input.eof())
             return '\0';
         return c;
@@ -111,6 +113,8 @@ Token Lexer::next_id() {
         return Token(TokenType::INT);
     else if(s == "float")
         return Token(TokenType::FLOAT);
+    else if(s == "void")
+        return Token(TokenType::VOID);
     else if(s == "function")
         return Token(TokenType::FUNCTION);
     else if(s == "return")
@@ -151,6 +155,10 @@ Token Lexer::next_token() {
             return Token(TokenType::SEMICOLON);
         case '@':
             return Token(TokenType::CAST);
+        case '~':
+            return Token(TokenType::BITNOT);
+        case ':':
+            return Token(TokenType::DECL);
 
         case '=': {
             c = this->read();
@@ -167,6 +175,13 @@ Token Lexer::next_token() {
             c = this->read();
             if(c == '=')
                 return Token(TokenType::GREATEQ);
+            else if(c == '>') {
+                c = this->read();
+                if(c == '>')
+                    return Token(TokenType::URSHIFT);
+                this->unread(c);
+                return Token(TokenType::RSHIFT);
+            }
             this->unread(c);
             return Token(TokenType::GREATER);
         }
@@ -174,8 +189,8 @@ Token Lexer::next_token() {
             c = this->read();
             if(c == '=')
                 return TokenType(TokenType::LESSEQ);
-            else if(c == '-')
-                return TokenType(TokenType::DECL);
+            else if(c == '<')
+                return TokenType(TokenType::LSHIFT);
             this->unread(c);
             return Token(TokenType::LESS);
         }

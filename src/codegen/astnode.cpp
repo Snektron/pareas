@@ -2,6 +2,7 @@
 #include "codegen/exception.hpp"
 
 #include <iostream>
+#include <cstring>
 
 const char* NODE_NAMES[] = {
     "invalid",
@@ -80,12 +81,19 @@ void ASTNode::print(std::ostream& os, size_t level) const {
 
     switch(this->type) {
         case NodeType::FUNC_DECL:
-        case NodeType::LIT_EXPR:
         case NodeType::ID_EXPR:
         case NodeType::DECL_EXPR:
         case NodeType::FUNC_CALL_EXPR:
             os << ", " << this->integer;
             break;
+        case NodeType::LIT_EXPR:
+            if(this->return_type == DataType::FLOAT) {
+                float f;
+                std::memcpy(&f, &this->integer, sizeof(float));
+                os << ", " << f;
+            }
+            else
+                os << ", " << this->integer;
         default:
             break;
     }
@@ -121,8 +129,10 @@ void ASTNode::resolveType() {
     };
 
     auto assert_same = [&](size_t child1, size_t child2) {
-        if(this->children[child1]->return_type != this->children[child2]->return_type)
+        if(this->children[child1]->return_type != this->children[child2]->return_type) {
+            this->print(std::cout);
             throw ParseException("Mismatched types for children ", child1, " and ", child2);
+        }
     };
 
     auto assert_not_type = [&](size_t child1, DataType datatype) {

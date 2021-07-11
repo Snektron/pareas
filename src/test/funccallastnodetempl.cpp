@@ -9,10 +9,22 @@ FuncCallASTNodeTempl::FuncCallASTNodeTempl(const std::vector<DataType>& result_t
 ASTNode* FuncCallASTNodeTempl::generate(NodeType node_type, ASTGenerator* generator) {
     auto data_type = generator->getValidDataType(this->result_types);
     std::pair<std::string, std::vector<DataType>> func_info = generator->findFunction(data_type);
+
+    //In case a void call was selected, but no void functions are available
+    if(func_info.first == "" && data_type == DataType::VOID) {
+        std::vector<DataType> fallback_data_types;
+        for(DataType d : this->result_types) {
+            if(d != DataType::VOID)
+                fallback_data_types.push_back(d);
+        }
+        data_type = generator->getValidDataType(fallback_data_types);
+        func_info = generator->findFunction(data_type);
+    }
+
     std::string func_name = func_info.first;
     std::vector<DataType> func_args_types = func_info.second;
 
-    if(func_name == "") { //No valid functions, generate a constant instead
+    if(func_name == "" && data_type != DataType::VOID) { //No valid functions, generate a constant instead
         generator->pushDataType({data_type});
         ASTNode* result = generator->generate(NodeType::LIT_EXPR);
         generator->popDataType();

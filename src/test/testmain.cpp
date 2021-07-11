@@ -1,5 +1,6 @@
 #include <iostream>
 #include <ctime>
+#include <fstream>
 
 #include "test/astnodetempl.hpp"
 #include "test/castexprastnodetempl.hpp"
@@ -19,6 +20,7 @@
 #include "test/funccallastnodetempl.hpp"
 
 #include "test/astgenerator.hpp"
+#include "test/treeproperties.hpp"
 
 #include "test/defaulttreeprinter.hpp"
 #include "test/sourcefileprinter.hpp"
@@ -41,8 +43,46 @@ const std::vector<NodeType> ALL_STATEMENTS = {NodeType::EXPR_STAT, NodeType::IF_
 const std::vector<DataType> FUNC_RET_TYPES = {DataType::INT, DataType::FLOAT, DataType::VOID};
 const std::vector<DataType> INVALID_TYPE = {DataType::INVALID};
 
-int main() {
-    ASTGenerator generator(std::time(nullptr), 10, 8, 0, 100, 0, 100, 10, 10, 2, 5);
+struct Options {
+    size_t seed;
+    size_t tree_width = 10;
+    size_t tree_height = 10;
+    uint32_t int_min = 0;
+    uint32_t int_max = 100;
+    float flt_min = 0;
+    float flt_max = 100;
+    size_t max_id_len = 10;
+    size_t max_stat_list_len = 10;
+    size_t max_func_list_len = 10;
+    size_t max_func_arg_list_len = 10;
+    const char* output_filename = nullptr;
+};
+
+int main(int argc, char* argv[]) {
+    if(argc < 2) {
+        std::cerr << "No output filename given" << std::endl;
+        return EXIT_FAILURE;
+    }
+
+    Options options;
+    options.seed = std::time(nullptr);
+    options.output_filename = argv[1];
+
+    options.tree_width = 20000;
+    options.max_stat_list_len = 2000;
+    options.max_func_list_len = 10;
+
+    ASTGenerator generator(options.seed,
+                                options.tree_width,
+                                options.tree_height,
+                                options.int_min,
+                                options.int_max,
+                                options.flt_min,
+                                options.flt_max,
+                                options.max_id_len,
+                                options.max_stat_list_len,
+                                options.max_func_list_len,
+                                options.max_func_arg_list_len);
 
     generator.add(NodeType::STATEMENT_LIST, new StatementListASTNodeTempl(ALL_STATEMENTS));
     generator.add(NodeType::EMPTY_STAT, new FixedASTNodeTempl({}, {}, true));
@@ -94,7 +134,24 @@ int main() {
     generator.pushDataType({DataType::INVALID});
     ASTNode* root = generator.generate(NodeType::FUNC_DECL_LIST);
 
-    TreePrinter* p = new SourceFilePrinter(std::cout);
+    // ASTNode* op3 = new ASTNode{NodeType::LIT_EXPR, DataType::INT, {}, 2};
+    // ASTNode* op1 = new ASTNode{NodeType::LIT_EXPR, DataType::INT, {}, 1};
+    // ASTNode* op2 = new ASTNode{NodeType::NEG_EXPR, DataType::INT, {op3}};
+    // ASTNode* root = new ASTNode{NodeType::LESS_EXPR, DataType::INT, {op1, op2}};
+
+    TreeProperties props(root);
+    std::cout << "Generated tree with properties:" << std::endl
+        << "\tdepth: " << props.getDepth() << std::endl 
+        << "\twidth: " << props.getWidth() << std::endl
+        << "\tfunctions: " << props.getFunctions() << std::endl
+        << "\tmax function nodes: " << props.getMaxFuncLen() << std::endl;
+
+    std::ofstream output(options.output_filename);
+    if(!output) {
+        std::cerr << "Failed to open output file " << options.output_filename << std::endl;
+        return EXIT_FAILURE;
+    }
+    TreePrinter* p = new SourceFilePrinter(output);
     p->print(root);
 
     delete root;

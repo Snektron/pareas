@@ -11,6 +11,7 @@ class Lexer {
         std::istream& input;
         std::stack<char> char_stack;
         std::stack<Token> token_stack;
+        size_t linenr = 1;
 
         bool isWhitespace(char c);
         bool isIdChar(char c);
@@ -26,6 +27,10 @@ class Lexer {
         Token lex();
         void unlex(const Token&);
         Token lookahead();
+
+        inline size_t line() {
+            return this->linenr;
+        }
 };
 
 #endif

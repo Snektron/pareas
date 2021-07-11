@@ -13,10 +13,14 @@ const char* TOKEN_NAMES[] = {
     "&",
     "|",
     "^",
+    "<<",
+    ">>",
+    ">>>",
 
     "=",
 
     "!",
+    "~",
 
     "==",
     "!=",
@@ -35,13 +39,14 @@ const char* TOKEN_NAMES[] = {
     ",",
     ";",
     "@",
-    "<-",
+    ":",
 
     "if",
     "else",
     "while",
     "int",
     "float",
+    "void",
     "function",
     "return",
 

@@ -32,6 +32,35 @@ NodeType bin_node_type_for(TokenType type) {
             return NodeType::LESSEQ_EXPR;
         case TokenType::GREATEQ:
             return NodeType::GREATEQ_EXPR;
+        case TokenType::BITAND:
+            return NodeType::BITAND_EXPR;
+        case TokenType::BITOR:
+            return NodeType::BITOR_EXPR;
+        case TokenType::BITXOR:
+            return NodeType::BITXOR_EXPR;
+        case TokenType::LAND:
+            return NodeType::LAND_EXPR;
+        case TokenType::LOR:
+            return NodeType::LOR_EXPR;
+        case TokenType::LSHIFT:
+            return NodeType::LSHIFT_EXPR;
+        case TokenType::RSHIFT:
+            return NodeType::RSHIFT_EXPR;
+        case TokenType::URSHIFT:
+            return NodeType::URSHIFT_EXPR;
+        default:
+            return NodeType::INVALID;
+    }
+}
+
+NodeType un_node_type_for(TokenType type) {
+    switch(type) {
+        case TokenType::MIN:
+            return NodeType::NEG_EXPR;
+        case TokenType::NOT:
+            return NodeType::LNOT_EXPR;
+        case TokenType::BITNOT:
+            return NodeType::BITNOT_EXPR;
         default:
             return NodeType::INVALID;
     }
@@ -43,12 +72,12 @@ void Parser::expect(TokenType token_type) {
     Token token = this->lexer.lex();
 
     if(token.type != token_type) {
-        throw ParseException("Parsing failed, expecting ", token_type, " got ", token);
+        throw ParseException("Parsing failed at line ", this->lexer.line(), ", expecting ", token_type, " got ", token);
     }
 }
 
 ASTNode* Parser::parseAssign() {
-    std::unique_ptr<ASTNode> lop(this->parseCompare());
+    std::unique_ptr<ASTNode> lop(this->parseLogical());
 
     Token lookahead = this->lexer.lookahead();
     if(lookahead.type == TokenType::ASSIGN) {
@@ -60,13 +89,61 @@ ASTNode* Parser::parseAssign() {
     return lop.release();
 }
 
+ASTNode* Parser::parseLogical() {
+    std::unique_ptr<ASTNode> lop(this->parseBitwise());
+
+    Token lookahead = this->lexer.lookahead();
+    while(lookahead.type == TokenType::LAND || lookahead.type == TokenType::LOR) {
+        this->lexer.lex();
+
+        std::unique_ptr<ASTNode> rop(this->parseBitwise());
+        lop.reset(new ASTNode(bin_node_type_for(lookahead.type), {lop.release(), rop.release()}));
+
+        lookahead = this->lexer.lookahead();
+    }
+
+    return lop.release();
+}
+
+ASTNode* Parser::parseBitwise() {
+    std::unique_ptr<ASTNode> lop(this->parseCompare());
+
+    Token lookahead = this->lexer.lookahead();
+    while(lookahead.type == TokenType::BITAND || lookahead.type == TokenType::BITOR || lookahead.type == TokenType::BITXOR) {
+        this->lexer.lex();
+
+        std::unique_ptr<ASTNode> rop(this->parseCompare());
+        lop.reset(new ASTNode(bin_node_type_for(lookahead.type), {lop.release(), rop.release()}));
+
+        lookahead = this->lexer.lookahead();
+    }
+
+    return lop.release();
+}
+
 ASTNode* Parser::parseCompare() {
-    std::unique_ptr<ASTNode> lop(this->parseAdd());
+    std::unique_ptr<ASTNode> lop(this->parseShift());
 
     Token lookahead = this->lexer.lookahead();
     while(lookahead.type == TokenType::EQ || lookahead.type == TokenType::NEQ ||
             lookahead.type == TokenType::GREATER || lookahead.type == TokenType::LESS ||
             lookahead.type == TokenType::GREATEQ || lookahead.type == TokenType::LESSEQ) {
+        this->lexer.lex();
+
+        std::unique_ptr<ASTNode> rop(this->parseShift());
+        lop.reset(new ASTNode(bin_node_type_for(lookahead.type), {lop.release(), rop.release()}));
+
+        lookahead = this->lexer.lookahead();
+    }
+
+    return lop.release();
+}
+
+ASTNode* Parser::parseShift() {
+    std::unique_ptr<ASTNode> lop(this->parseAdd());
+
+    Token lookahead = this->lexer.lookahead();
+    while(lookahead.type == TokenType::LSHIFT || lookahead.type == TokenType::RSHIFT || lookahead.type == TokenType::URSHIFT) {
         this->lexer.lex();
 
         std::unique_ptr<ASTNode> rop(this->parseAdd());
@@ -95,19 +172,33 @@ ASTNode* Parser::parseAdd() {
 }
 
 ASTNode* Parser::parseMul() {
-    std::unique_ptr<ASTNode> lop(this->parseCast());
+    std::unique_ptr<ASTNode> lop(this->parseUnary());
 
     Token lookahead = this->lexer.lookahead();
     while(lookahead.type == TokenType::MUL || lookahead.type == TokenType::DIV || lookahead.type == TokenType::MOD) {
         this->lexer.lex();
 
-        std::unique_ptr<ASTNode> rop(this->parseCast());
+        std::unique_ptr<ASTNode> rop(this->parseUnary());
         lop.reset(new ASTNode(bin_node_type_for(lookahead.type), {lop.release(), rop.release()}));
 
         lookahead = this->lexer.lookahead();
     }
 
     return lop.release();
+}
+
+ASTNode* Parser::parseUnary() {
+    Token lookahead = this->lexer.lookahead();
+
+    if(lookahead.type == TokenType::MIN || lookahead.type == TokenType::NOT || lookahead.type == TokenType::BITNOT) {
+        this->lexer.lex();
+
+        std::unique_ptr<ASTNode> op(this->parseUnary());
+        std::unique_ptr<ASTNode> result(new ASTNode(un_node_type_for(lookahead.type), {op.release()}));
+
+        return result.release();
+    }
+    return this->parseCast();
 }
 
 ASTNode* Parser::parseCast() {
@@ -127,7 +218,7 @@ ASTNode* Parser::parseCast() {
                 d = DataType::FLOAT;
                 break;
             default:
-                throw ParseException("Parsing failed, unexpected token ", token, ", expecting typename");
+                throw ParseException("Parsing failed at line ", this->lexer.line(), ", unexpected token ", token, ", expecting typename");
         }
 
         lop.reset(new ASTNode(NodeType::CAST_EXPR, d, {lop.release()}));
@@ -161,7 +252,7 @@ ASTNode* Parser::parseAtom() {
                         symbol_type = DataType::FLOAT_REF;
                         break;
                     default:
-                        throw ParseException("Parsing failed, unexpected token ", lookahead, ", expecting typename");
+                        throw ParseException("Parsing failed at line ", this->lexer.line(), ", unexpected token ", lookahead, ", expecting typename");
                 }
                 uint32_t symbol_id = this->symtab.declareSymbol(id, symbol_type);
                 return new ASTNode(NodeType::DECL_EXPR, symbol_type, symbol_id);
@@ -194,7 +285,6 @@ ASTNode* Parser::parseAtom() {
                 std::unique_ptr<ASTNode> arg_list_node(new ASTNode(NodeType::FUNC_CALL_ARG_LIST, arg_list));
 
                 uint32_t func_id = this->symtab.resolveFunction(id);
-                std::cout << "Resolved function to id " << func_id << std::endl;
                 DataType ret_type = this->symtab.getFunctionReturnType(func_id);
                 return new ASTNode(NodeType::FUNC_CALL_EXPR, ret_type, func_id, {arg_list_node.release()});
             }
@@ -208,7 +298,7 @@ ASTNode* Parser::parseAtom() {
         case TokenType::FLOAT:
             return new ASTNode(NodeType::LIT_EXPR, DataType::FLOAT, lookahead.integer);
         default:
-            throw ParseException("Parsing failed, unexpected token ", lookahead, ", expecting atom");
+            throw ParseException("Parsing failed at line ", this->lexer.line(), ", unexpected token ", lookahead, ", expecting atom");
     }
 }
 
@@ -224,12 +314,9 @@ ASTNode* Parser::parseExpressionStatement() {
 
 ASTNode* Parser::parseIfElseStatement() {
     this->expect(TokenType::IF);
-    std::cout << "Parsing cond" << std::endl;
     std::unique_ptr<ASTNode> cond(this->parseExpression());
-    std::cout << "Parsing first statement" << std::endl;
     std::unique_ptr<ASTNode> stat(this->parseStatement());
 
-    std::cout << "Expecting else" << std::endl;
     Token lookahead = this->lexer.lookahead();
     if(lookahead.type == TokenType::ELSE) {
         this->expect(TokenType::ELSE);
@@ -264,16 +351,15 @@ ASTNode* Parser::parseReturnStatement() {
 ASTNode* Parser::parseStatement() {
     Token lookahead = this->lexer.lookahead();
 
-    std::cout << "In statement: current lookahead: " << lookahead << std::endl;
-
     switch(lookahead.type) {
         case TokenType::SEMICOLON:
             this->expect(TokenType::SEMICOLON);
             return new ASTNode(NodeType::EMPTY_STAT);
         case TokenType::IF:
             return this->parseIfElseStatement();
-        case TokenType::PLUS:
         case TokenType::MIN:
+        case TokenType::BITNOT:
+        case TokenType::NOT:
         case TokenType::OPEN_PAR:
         case TokenType::INTEGER:
         case TokenType::FLOAT:
@@ -290,7 +376,7 @@ ASTNode* Parser::parseStatement() {
         case TokenType::RETURN:
             return this->parseReturnStatement();
         default:
-            throw ParseException("Parsing failed, unexpected token ", lookahead, ", expecting start of statement");
+            throw ParseException("Parsing failed at line ", this->lexer.line(), ", unexpected token ", lookahead, ", expecting start of statement");
     }
 }
 
@@ -304,8 +390,9 @@ ASTNode* Parser::parseStatementList() {
         switch(lookahead.type) {
             case TokenType::SEMICOLON:
             case TokenType::IF:
-            case TokenType::PLUS:
             case TokenType::MIN:
+            case TokenType::BITNOT:
+            case TokenType::NOT:
             case TokenType::OPEN_PAR:
             case TokenType::INTEGER:
             case TokenType::FLOAT:
@@ -340,7 +427,7 @@ ASTNode* Parser::parseArgumentList(std::vector<DataType>& arg_types) {
     auto parse_decl = [&] () {
         Token current = this->lexer.lex();
         if(current.type != TokenType::ID)
-            throw ParseException("Parsing failed, unexpected token ", current, ", expecting identifier");
+            throw ParseException("Parsing failed at line ", this->lexer.line(), ", unexpected token ", current, ", expecting identifier");
         
         std::string var_name = current.str;
 
@@ -356,7 +443,7 @@ ASTNode* Parser::parseArgumentList(std::vector<DataType>& arg_types) {
                 res_type = DataType::FLOAT_REF;
                 break;
             default:
-                throw ParseException("Parsing failed, unexpected token ", current, ", expecting typename");
+                throw ParseException("Parsing failed at line", this->lexer.line(), ", unexpected token ", current, ", expecting typename");
         }
         uint32_t symbol_id = this->symtab.declareSymbol(var_name, res_type);
         std::unique_ptr<ASTNode> decl_node(new ASTNode(NodeType::DECL_EXPR, res_type, symbol_id));
@@ -389,7 +476,7 @@ ASTNode* Parser::parseFunction() {
 
     Token id = this->lexer.lex();
     if(id.type != TokenType::ID)
-        throw ParseException("Parsing failed, unexpected token ", id, ", expecting identifier");
+        throw ParseException("Parsing failed at line ", this->lexer.line(), ", unexpected token ", id, ", expecting identifier");
 
     this->symtab.newFunction();
 
@@ -406,8 +493,11 @@ ASTNode* Parser::parseFunction() {
         case TokenType::FLOAT:
             return_type = DataType::FLOAT;
             break;
+        case TokenType::VOID:
+            return_type = DataType::VOID;
+            break;
         default:
-            throw ParseException("Parsing failed, unexpected token ", id, ", expecting typename");
+            throw ParseException("Parsing failed at line ", this->lexer.line(), ", unexpected token ", type, ", expecting typename");
     }
 
     uint32_t symbol_id = this->symtab.declareFunction(id.str, return_type, arg_types);
