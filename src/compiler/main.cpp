@@ -259,11 +259,8 @@ int main(int argc, char* argv[]) {
 
         if (opts.futhark_profile) {
             auto report = MallocPtr<char>(futhark_context_report(ctx.get()));
-            fmt::print("Futhark profile report:\n{}", report);
+            fmt::print(std::cerr, "Futhark profile report:\n{}", report);
         }
-
-        if (futhark_context_sync(ctx.get()) != 0)
-            throw futhark::Error(ctx.get());
     } catch (const frontend::CompileError& err) {
         fmt::print(std::cerr, "Compile error: {}\n", err.what());
         return EXIT_FAILURE;

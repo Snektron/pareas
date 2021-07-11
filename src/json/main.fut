@@ -101,7 +101,8 @@ entry json_restructure [n] (node_types: [n]production.t) (parents: [n]i32): ([]p
         |> map (\nty -> nty == production_values
             || nty == production_value_list
             || nty == production_value_list_end
-            || nty == production_no_member)
+            || nty == production_no_member
+            || nty == production_no_values)
         |> remove_nodes_log parents
     -- Squash string->member to member.
     -- Note: member can only have a string as parent. For hypothetical lexeme extraction, the member node would
