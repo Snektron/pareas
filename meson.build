@@ -220,7 +220,6 @@ endforeach
 json_futhark_compile_command += ['-f', '@INPUT@0@@'.format(json_inputs.length()), 'gen/json_grammar.fut']
 json_inputs += json_grammar_fut
 
-
 json_futhark_generated = custom_target(
     'json-futhark',
     input: json_inputs,
@@ -228,7 +227,7 @@ json_futhark_generated = custom_target(
     command: json_futhark_compile_command,
 )
 
-executable(
+pareas_json_exe = executable(
     'pareas-json',
     [json_grammar_hpp, json_grammar_cpp, json_grammar_asm, json_sources, json_futhark_generated],
     install: true,
