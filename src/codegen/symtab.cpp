@@ -36,7 +36,7 @@ uint32_t SymbolTable::declareFunction(const std::string& name, DataType type, co
 Symbol SymbolTable::resolveSymbol(const std::string& name) const {
     uint32_t id;
     bool found = false;
-    for(size_t i = this->id_map.size(); i > 0; ++i) {
+    for(size_t i = this->id_map.size(); i > 0; --i) {
         const auto& elem = this->id_map.at(i-1);
         if(elem.count(name) > 0) {
             id = elem.at(name);
