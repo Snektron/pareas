@@ -8,10 +8,11 @@ SymbolTable::~SymbolTable() {
 }
 
 uint32_t SymbolTable::declareSymbol(const std::string& name, DataType type, bool global) {
-    if(this->id_map.count(name) > 0)
+    auto& last = this->id_map.back();
+    if(last.count(name) > 0)
         throw ParseException("Redeclaration of symbol ", name);
-    uint32_t id = this->id_map.size();
-    this->id_map[name] = id;
+    uint32_t id = this->data_types.size();
+    last[name] = id;
 
     this->data_types.push_back(static_cast<uint8_t>(type));
     this->globals.push_back(global);
@@ -33,9 +34,19 @@ uint32_t SymbolTable::declareFunction(const std::string& name, DataType type, co
 }
 
 Symbol SymbolTable::resolveSymbol(const std::string& name) const {
-    if(this->id_map.count(name) == 0)
+    uint32_t id;
+    bool found = false;
+    for(size_t i = this->id_map.size(); i > 0; ++i) {
+        const auto& elem = this->id_map.at(i-1);
+        if(elem.count(name) > 0) {
+            id = elem.at(name);
+            found = true;
+            break;
+        }
+    }
+
+    if(!found)
         throw ParseException("Use of undeclared symbol ", name);
-    uint32_t id = this->id_map.at(name);
 
     return Symbol{
         .id = id,
@@ -63,10 +74,18 @@ void SymbolTable::endFunction() {
     this->function_var_count.push_back(this->function_offset);
 }
 
+void SymbolTable::enterScope() {
+    this->id_map.push_back({});
+}
+
+void SymbolTable::exitScope() {
+    this->id_map.pop_back();
+}
+
 void SymbolTable::print(std::ostream& os) const {
-    for(auto& symb : this->id_map) {
-        os << symb.first << " -> (" << symb.second << ", " << static_cast<DataType>(this->data_types[symb.second])
-                     << ", " << this->function_offsets[symb.second] << ", " << this->globals[symb.second] << ")" << std::endl;
+    for(size_t i = 0; i < this->data_types.size(); ++i) {
+        os << "symbol " << i << " -> (" << static_cast<DataType>(this->data_types[i])
+                     << ", " << this->function_offsets[i] << ", " << this->globals[i] << ")" << std::endl;
     }
 }
 

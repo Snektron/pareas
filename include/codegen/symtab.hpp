@@ -23,7 +23,7 @@ class SymbolTable {
         size_t function_offset = 0;
         size_t max_vars;
 
-        std::unordered_map<std::string, uint32_t> id_map;
+        std::vector<std::unordered_map<std::string, uint32_t>> id_map;
         std::unordered_map<std::string, uint32_t> func_id_map;
 
         std::vector<uint8_t> data_types;
@@ -68,6 +68,9 @@ class SymbolTable {
         inline const uint32_t* getFuncVarCount() const {
             return this->function_var_count.data();
         }
+
+        void enterScope();
+        void exitScope();
 };
 
 std::ostream& operator<<(std::ostream&, const SymbolTable&);

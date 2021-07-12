@@ -1,3 +1,7 @@
-function a() <- int {
-    a <- int = -(2+2);
+function a() : int {
+    a : int = -(2+2);
+}
+
+function b() : int {
+    a: int = 3;
 }

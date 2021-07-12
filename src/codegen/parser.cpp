@@ -366,9 +366,11 @@ ASTNode* Parser::parseStatement() {
         case TokenType::ID:
             return this->parseExpressionStatement();
         case TokenType::OPEN_CB: {
+            this->symtab.enterScope();
             this->expect(TokenType::OPEN_CB);
             std::unique_ptr<ASTNode> list(this->parseStatementList());
             this->expect(TokenType::CLOSE_CB);
+            this->symtab.exitScope();
             return list.release();
         }
         case TokenType::WHILE:
@@ -479,6 +481,7 @@ ASTNode* Parser::parseFunction() {
         throw ParseException("Parsing failed at line ", this->lexer.line(), ", unexpected token ", id, ", expecting identifier");
 
     this->symtab.newFunction();
+    this->symtab.enterScope();
 
     std::vector<DataType> arg_types;
     std::unique_ptr<ASTNode> argument_list(this->parseArgumentList(arg_types));
@@ -506,6 +509,7 @@ ASTNode* Parser::parseFunction() {
     std::unique_ptr<ASTNode> function_body(this->parseStatementList());
     this->expect(TokenType::CLOSE_CB);
 
+    this->symtab.exitScope();
     this->symtab.endFunction();
 
     return new ASTNode(NodeType::FUNC_DECL, return_type, symbol_id, {new ASTNode(NodeType::FUNC_DECL_DUMMY), argument_list.release(), function_body.release()});
