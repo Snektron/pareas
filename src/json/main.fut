@@ -95,6 +95,11 @@ entry json_parse (tokens: []token.t) (sct: stack_change_table []) (pt: parse_tab
 entry json_build_parse_tree [n] (node_types: [n]production.t) (arities: arity_array): []i32 =
     json_parser.build_parent_vector node_types arities
 
+-- | Restructure the json tree:
+-- - Non relevant nodes are removed.
+-- - Lists are flattened.
+-- - String->member pairs are squashed.
+-- - Tree is compactified.
 entry json_restructure [n] (node_types: [n]production.t) (parents: [n]i32): ([]production.t, []i32) =
     let parents =
         node_types
@@ -132,13 +137,11 @@ entry json_restructure [n] (node_types: [n]production.t) (parents: [n]i32): ([]p
     let node_types = gather node_types old_index
     in (node_types, parents)
 
+-- | Validate that the children of objects are members, and the parents of members are objects.
 entry json_validate [n] (node_types: [n]production.t) (parents: [n]i32): bool =
-    let members_valid =
-        map2
-            (\nty parent -> (nty == production_member) == (parent != -1 && node_types[parent] == production_object))
-            node_types
-            parents
-        |> reduce (&&) true
-    -- Grammar guarantees that these indices are valid
-    -- The tree is still in pre-order, so the first child of the root node should be at index 1.
-    in members_valid && node_types[1] == production_object
+    map2
+        (\nty parent -> (nty == production_member) == (parent != -1 && node_types[parent] == production_object))
+        node_types
+        parents
+    |> reduce (&&) true
+
