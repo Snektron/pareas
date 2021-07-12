@@ -51,6 +51,54 @@ const size_t DEPTH_FACTORS[] = { //Per node estimate of depth expansion of the t
     5, // FUNC_DECL_LIST
 };
 
+const size_t WIDTH_FACTORS[] = { //Per node estimate of width expansion of the tree
+    10, // STATEMENT_LIST
+    0, // EMPTY_STAT
+    10, // FUNC_DECL
+    0, // FUNC_ARG
+    10, // FUNC_ARG_LIST
+    1, // EXPR_STAT
+    2, // IF_STAT
+    3, // IF_ELSE_STAT
+    2, // WHILE_STAT
+    10, // FUNC_CALL_EXPR
+    1, // FUNC_CALL_ARG
+    10, // FUNC_CALL_ARG_LIST
+    2, // ADD_EXPR
+    2, // SUB_EXPR
+    2, // MUL_EXPR
+    2, // DIV_EXPR
+    2, // MOD_EXPR
+    2, // BITAND_EXPR
+    2, // BITOR_EXPR
+    2, // BITXOR_EXPR
+    2, // LSHIFT_EXPR
+    2, // RSHIFT_EXPR
+    2, // URSHIFT_EXPR
+    2, // LAND_EXPR
+    2, // LOR_EXPR
+    2, // EQ_EXPR
+    2, // NEQ_EXPR
+    2, // LESS_EXPR
+    2, // GREAT_EXPR
+    2, // LESSEQ_EXPR
+    2, // GREATEQ_EXPR
+    1, // BITNOT_EXPR
+    1, // LNOT_EXPR
+    1, // NEG_EXPR
+    1, // LIT_EXPR
+    1, // CAST_EXPR
+    1, // DEREF_EXPR
+    1, // ASSIGN_EXPR
+    1, // DECL_EXPR
+    1, // ID_EXPR
+    0, // WHILE_DUMMY
+    0, // FUNC_DECL_DUMMY
+    1, // RETURN_STAT
+
+    5, // FUNC_DECL_LIST
+};
+
 ASTGenerator::ASTGenerator(size_t seed, size_t target_width, size_t target_height,
         uint32_t min_int_const, uint32_t max_int_const, float min_flt_const, float max_flt_const,
         size_t max_id_len, size_t max_stat_list_len, size_t max_func_list_len, size_t max_func_arg_list_len) : 
@@ -194,6 +242,31 @@ NodeType ASTGenerator::chooseChildNode(const std::vector<NodeType>& all_options)
         }
 
         options = new_options;
+    }
+    if(this->current_depth < this->current_widths.size()) {
+        size_t next_layer_width = 0;
+        for(size_t i = this->current_depth; i < this->current_widths.size(); ++i) {
+            if(this->current_widths[i] > next_layer_width)
+                next_layer_width = this->current_widths[i];
+        }
+        if(next_layer_width >= this->target_width) {
+            size_t min_width_factor = std::numeric_limits<size_t>::max();
+            for(NodeType n : options) {
+                if(WIDTH_FACTORS[static_cast<size_t>(n)] < min_width_factor) {
+                    min_width_factor = WIDTH_FACTORS[static_cast<size_t>(n)];
+                }
+            }
+
+            std::vector<NodeType> new_options;
+            for(NodeType n : options) {
+                if(WIDTH_FACTORS[static_cast<size_t>(n)] == min_width_factor)
+                    new_options.push_back(n);
+            }
+            options = new_options;
+        }
+    }
+    if(this->current_depth >= this->target_height) {
+
     }
 
     return options[this->genRandomInt(0, options.size())];

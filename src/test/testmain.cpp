@@ -71,6 +71,8 @@ int main(int argc, char* argv[]) {
     options.tree_width = std::strtoull(argv[2], nullptr, 0);
     options.max_stat_list_len = std::strtoull(argv[3], nullptr, 0);
     options.max_func_list_len = std::strtoull(argv[4], nullptr, 0);
+    if(argc > 5)
+        options.tree_height = std::strtoull(argv[5], nullptr, 0);
 
     ASTGenerator generator(options.seed,
                                 options.tree_width,
