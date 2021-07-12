@@ -59,7 +59,7 @@ struct Options {
 };
 
 int main(int argc, char* argv[]) {
-    if(argc < 2) {
+    if(argc < 5) {
         std::cerr << "No output filename given" << std::endl;
         return EXIT_FAILURE;
     }
@@ -68,9 +68,9 @@ int main(int argc, char* argv[]) {
     options.seed = std::time(nullptr);
     options.output_filename = argv[1];
 
-    options.tree_width = 20000;
-    options.max_stat_list_len = 2000;
-    options.max_func_list_len = 10;
+    options.tree_width = std::strtoull(argv[2], nullptr, 0);
+    options.max_stat_list_len = std::strtoull(argv[3], nullptr, 0);
+    options.max_func_list_len = std::strtoull(argv[4], nullptr, 0);
 
     ASTGenerator generator(options.seed,
                                 options.tree_width,
@@ -141,6 +141,7 @@ int main(int argc, char* argv[]) {
 
     TreeProperties props(root);
     std::cout << "Generated tree with properties:" << std::endl
+        << "\tseed: " << options.seed << std::endl
         << "\tdepth: " << props.getDepth() << std::endl 
         << "\twidth: " << props.getWidth() << std::endl
         << "\tfunctions: " << props.getFunctions() << std::endl

@@ -114,9 +114,6 @@ bool parse_options(Options* opts, int argc, const char* argv[]) {
 
                 opts->device_name = argv[i];
                 continue;
-            } else if (arg == "-p" || arg == "--profile") {
-                opts->profile = true;
-                continue;
             }
         #endif
 
