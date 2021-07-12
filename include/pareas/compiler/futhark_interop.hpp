@@ -148,6 +148,10 @@ namespace futhark {
             if (err != 0)
                 throw Error(this->handle.ctx);
         }
+
+        const int64_t* shape() const {
+            return ArrayTraits<T, N>::shape_fn(this->handle.ctx, this->handle.data);
+        }
     };
 
     template <>
