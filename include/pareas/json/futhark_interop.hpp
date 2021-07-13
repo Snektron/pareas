@@ -1,7 +1,7 @@
 #ifndef _PAREAS_COMPILER_FUTHARK_INTEROP_HPP
 #define _PAREAS_COMPILER_FUTHARK_INTEROP_HPP
 
-#include "futhark_generated.h"
+#include "json_futhark_generated.h"
 
 #include <memory>
 #include <string>
@@ -97,7 +97,6 @@ namespace futhark {
     using UniqueLexTable = UniqueOpaqueArray<futhark_opaque_lex_table, futhark_free_opaque_lex_table>;
     using UniqueParseTable = UniqueOpaqueArray<futhark_opaque_parse_table, futhark_free_opaque_parse_table>;
     using UniqueStackChangeTable = UniqueOpaqueArray<futhark_opaque_stack_change_table, futhark_free_opaque_stack_change_table>;
-    using UniqueTokenArray = UniqueOpaqueArray<futhark_opaque_arr_token_1d, futhark_free_opaque_arr_token_1d>;
 
     template <typename T, size_t N>
     struct ArrayTraits;
