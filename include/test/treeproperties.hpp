@@ -11,6 +11,7 @@ class TreeProperties {
     public:
         TreeProperties(ASTNode*);
 
+        size_t getNodeCount() const;
         size_t getDepth() const;
         size_t getWidth() const;
         size_t getFunctions() const;

@@ -58,6 +58,7 @@ sources = [
     'src/codegen/lexer.cpp',
     'src/codegen/parser.cpp',
     'src/codegen/symtab.cpp',
+    'src/codegen/treeproperties.cpp',
     'src/codegen/token.cpp',
     'src/profiler/profiler.cpp',
     'src/main.cpp'

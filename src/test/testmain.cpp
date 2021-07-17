@@ -144,6 +144,7 @@ int main(int argc, char* argv[]) {
     TreeProperties props(root);
     std::cout << "Generated tree with properties:" << std::endl
         << "\tseed: " << options.seed << std::endl
+        << "\tsize: " << props.getNodeCount() << std::endl
         << "\tdepth: " << props.getDepth() << std::endl 
         << "\twidth: " << props.getWidth() << std::endl
         << "\tfunctions: " << props.getFunctions() << std::endl

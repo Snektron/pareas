@@ -7,6 +7,24 @@
 
 TreeProperties::TreeProperties(ASTNode* node) : root(node) {}
 
+size_t TreeProperties::getNodeCount() const {
+    std::deque<ASTNode*> queue;
+
+    queue.push_back(this->root);
+
+    size_t count = 0;
+    while(queue.size() > 0) {
+        ASTNode* next = queue.front();
+        queue.pop_front();
+
+        ++count;
+        for(ASTNode* child : next->children) {
+            queue.push_back(child);
+        }
+    }
+    return count;
+}
+
 size_t TreeProperties::getDepth() const {
     std::deque<std::pair<ASTNode*, size_t>> depth_search;
 

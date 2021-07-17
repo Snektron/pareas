@@ -15,6 +15,7 @@
 #include "codegen/exception.hpp"
 #include "codegen/depthtree.hpp"
 #include "codegen/symtab.hpp"
+#include "codegen/treeproperties.hpp"
 
 #include "profiler/profiler.hpp"
 
@@ -285,6 +286,15 @@ int main(int argc, const char* argv[]) {
 
         DepthTree depth_tree(node.get());
         p.end("Setup");
+
+        TreeProperties props(node.get());
+        std::cout << "Number of nodes: " << props.getNodeCount() << std::endl;
+        std::cout << "Tree width: " << props.getWidth() << std::endl;
+        std::cout << "Tree height: " << props.getDepth() << std::endl;
+        std::cout << "Num functions: " << props.getFunctions() << std::endl;
+        std::cout << "Max function length: " << props.getMaxFuncLen() << std::endl;
+
+        return 0;
 
         auto context = UniqueCPtr<futhark_context, futhark_context_free>(futhark_context_new(config.get()));
 
