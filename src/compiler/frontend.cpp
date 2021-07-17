@@ -123,6 +123,7 @@ namespace frontend {
             if (err)
                 throw futhark::Error(ctx);
         });
+        lex_table.clear();
 
         debug_log_region("parse");
         auto node_types = futhark::UniqueArray<uint8_t, 1>(ctx);
@@ -134,6 +135,8 @@ namespace frontend {
             if (!valid)
                 throw CompileError(Error::PARSE_ERROR);
         });
+        sct.clear();
+        pt.clear();
 
         debug_log_region("build parse tree");
         auto parents = futhark::UniqueArray<int32_t, 1>(ctx);
@@ -142,6 +145,7 @@ namespace frontend {
             if (err)
                 throw futhark::Error(ctx);
         });
+        arity_array.clear();
 
         p.begin();
         debug_log_region("syntax");
@@ -261,6 +265,8 @@ namespace frontend {
             if (err)
                 throw futhark::Error(ctx);
         });
+        input_array.clear();
+        tokens.clear();
 
         auto resolution = futhark::UniqueArray<int32_t, 1>(ctx);
         p.measure("resolve vars", [&]{

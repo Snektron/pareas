@@ -291,6 +291,8 @@ JsonTree parse(futhark_context* ctx, const std::string& input, pareas::Profiler&
         if (err)
             throw futhark::Error(ctx);
     });
+    input_array.clear();
+    lex_table.clear();
 
     fmt::print("Num tokens: {}\n", tokens.shape()[0]);
 
@@ -304,6 +306,8 @@ JsonTree parse(futhark_context* ctx, const std::string& input, pareas::Profiler&
         if (!valid)
             throw std::runtime_error("Parse error");
     });
+    sct.clear();
+    pt.clear();
 
     debug_log_region("build parse tree");
     auto parents = futhark::UniqueArray<int32_t, 1>(ctx);

@@ -73,6 +73,13 @@ namespace futhark {
             }
         }
 
+        void clear() {
+            if (this->data) {
+                free_fn(this->ctx, this->data);
+                this->data = nullptr;
+            }
+        }
+
         Array* get() {
             return this->data;
         }
@@ -120,6 +127,10 @@ namespace futhark {
             handle(ctx, ArrayTraits<T, N>::new_fn(ctx, data, dims...)) {
             if (!this->handle.data)
                 throw Error(this->handle.ctx);
+        }
+
+        void clear() {
+            this->handle.clear();
         }
 
         Array* get() {
