@@ -23,6 +23,7 @@ struct Options {
     bool futhark_verbose;
     bool futhark_debug;
     bool dump_dot;
+    bool verbose_tree;
 
     // Options available for the multicore backend
     int threads;
@@ -40,6 +41,7 @@ void print_usage(char* progname) {
         "--futhark-verbose           Enable Futhark logging.\n"
         "--futhark-debug             Enable Futhark debug logging.\n"
         "--dump-dot                  Dump JSON tree as dot graph. Disables profiling.\n"
+        "--verbose-tree              Print some information about the document tree.\n"
     #if defined(FUTHARK_BACKEND_multicore)
         "Available backend options:\n"
         "-t --threads <amount>       Set the maximum number of threads that may be used\n"
@@ -65,6 +67,7 @@ bool parse_options(Options* opts, int argc, char* argv[]) {
         .futhark_verbose = false,
         .futhark_debug = false,
         .dump_dot = false,
+        .verbose_tree = false,
         .threads = 0,
         .device_name = nullptr,
         .futhark_profile = false,
@@ -108,6 +111,8 @@ bool parse_options(Options* opts, int argc, char* argv[]) {
             opts->futhark_debug = true;
         } else if (arg == "--dump-dot") {
             opts->dump_dot = true;
+        } else if (arg == "--verbose-tree") {
+            opts->verbose_tree = true;
         } else if (!opts->input_path) {
             opts->input_path = argv[i];
         } else {
@@ -270,6 +275,8 @@ JsonTree parse(futhark_context* ctx, const std::string& input, pareas::Profiler&
             throw futhark::Error(ctx);
     });
 
+    fmt::print("Num tokens: {}\n", tokens.shape()[0]);
+
     auto node_types = futhark::UniqueArray<uint8_t, 1>(ctx);
     p.measure("parse", [&]{
         bool valid = false;
@@ -379,6 +386,10 @@ int main(int argc, char* argv[]) {
             dump_dot(ast, std::cout);
         else
             p.dump(std::cout);
+
+        if (opts.verbose_tree) {
+            fmt::print("Nodes: {}\n", ast.num_nodes);
+        }
 
         if (opts.futhark_profile) {
             auto report = MallocPtr<char>(futhark_context_report(ctx.get()));
