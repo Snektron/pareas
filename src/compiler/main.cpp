@@ -16,6 +16,7 @@
 #include <memory>
 #include <chrono>
 #include <charconv>
+#include <cstdio>
 #include <cstdlib>
 #include <cstdint>
 #include <cstring>
@@ -30,6 +31,7 @@ struct Options {
     bool verbose_tree;
     bool futhark_verbose;
     bool futhark_debug;
+    bool futhark_debug_extra;
 
     // Options available for the multicore backend
     int threads;
@@ -51,6 +53,8 @@ void print_usage(char* progname) {
         "                            (default: 0, =disabled)\n"
         "--futhark-verbose           Enable Futhark logging.\n"
         "--futhark-debug             Enable Futhark debug logging.\n"
+        "--futhark-debug-extra       Futhark debug logging with extra information.\n"
+        "                            Not compatible with --futhark-debug.\n"
     #if defined(FUTHARK_BACKEND_multicore)
         "Available backend options:\n"
         "-t --threads <amount>       Set the maximum number of threads that may be used\n"
@@ -80,6 +84,7 @@ bool parse_options(Options* opts, int argc, char* argv[]) {
         .verbose_tree = false,
         .futhark_verbose = false,
         .futhark_debug = false,
+        .futhark_debug_extra = false,
         .threads = 0,
         .device_name = nullptr,
         .futhark_profile = false,
@@ -139,6 +144,8 @@ bool parse_options(Options* opts, int argc, char* argv[]) {
             opts->futhark_verbose = true;
         } else if (arg == "--futhark-debug") {
             opts->futhark_debug = true;
+        } else if (arg == "--futhark-debug-extra") {
+            opts->futhark_debug_extra = true;
         } else if (!opts->input_path) {
             opts->input_path = argv[i];
         } else {
@@ -155,6 +162,9 @@ bool parse_options(Options* opts, int argc, char* argv[]) {
         return false;
     } else if (!opts->input_path[0]) {
         fmt::print(std::cerr, "Error: <input path> may not be empty\n");
+        return false;
+    } else if (opts->futhark_debug && opts->futhark_debug_extra) {
+        fmt::print(std::cerr, "Error: --futhark-debug is incompatible with --futhark-debug-extra\n");
         return false;
     }
 
@@ -218,7 +228,7 @@ int main(int argc, char* argv[]) {
     p.begin();
     auto config = futhark::ContextConfig(futhark_context_config_new());
     futhark_context_config_set_logging(config.get(), opts.futhark_verbose);
-    futhark_context_config_set_debugging(config.get(), opts.futhark_debug);
+    futhark_context_config_set_debugging(config.get(), opts.futhark_debug || opts.futhark_debug_extra);
 
     #if defined(FUTHARK_BACKEND_multicore)
         futhark_context_config_set_num_threads(config.get(), opts.threads);
@@ -231,6 +241,7 @@ int main(int argc, char* argv[]) {
     #endif
 
     auto ctx = futhark::Context(futhark_context_new(config.get()));
+    futhark_context_set_logging_file(ctx.get(), stderr);
     p.set_sync_callback([ctx = ctx.get()]{
         if (futhark_context_sync(ctx))
             throw futhark::Error(ctx);
@@ -239,7 +250,7 @@ int main(int argc, char* argv[]) {
 
     try {
         p.begin();
-        auto ast = frontend::compile(ctx.get(), input, p);
+        auto ast = frontend::compile(ctx.get(), input, p, opts.futhark_debug_extra ? stderr : nullptr);
         p.end("frontend");
 
         if (opts.profile > 0)

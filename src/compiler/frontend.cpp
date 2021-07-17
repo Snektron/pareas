@@ -84,7 +84,13 @@ namespace frontend {
         }
     }
 
-    DeviceAst compile(futhark_context* ctx, const std::string& input, pareas::Profiler& p) {
+    DeviceAst compile(futhark_context* ctx, const std::string& input, pareas::Profiler& p, std::FILE* debug_log) {
+        auto debug_log_region = [&](const char* name) {
+            if (debug_log)
+                fmt::print(debug_log, "<<<{}>>>\n", name);
+        };
+
+        debug_log_region("upload");
         p.begin();
         p.begin();
         auto lex_table = upload_lex_table(ctx);
@@ -110,6 +116,7 @@ namespace frontend {
 
         p.begin();
 
+        debug_log_region("tokenize");
         auto tokens = futhark::UniqueTokenArray(ctx);
         p.measure("tokenize", [&]{
             int err = futhark_entry_frontend_tokenize(ctx, &tokens, input_array, lex_table);
@@ -117,6 +124,7 @@ namespace frontend {
                 throw futhark::Error(ctx);
         });
 
+        debug_log_region("parse");
         auto node_types = futhark::UniqueArray<uint8_t, 1>(ctx);
         p.measure("parse", [&]{
             bool valid = false;
@@ -127,6 +135,7 @@ namespace frontend {
                 throw CompileError(Error::PARSE_ERROR);
         });
 
+        debug_log_region("build parse tree");
         auto parents = futhark::UniqueArray<int32_t, 1>(ctx);
         p.measure("build parse tree", [&]{
             int err = futhark_entry_frontend_build_parse_tree(ctx, &parents, node_types, arity_array);
@@ -135,6 +144,7 @@ namespace frontend {
         });
 
         p.begin();
+        debug_log_region("syntax");
         p.measure("fix bin ops", [&]{
             auto old_node_types = std::move(node_types);
             auto old_parents = std::move(parents);
@@ -235,6 +245,7 @@ namespace frontend {
         p.end("syntax");
 
         p.begin();
+        debug_log_region("sema");
         p.measure("insert derefs", [&]{
             auto old_node_types = std::move(node_types);
             auto old_parents = std::move(parents);

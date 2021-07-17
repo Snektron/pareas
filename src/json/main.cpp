@@ -14,6 +14,7 @@
 #include <fstream>
 #include <charconv>
 #include <cstdlib>
+#include <cstdio>
 
 // This file is mostly just copied from src/compiler/main.cpp
 
@@ -22,6 +23,7 @@ struct Options {
     bool help;
     bool futhark_verbose;
     bool futhark_debug;
+    bool futhark_debug_extra;
     bool dump_dot;
     bool verbose_tree;
 
@@ -40,6 +42,8 @@ void print_usage(char* progname) {
         "-h --help                   Show this message and exit.\n"
         "--futhark-verbose           Enable Futhark logging.\n"
         "--futhark-debug             Enable Futhark debug logging.\n"
+        "--futhark-debug-extra       Futhark debug logging with extra information.\n"
+        "                            Not compatible with --futhark-debug.\n"
         "--dump-dot                  Dump JSON tree as dot graph. Disables profiling.\n"
         "--verbose-tree              Print some information about the document tree.\n"
     #if defined(FUTHARK_BACKEND_multicore)
@@ -66,6 +70,7 @@ bool parse_options(Options* opts, int argc, char* argv[]) {
         .help = false,
         .futhark_verbose = false,
         .futhark_debug = false,
+        .futhark_debug_extra = false,
         .dump_dot = false,
         .verbose_tree = false,
         .threads = 0,
@@ -109,6 +114,8 @@ bool parse_options(Options* opts, int argc, char* argv[]) {
             opts->futhark_verbose = true;
         } else if (arg == "--futhark-debug") {
             opts->futhark_debug = true;
+        } else if (arg == "--futhark-debug-extra") {
+            opts->futhark_debug_extra = true;
         } else if (arg == "--dump-dot") {
             opts->dump_dot = true;
         } else if (arg == "--verbose-tree") {
@@ -129,6 +136,9 @@ bool parse_options(Options* opts, int argc, char* argv[]) {
         return false;
     } else if (!opts->input_path[0]) {
         fmt::print(std::cerr, "Error: <input path> may not be empty\n");
+        return false;
+    } else if (opts->futhark_debug && opts->futhark_debug_extra) {
+        fmt::print(std::cerr, "Error: --futhark-debug is incompatible with --futhark-debug-extra\n");
         return false;
     }
 
@@ -241,7 +251,13 @@ void dump_dot(const JsonTree& j, std::ostream& os) {
     fmt::print(os, "}}\n");
 }
 
-JsonTree parse(futhark_context* ctx, const std::string& input, pareas::Profiler& p) {
+JsonTree parse(futhark_context* ctx, const std::string& input, pareas::Profiler& p, std::FILE* debug_log) {
+    auto debug_log_region = [&](const char* name) {
+        if (debug_log)
+            fmt::print(debug_log, "<<<{}>>>\n", name);
+    };
+
+    debug_log_region("upload");
     p.begin();
     p.begin();
     auto lex_table = upload_lex_table(ctx);
@@ -268,6 +284,7 @@ JsonTree parse(futhark_context* ctx, const std::string& input, pareas::Profiler&
 
     p.begin();
 
+    debug_log_region("tokenize");
     auto tokens = futhark::UniqueArray<uint8_t, 1>(ctx);
     p.measure("tokenize", [&]{
         int err = futhark_entry_json_lex(ctx, &tokens, input_array, lex_table);
@@ -277,6 +294,7 @@ JsonTree parse(futhark_context* ctx, const std::string& input, pareas::Profiler&
 
     fmt::print("Num tokens: {}\n", tokens.shape()[0]);
 
+    debug_log_region("parse");
     auto node_types = futhark::UniqueArray<uint8_t, 1>(ctx);
     p.measure("parse", [&]{
         bool valid = false;
@@ -287,6 +305,7 @@ JsonTree parse(futhark_context* ctx, const std::string& input, pareas::Profiler&
             throw std::runtime_error("Parse error");
     });
 
+    debug_log_region("build parse tree");
     auto parents = futhark::UniqueArray<int32_t, 1>(ctx);
     p.measure("build parse tree", [&]{
         int err = futhark_entry_json_build_parse_tree(ctx, &parents, node_types, arity_array);
@@ -294,6 +313,7 @@ JsonTree parse(futhark_context* ctx, const std::string& input, pareas::Profiler&
             throw futhark::Error(ctx);
     });
 
+    debug_log_region("restructure");
     p.measure("restructure", [&]{
         auto old_node_types = std::move(node_types);
         auto old_parents = std::move(parents);
@@ -302,6 +322,7 @@ JsonTree parse(futhark_context* ctx, const std::string& input, pareas::Profiler&
             throw futhark::Error(ctx);
     });
 
+    debug_log_region("validate");
     p.measure("validate", [&]{
         bool valid;
         int err = futhark_entry_json_validate(ctx, &valid, node_types, parents);
@@ -360,7 +381,7 @@ int main(int argc, char* argv[]) {
     auto config = futhark::ContextConfig(futhark_context_config_new());
 
     futhark_context_config_set_logging(config.get(), opts.futhark_verbose);
-    futhark_context_config_set_debugging(config.get(), opts.futhark_debug);
+    futhark_context_config_set_debugging(config.get(), opts.futhark_debug || opts.futhark_debug_extra);
 
     #if defined(FUTHARK_BACKEND_multicore)
         futhark_context_config_set_num_threads(config.get(), opts.threads);
@@ -373,6 +394,7 @@ int main(int argc, char* argv[]) {
     #endif
 
     auto ctx = futhark::Context(futhark_context_new(config.get()));
+    futhark_context_set_logging_file(ctx.get(), stderr);
     p.set_sync_callback([ctx = ctx.get()]{
         if (futhark_context_sync(ctx))
             throw futhark::Error(ctx);
@@ -380,7 +402,7 @@ int main(int argc, char* argv[]) {
     p.end("context init");
 
     try {
-        auto ast = parse(ctx.get(), input, p);
+        auto ast = parse(ctx.get(), input, p, opts.futhark_debug_extra ? stderr : nullptr);
 
         if (opts.dump_dot)
             dump_dot(ast, std::cout);
