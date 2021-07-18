@@ -10,6 +10,7 @@
 #include <stdexcept>
 #include <iosfwd>
 #include <cstdio>
+#include <cstdint>
 
 namespace frontend {
     enum class Error : uint8_t {
@@ -34,7 +35,7 @@ namespace frontend {
             std::runtime_error(error_name(e)) {}
     };
 
-    DeviceAst compile(futhark_context* ctx, const std::string& input, pareas::Profiler& p, std::FILE* debug_log);
+    DeviceAst compile(futhark_context* ctx, const std::string& input, bool verbose_tree, pareas::Profiler& p, std::FILE* debug_log);
 }
 
 #endif

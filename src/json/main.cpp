@@ -251,7 +251,7 @@ void dump_dot(const JsonTree& j, std::ostream& os) {
     fmt::print(os, "}}\n");
 }
 
-JsonTree parse(futhark_context* ctx, const std::string& input, pareas::Profiler& p, std::FILE* debug_log) {
+JsonTree parse(futhark_context* ctx, const std::string& input, bool verbose_tree, pareas::Profiler& p, std::FILE* debug_log) {
     auto debug_log_region = [&](const char* name) {
         if (debug_log)
             fmt::print(debug_log, "<<<{}>>>\n", name);
@@ -294,7 +294,9 @@ JsonTree parse(futhark_context* ctx, const std::string& input, pareas::Profiler&
     input_array.clear();
     lex_table.clear();
 
-    fmt::print("Num tokens: {}\n", tokens.shape()[0]);
+    if (verbose_tree) {
+        fmt::print(std::cerr, "Num tokens: {}\n", tokens.shape()[0]);
+    }
 
     debug_log_region("parse");
     auto node_types = futhark::UniqueArray<uint8_t, 1>(ctx);
@@ -316,6 +318,10 @@ JsonTree parse(futhark_context* ctx, const std::string& input, pareas::Profiler&
         if (err)
             throw futhark::Error(ctx);
     });
+
+    if (verbose_tree) {
+        fmt::print("Initial nodes: {}\n", node_types.shape()[0]);
+    }
 
     debug_log_region("restructure");
     p.measure("restructure", [&]{
@@ -356,6 +362,10 @@ JsonTree parse(futhark_context* ctx, const std::string& input, pareas::Profiler&
 
     if (err)
         throw futhark::Error(ctx);
+
+    if (verbose_tree) {
+        fmt::print("Nodes: {}\n", num_nodes);
+    }
 
     return ast;
 }
@@ -406,16 +416,12 @@ int main(int argc, char* argv[]) {
     p.end("context init");
 
     try {
-        auto ast = parse(ctx.get(), input, p, opts.futhark_debug_extra ? stderr : nullptr);
+        auto ast = parse(ctx.get(), input, opts.verbose_tree, p, opts.futhark_debug_extra ? stderr : nullptr);
 
         if (opts.dump_dot)
             dump_dot(ast, std::cout);
         else
             p.dump(std::cout);
-
-        if (opts.verbose_tree) {
-            fmt::print("Nodes: {}\n", ast.num_nodes);
-        }
 
         if (opts.futhark_profile) {
             auto report = MallocPtr<char>(futhark_context_report(ctx.get()));

@@ -46,6 +46,8 @@ type token = (token.t, i32, i32)
 entry frontend_tokenize (input: []u8) (lt: lex_table []): []token =
     tokenize input lt
 
+entry frontend_num_tokens [n] (tokens: [n]token): i32 = i32.i64 n
+
 entry frontend_parse (tokens: []token) (sct: stack_change_table []) (pt: parse_table []): (bool, []production.t) =
     let token_types = map (.0) tokens
     in if pareas_parser.check token_types sct

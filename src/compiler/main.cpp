@@ -250,16 +250,11 @@ int main(int argc, char* argv[]) {
 
     try {
         p.begin();
-        auto ast = frontend::compile(ctx.get(), input, p, opts.futhark_debug_extra ? stderr : nullptr);
+        auto ast = frontend::compile(ctx.get(), input, opts.verbose_tree, p, opts.futhark_debug_extra ? stderr : nullptr);
         p.end("frontend");
 
         if (opts.profile > 0)
             p.dump(std::cout);
-
-        if (opts.verbose_tree) {
-            fmt::print(std::cerr, "Num nodes: {}\n", ast.num_nodes());
-            fmt::print(std::cerr, "Num functions: {}\n", ast.num_functions());
-        }
 
         if (opts.dump_dot) {
             p.begin();
