@@ -320,7 +320,7 @@ JsonTree parse(futhark_context* ctx, const std::string& input, bool verbose_tree
     });
 
     if (verbose_tree) {
-        fmt::print("Initial nodes: {}\n", node_types.shape()[0]);
+        fmt::print(std::cerr, "Initial nodes: {}\n", node_types.shape()[0]);
     }
 
     debug_log_region("restructure");
@@ -364,7 +364,7 @@ JsonTree parse(futhark_context* ctx, const std::string& input, bool verbose_tree
         throw futhark::Error(ctx);
 
     if (verbose_tree) {
-        fmt::print("Nodes: {}\n", num_nodes);
+        fmt::print(std::cerr, "Nodes: {}\n", num_nodes);
     }
 
     return ast;
