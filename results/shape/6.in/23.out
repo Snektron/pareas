@@ -1,0 +1,12 @@
+Global: 99960174µs
+Global.Setup: 593305µs
+Global.GPU: 97217330µs
+Global.GPU.Upload: 5205µs
+Global.GPU.Upload.Create: 228µs
+Global.GPU.Preprocessing: 1311µs
+Global.GPU.Instruction count: 336µs
+Global.GPU.Instruction gen: 8461µs
+Global.GPU.Optimize: 7024µs
+Global.GPU.Regalloc,Instr remove: 97194341µs
+Global.GPU.Jump Fix: 594µs
+Global.GPU.Postprocess: 41µs

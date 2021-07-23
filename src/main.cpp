@@ -294,7 +294,7 @@ int main(int argc, const char* argv[]) {
         std::cout << "Num functions: " << props.getFunctions() << std::endl;
         std::cout << "Max function length: " << props.getMaxFuncLen() << std::endl;
 
-        return 0;
+        //return 0;
 
         auto context = UniqueCPtr<futhark_context, futhark_context_free>(futhark_context_new(config.get()));
 

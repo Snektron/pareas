@@ -7,6 +7,18 @@ import "register"
 import "preprocess"
 import "optimizer"
 import "postprocess"
+import "bridge"
+
+--Frontend bridge entry
+entry make_from_frontend [n]
+        (node_types: [n]front_node_type)
+        (node_res_types: [n]front_data_type)
+        (node_parents: [n]front_node_idx_type)
+        (node_depth: [n]front_depth_type)
+        (node_child_idx : [n]front_child_idx_type)
+        (node_data: [n]front_node_data_type)
+        (max_depth: front_depth_type) : Tree[n] =
+    backend_convert node_types node_res_types node_parents node_depth node_child_idx node_data max_depth
 
 let make_variable (data_type: u8) (offset: u32) : Variable =
     {

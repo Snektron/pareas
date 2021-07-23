@@ -19,6 +19,7 @@ dependencies = [fmt_dep]
 
 # Futhark sources
 futhark_sources = [
+    'src/bridge.fut',
     'src/datatypes.fut',
     'src/instr.fut',
     'src/instr_count.fut',

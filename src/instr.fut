@@ -1,6 +1,7 @@
 import "tree"
 import "datatypes"
 import "symtab"
+import "instr_count"
 import "../lib/github.com/diku-dk/sorts/radix_sort"
 
 type Instr = {
@@ -603,6 +604,1272 @@ let HAS_INSTR_TABLE : [][][]bool = [
     ] --Arg stack
 ]
 
+let NODE_GET_PARENT_ARG_IDX_LOOKUP : [][][]i8 = [
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [2,     2,      2,      2,      2,      2],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Invalid
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [2,     2,      2,      2,      2,      2],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Statement list
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [2,     2,      2,      2,      2,      2],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Empty statement
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [2,     2,      2,      2,      2,      2],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Func decl
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Func arg
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [2,     2,      2,      2,      2,      2],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Func arg list
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [2,     2,      2,      2,      2,      2],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Expr stat
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [2,     2,      2,      2,      2,      2],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --If stat
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [2,     2,      2,      2,      2,      2],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --If else stat
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [2,     2,      2,      2,      2,      2],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --While stat
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      1,      1,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Func call expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Func call arg
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [2,     2,      2,      2,      2,      2],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Func call arg list
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [2,     2,      2,      2,      2,      2],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Add expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [2,     2,      2,      2,      2,      2],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Sub expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [2,     2,      2,      2,      2,      2],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Mul expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [2,     2,      2,      2,      2,      2],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Div expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [2,     2,      2,      2,      2,      2],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Mod expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [2,     2,      2,      2,      2,      2],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Bitand expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [2,     2,      2,      2,      2,      2],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Bitor expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [2,     2,      2,      2,      2,      2],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Bitxor expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [2,     2,      2,      2,      2,      2],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Lshift expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [2,     2,      2,      2,      2,      2],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Rshift expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [2,     2,      2,      2,      2,      2],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Urshift expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [2,     2,      2,      2,      2,      2],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Land expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [2,     2,      2,      2,      2,      2],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Lor expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [2,     2,      0,      2,      2,      2],
+        [0,     0,      1,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Eq expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [0,     0,      0,      0,      0,      0],
+        [1,     1,      1,      1,      1,      1],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Neq expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [2,     2,      2,      2,      2,      2],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Less expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [2,     2,      2,      2,      2,      2],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Great expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [2,     2,      0,      2,      2,      2],
+        [0,     0,      1,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Lesseq expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [2,     2,      0,      2,      2,      2],
+        [0,     0,      1,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Greateq expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [2,     2,      2,      2,      2,      2],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Bitnot expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [2,     2,      2,      2,      2,      2],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Lnot expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [2,     2,      2,      2,      2,      2],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Neg expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [0,     0,      0,      0,      0,      0],
+        [1,     1,      1,      0,      1,      1],
+        [0,     0,      0,      1,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Lit expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [2,     2,      2,      2,      2,      2],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Cast expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [2,     2,      2,      2,      2,      2],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Deref expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [0,     0,      0,      0,      0,      0],
+        [1,     1,      1,      1,      1,      1],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Assign expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [2,     2,      2,      2,      2,      2],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Decl expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [2,     2,      2,      2,      2,      2],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Id expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [2,     2,      2,      2,      2,      2],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --While dummy
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [2,     2,      2,      2,      2,      2],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ],  --Func decl dummy
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Return stat
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Call arg float in int
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Call arg stack
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Arg float in int
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ] --Arg stack
+]
+
+let HAS_OUTPUT_TABLE : [][][]bool = [
+    [ -- Invalid  Void      Int       Float     Int_ref   Float_ref
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false]
+    ], --Invalid
+    [ -- Invalid  Void      Int       Float     Int_ref   Float_ref
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false]
+    ], --Statement list
+    [ -- Invalid  Void      Int       Float     Int_ref   Float_ref
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false]
+    ], --Empty statement
+    [ -- Invalid  Void      Int       Float     Int_ref   Float_ref
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false]
+    ], --Func decl
+    [ -- Invalid  Void      Int       Float     Int_ref   Float_ref
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false]
+    ], --Func arg
+    [ -- Invalid  Void      Int       Float     Int_ref   Float_ref
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false]
+    ], --Func arg list
+    [ -- Invalid  Void      Int       Float     Int_ref   Float_ref
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false]
+    ], --Expr stat
+    [ -- Invalid  Void      Int       Float     Int_ref   Float_ref
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false]
+    ], --If stat
+    [ -- Invalid  Void      Int       Float     Int_ref   Float_ref
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false]
+    ], --If else stat
+    [ -- Invalid  Void      Int       Float     Int_ref   Float_ref
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false]
+    ], --While stat
+    [ -- Invalid  Void      Int       Float     Int_ref   Float_ref
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false]
+    ], --Func call expr
+    [ -- Invalid  Void      Int       Float     Int_ref   Float_ref
+        [false,    false,     false,     false,     false,     false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false]
+    ], --Func call arg
+    [ -- Invalid  Void      Int       Float     Int_ref   Float_ref
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false]
+    ], --Func call arg list
+    [ -- Invalid  Void      Int       Float     Int_ref   Float_ref
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false]
+    ], --Add expr
+    [ -- Invalid  Void      Int       Float     Int_ref   Float_ref
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false]
+    ], --Sub expr
+    [ -- Invalid  Void      Int       Float     Int_ref   Float_ref
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false]
+    ], --Mul expr
+    [ -- Invalid  Void      Int       Float     Int_ref   Float_ref
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false]
+    ], --Div expr
+    [ -- Invalid  Void      Int       Float     Int_ref   Float_ref
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false]
+    ], --Mod expr
+    [ -- Invalid  Void      Int       Float     Int_ref   Float_ref
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false]
+    ], --Bitand expr
+    [ -- Invalid  Void      Int       Float     Int_ref   Float_ref
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false]
+    ], --Bitor expr
+    [ -- Invalid  Void      Int       Float     Int_ref   Float_ref
+        [false,    false,     false,     false,     false,     false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false]
+    ], --Bitxor expr
+    [ -- Invalid  Void      Int       Float     Int_ref   Float_ref
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false]
+    ], --Lshift expr
+    [ -- Invalid  Void      Int       Float     Int_ref   Float_ref
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false]
+    ], --Rshift expr
+    [ -- Invalid  Void      Int       Float     Int_ref   Float_ref
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false]
+    ], --Urshift expr
+    [ -- Invalid  Void      Int       Float     Int_ref   Float_ref
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false]
+    ], --Land expr
+    [ -- Invalid  Void      Int       Float     Int_ref   Float_ref
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false]
+    ], --Lor expr
+    [ -- Invalid  Void      Int       Float     Int_ref   Float_ref
+        [false,   false,    true,     false,     false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false]
+    ], --Eq expr
+    [ -- Invalid  Void      Int       Float     Int_ref   Float_ref
+        [true,    true,     true,      true,    true,     true],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false]
+    ], --Neq expr
+    [ -- Invalid  Void      Int       Float     Int_ref   Float_ref
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false]
+    ], --Less expr
+    [ -- Invalid  Void      Int       Float     Int_ref   Float_ref
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false]
+    ], --Great expr
+    [ -- Invalid  Void      Int       Float     Int_ref   Float_ref
+        [false,   false,    true,     false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false]
+    ], --Lesseq expr
+    [ -- Invalid  Void      Int       Float     Int_ref   Float_ref
+        [false,   false,    true,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false]
+    ], --Greateq expr
+    [ -- Invalid  Void      Int       Float     Int_ref   Float_ref
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false]
+    ], --Bitnot expr
+    [ -- Invalid  Void      Int       Float     Int_ref   Float_ref
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false]
+    ], --Lnot expr
+    [ -- Invalid  Void      Int       Float     Int_ref   Float_ref
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false]
+    ], --Neg expr
+    [ -- Invalid  Void      Int       Float     Int_ref   Float_ref
+        [true,    true,     true,     true,     true,     true],
+        [false,   false,    false,    true,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false]
+    ], --Lit expr
+    [ -- Invalid  Void      Int       Float     Int_ref   Float_ref
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false]
+    ], --Cast expr
+    [ -- Invalid  Void      Int       Float     Int_ref   Float_ref
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false]
+    ], --Deref expr
+    [ -- Invalid  Void      Int       Float     Int_ref   Float_ref
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false]
+    ], --Assign expr
+    [ -- Invalid  Void      Int       Float     Int_ref   Float_ref
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false]
+    ], --Decl expr
+    [ -- Invalid  Void      Int       Float     Int_ref   Float_ref
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false]
+    ], --Id expr
+    [ -- Invalid  Void      Int       Float     Int_ref   Float_ref
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false]
+    ], --While dummy
+    [ -- Invalid  Void      Int       Float     Int_ref   Float_ref
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false]
+    ],  --Func decl dummy
+    [ -- Invalid  Void      Int       Float     Int_ref   Float_ref
+        [true,    true,     true,     true,     true,     true],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false]
+    ], --Return stat
+    [ -- Invalid  Void      Int       Float     Int_ref   Float_ref
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false]
+    ], --Call arg float in int
+    [ -- Invalid  Void      Int       Float     Int_ref   Float_ref
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false]
+    ], --Call arg stack
+    [ -- Invalid  Void      Int       Float     Int_ref   Float_ref
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false]
+    ], --Arg float in int
+    [ -- Invalid  Void      Int       Float     Int_ref   Float_ref
+        [true,    true,     true,     true,     true,     true],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false],
+        [false,   false,    false,    false,    false,    false]
+    ] --Arg stack
+]
+
+let INSTR_CONSTANT_TABLE : [][]i8 = [
+    [0,0,0,0], --Invalid
+    [0,0,0,0], --Statement list
+    [0,0,0,0], --Empty statement
+    [0,0,0,0], --Func decl
+    [0,0,0,0], --Func arg
+    [0,0,0,0], --Func arg list
+    [0,0,0,0], --Expr stat
+    [0,0,0,0], --If stat
+    [0,0,0,0], --If else stat
+    [0,0,0,0], --While stat
+    [0,0,0,0], --Func call expr
+    [0,0,0,0], --Func call arg
+    [5,4,0,0], --Func call arg list
+    [0,0,0,0], --Add expr
+    [0,0,0,0], --Sub expr
+    [0,0,0,0], --Mul expr
+    [0,0,0,0], --Div expr
+    [0,0,0,0], --Mod expr
+    [0,0,0,0], --Bitand expr
+    [0,0,0,0], --Bitor expr
+    [0,0,0,0], --Bitxor expr
+    [0,0,0,0], --Lshift expr
+    [0,0,0,0], --Rshift expr
+    [0,0,0,0], --Urshift expr
+    [0,0,0,0], --Land expr
+    [0,0,0,0], --Lor expr
+    [0,0,0,0], --Eq expr
+    [0,0,0,0], --Neq expr
+    [0,0,0,0], --Less expr
+    [0,0,0,0], --Great expr
+    [0,0,0,0], --Lesseq expr
+    [0,0,0,0], --Greateq expr
+    [0,0,0,0], --Bitnot expr
+    [0,0,0,0], --Lnot expr
+    [0,0,0,0], --Neg expr
+    [1,2,0,0], --Lit expr
+    [0,0,0,0], --Cast expr
+    [0,0,0,0], --Deref expr
+    [0,0,0,0], --Assign expr
+    [3,0,0,0], --Decl expr
+    [3,0,0,0], --Id expr
+    [0,0,0,0], --While dummy
+    [0,0,0,0],  --Func decl dummy
+    [0,0,0,0], --Return stat
+    [0,0,0,0], --Call arg float in int
+    [4,0,0,0], --Call arg stack
+    [0,0,0,0], --Arg float in int
+    [4,0,0,0] --Arg stack
+]
+
+let INSTR_JT_TABLE : [][]i8 = [
+    [0,0,0,0], --Invalid
+    [0,0,0,0], --Statement list
+    [0,0,0,0], --Empty statement
+    [0,0,0,0], --Func decl
+    [0,0,0,0], --Func arg
+    [0,0,0,0], --Func arg list
+    [0,0,0,0], --Expr stat
+    [1,0,0,0], --If stat
+    [2,3,0,0], --If else stat
+    [4,5,0,0], --While stat
+    [7,0,0,0], --Func call expr
+    [0,0,0,0], --Func call arg
+    [0,0,0,0], --Func call arg list
+    [0,0,0,0], --Add expr
+    [0,0,0,0], --Sub expr
+    [0,0,0,0], --Mul expr
+    [0,0,0,0], --Div expr
+    [0,0,0,0], --Mod expr
+    [0,0,0,0], --Bitand expr
+    [0,0,0,0], --Bitor expr
+    [0,0,0,0], --Bitxor expr
+    [0,0,0,0], --Lshift expr
+    [0,0,0,0], --Rshift expr
+    [0,0,0,0], --Urshift expr
+    [0,0,0,0], --Land expr
+    [0,0,0,0], --Lor expr
+    [0,0,0,0], --Eq expr
+    [0,0,0,0], --Neq expr
+    [0,0,0,0], --Less expr
+    [0,0,0,0], --Great expr
+    [0,0,0,0], --Lesseq expr
+    [0,0,0,0], --Greateq expr
+    [0,0,0,0], --Bitnot expr
+    [0,0,0,0], --Lnot expr
+    [0,0,0,0], --Neg expr
+    [0,0,0,0], --Lit expr
+    [0,0,0,0], --Cast expr
+    [0,0,0,0], --Deref expr
+    [0,0,0,0], --Assign expr
+    [0,0,0,0], --Decl expr
+    [0,0,0,0], --Id expr
+    [0,0,0,0], --While dummy
+    [0,0,0,0],  --Func decl dummy
+    [0,6,0,0], --Return stat
+    [0,0,0,0], --Call arg float in int
+    [0,0,0,0], --Call arg stack
+    [0,0,0,0], --Arg float in int
+    [0,0,0,0] --Arg stack
+]
+
+let GET_OUTPUT_TABLE : [][][]i8 = [
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Invalid
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Statement list
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Empty statement
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Func decl
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Func arg
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Func arg list
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Expr stat
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --If stat
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --If else stat
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --While stat
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Func call expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [0,     0,      1,      2,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Func call arg
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Func call arg list
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Add expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Sub expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Mul expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Div expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Mod expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Bitand expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Bitor expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Bitxor expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Lshift expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Rshift expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Urshift expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Land expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Lor expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Eq expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Neq expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Less expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Great expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Lesseq expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Greateq expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Bitnot expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Lnot expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Neg expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Lit expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Cast expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Deref expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Assign expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Decl expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Id expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --While dummy
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ],  --Func decl dummy
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [4,     4,      4,      3,      4,      4],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Return stat
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [1,     1,      1,      1,      1,      1],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Call arg float in int
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Call arg stack
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ], --Arg float in int
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0],
+        [0,     0,      0,      0,      0,      0]
+    ] --Arg stack
+]
+
+let OPERAND_TABLE : [][][][]i8 = [
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]]
+    ], --Invalid
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]]
+    ], --Statement list
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]]
+    ], --Empty statement
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]]
+    ], --Func decl
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [[1,0], [1,0],  [1,0],  [1,0],  [1,2],  [1,3]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]]
+    ], --Func arg
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]]
+    ], --Func arg list
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]]
+    ], --Expr stat
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [[1,0], [1,0],  [1,0],  [1,0],  [1,0],  [1,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]]
+    ], --If stat
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [[1,0], [1,0],  [1,0],  [1,0],  [1,0],  [1,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]]
+    ], --If else stat
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [[4,0], [4,0],  [4,0],  [4,0],  [4,0],  [4,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]]
+    ], --While stat
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]]
+    ], --Func call expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [[1,0], [1,0],  [1,0],  [1,6],  [1,0],  [1,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]]
+    ], --Func call arg
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]]
+    ], --Func call arg list
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [[1,1], [1,1],  [1,1],  [1,1],  [1,1],  [1,1]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]]
+    ], --Add expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [[1,1], [1,1],  [1,1],  [1,1],  [1,1],  [1,1]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]]
+    ], --Sub expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [[1,1], [1,1],  [1,1],  [1,1],  [1,1],  [1,1]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]]
+    ], --Mul expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [[1,1], [1,1],  [1,1],  [1,1],  [1,1],  [1,1]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]]
+    ], --Div expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [[1,1], [1,1],  [1,1],  [1,1],  [1,1],  [1,1]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]]
+    ], --Mod expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [[1,1], [1,1],  [1,1],  [1,1],  [1,1],  [1,1]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]]
+    ], --Bitand expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [[1,1], [1,1],  [1,1],  [1,1],  [1,1],  [1,1]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]]
+    ], --Bitor expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [[1,1], [1,1],  [1,1],  [1,1],  [1,1],  [1,1]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]]
+    ], --Bitxor expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [[1,1], [1,1],  [1,1],  [1,1],  [1,1],  [1,1]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]]
+    ], --Lshift expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [[1,1], [1,1],  [1,1],  [1,1],  [1,1],  [1,1]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]]
+    ], --Rshift expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [[1,1], [1,1],  [1,1],  [1,1],  [1,1],  [1,1]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]]
+    ], --Urshift expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]]
+    ], --Land expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]]
+    ], --Lor expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [[1,1], [1,1],  [1,1],  [1,1],  [1,1],  [1,1]],
+        [[0,0], [0,0],  [7,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]]
+    ], --Eq expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [[1,1], [1,1],  [1,1],  [1,1],  [1,1],  [1,1]],
+        [[0,0], [0,0],  [0,7],  [7,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]]
+    ], --Neq expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [[1,1], [1,1],  [1,1],  [1,1],  [1,1],  [1,1]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]]
+    ], --Less expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [[5,5], [5,5],  [5,5],  [5,5],  [5,5],  [5,5]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]]
+    ], --Great expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [[0,0], [0,0],  [5,5],  [1,1],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [7,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]]
+    ], --Lesseq expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [[0,0], [0,0],  [1,1],  [5,5],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [7,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]]
+    ], --Greateq expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]]
+    ], --Bitnot expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]]
+    ], --Lnot expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]]
+    ], --Neg expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[7,0], [7,0],  [7,0],  [7,0],  [7,0],  [7,0]],
+        [[0,0], [0,0],  [0,0],  [7,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]]
+    ], --Lit expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [[1,0], [1,0],  [1,0],  [1,0],  [1,0],  [1,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]]
+    ], --Cast expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [[1,0], [1,0],  [1,0],  [1,0],  [1,0],  [1,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]]
+    ], --Deref expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [[1,1], [1,1],  [1,1],  [1,1],  [1,1],  [1,1]],
+        [[4,0], [4,0],  [4,0],  [4,4],  [4,0],  [4,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]]
+    ], --Assign expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]]
+    ], --Decl expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]]
+    ], --Id expr
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]]
+    ], --While dummy
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]]
+    ],  --Func decl dummy
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [[0,0], [0,0],  [1,0],  [1,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]]
+    ], --Return stat
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [[1,0], [1,0],  [1,0],  [1,0],  [1,0],  [1,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]]
+    ], --Call arg float in int
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [[6,0], [6,0],  [6,0],  [6,0],  [6,0],  [6,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]]
+    ], --Call arg stack
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [[1,2], [1,2],  [1,2],  [1,2],  [1,2],  [1,2]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]]
+    ], --Arg float in int
+    [ -- Inval  Void    Int     Float   Int_ref Float_ref
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[1,7], [1,7],  [1,7],  [1,7],  [1,7],  [1,7]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]],
+        [[0,0], [0,0],  [0,0],  [0,0],  [0,0],  [0,0]]
+    ] --Arg stack
+]
+
 let node_instr(node_type: NodeType) (data_type: DataType) (instr_offset: i64) : u32 =
     INSTR_TABLE[node_type, instr_offset, data_type]
 
@@ -616,38 +1883,16 @@ let parent_arg_idx (node: Node) : i64 =
     i64.i32 node.parent * PARENT_IDX_PER_NODE + i64.i32 node.child_idx
 
 let node_get_parent_arg_idx_sub (node: Node) (instr_offset: i64) : i64 =
-    match (node.node_type, node.resulting_type, instr_offset)
-        case (26, 2, 0) -> -1
-        case (27, _, 0) -> -1
-        case (30, 2, 0) -> -1
-        case (31, 2, 0) -> -1
-        case (35, _, 0) -> -1
-        case (38, _, 0) -> -1
-        case (4, _, 0) -> -1
-        case (46, _, 0) -> -1
-        case (47, _, 0) -> -1
-        case (43, _, 0) -> -1
-        case (10, _, 0) -> -1
-        case (11, _, 0) -> -1
-        case (44, _, 0) -> -1
-        case (45, _, 0) -> -1
-        case (_, _, 0) ->
-            if node_has_return node.node_type node.resulting_type then
-                parent_arg_idx node
-            else
-                -1
-
-        case (26, 2, 1) -> parent_arg_idx node
-        case (27, _, 1) -> parent_arg_idx node
-        case (30, 2, 1) -> parent_arg_idx node
-        case (31, 2, 1) -> parent_arg_idx node
-        case (35, 2, 1) -> parent_arg_idx node
-        case (38, _, 1) -> parent_arg_idx node
-
-        case (10, 3, 2) -> parent_arg_idx node
-        case (10, 2, 2) -> parent_arg_idx node
-        case (35, 3, 2) -> parent_arg_idx node
-        case _ -> -1
+    let calc_type = NODE_GET_PARENT_ARG_IDX_LOOKUP[node.node_type, instr_offset, node.resulting_type] in
+    if calc_type == 1 then
+        parent_arg_idx node
+    else if calc_type == 2 then
+        if node_has_return node.node_type node.resulting_type then
+            parent_arg_idx node
+        else
+            -1
+    else
+        -1
 
 let node_get_parent_arg_idx (nodes: []Node) (node: Node) (instr_offset: i64) : i64 =
     if node.parent == INVALID_NODE_IDX then
@@ -666,68 +1911,26 @@ let register (instr_no: i64) =
     instr_no + 64
 
 let node_get_instr_arg (node_id: i64) (node: Node) (registers: []i64) (arg_no: i64) (instr_no: i64) (instr_offset: i64) : i64 =
-    match(node.node_type, node.resulting_type, arg_no, instr_offset)
-        case (4, _, 0, 0) -> registers[node_id * PARENT_IDX_PER_NODE] --func arg
-        case (4, 4, 1, 0) -> i64.u32 node.node_data + 10 --func arg, int_ref
-        case (4, 5, 1, 0) -> i64.u32 node.node_data + 42 --func arg, float_ref
-        case (46, _, 0, 0) -> registers[node_id * PARENT_IDX_PER_NODE] --func arg float in int
-        case (46, _, 1, 0) -> i64.u32 node.node_data + 10 --func arg float in int
-        case (7, _, 0, 0) -> registers[node_id * PARENT_IDX_PER_NODE] --if stat
-        case (8, _, 0, 0) -> registers[node_id * PARENT_IDX_PER_NODE] --if else stat
-        case (9, _, 0, 0) -> registers[node_id * PARENT_IDX_PER_NODE + 1] --while stat
-        case (43, 2, 0, 0) -> registers[node_id * PARENT_IDX_PER_NODE] --return stat, int
-        case (43, 3, 0, 0) -> registers[node_id * PARENT_IDX_PER_NODE] --return stat, float
-        case (13, _, _, 0) -> registers[node_id * PARENT_IDX_PER_NODE + arg_no] --add
-        case (14, _,_, 0) -> registers[node_id * PARENT_IDX_PER_NODE + arg_no] --sub
-        case (15, _,_, 0) -> registers[node_id * PARENT_IDX_PER_NODE + arg_no] --mul
-        case (16, _,_, 0) -> registers[node_id * PARENT_IDX_PER_NODE + arg_no] --div
-        case (17, _,_, 0) -> registers[node_id * PARENT_IDX_PER_NODE + arg_no] --mod
-        case (18, _,_, 0) -> registers[node_id * PARENT_IDX_PER_NODE + arg_no] --bitand
-        case (19, _,_, 0) -> registers[node_id * PARENT_IDX_PER_NODE + arg_no] --bitor
-        case (20, _,_, 0) -> registers[node_id * PARENT_IDX_PER_NODE + arg_no] --bitxor
-        case (21, _,_, 0) -> registers[node_id * PARENT_IDX_PER_NODE + arg_no] --lshift
-        case (22, _,_, 0) -> registers[node_id * PARENT_IDX_PER_NODE + arg_no] --rshift
-        case (23, _, _, 0) -> registers[node_id * PARENT_IDX_PER_NODE + arg_no] --urshift
-        case (26, _, _, 0) -> registers[node_id * PARENT_IDX_PER_NODE + arg_no] --eq
-        case (27, _, _, 0) -> registers[node_id * PARENT_IDX_PER_NODE + arg_no] --neq
-        case (28, _, _, 0) -> registers[node_id * PARENT_IDX_PER_NODE + arg_no] --less
-        case (29, _, _, 0) -> registers[node_id * PARENT_IDX_PER_NODE + 1 - arg_no] --great
-        case (30, 2, _, 0) -> registers[node_id * PARENT_IDX_PER_NODE + 1 - arg_no] --lesseq, int
-        case (30, 3, _, 0) -> registers[node_id * PARENT_IDX_PER_NODE + arg_no] --lesseq, float
-        case (31, 2, _, 0) -> registers[node_id * PARENT_IDX_PER_NODE + arg_no] --greateq, int
-        case (31, 3, _, 0) -> registers[node_id * PARENT_IDX_PER_NODE + 1 - arg_no] --greateq, float
-        case (11, _, 0, 0) -> registers[node_id * PARENT_IDX_PER_NODE] --call arg
-        case (11, 3, 1, 0) -> registers[node_id * PARENT_IDX_PER_NODE] --call arg, float
-        case (44, _, 0, 0) -> registers[node_id * PARENT_IDX_PER_NODE] --call arg float in int
-        case (45, _, 1, 0) -> registers[node_id * PARENT_IDX_PER_NODE] --call arg stack
-        case (38, _,_, 0) -> registers[node_id * PARENT_IDX_PER_NODE + arg_no] --assign
-        case (36, _, 0, 0) -> registers[node_id * PARENT_IDX_PER_NODE] --cast
-        case (37, _, 0, 0) -> registers[node_id * PARENT_IDX_PER_NODE] --deref
-
-        case (26, 2, 0, 1) -> register (instr_no - 1) --eq, int
-        case (27, 2, 1, 1) -> register (instr_no - 1) --neq, int
-        case (27, 3, 0, 1) -> register (instr_no - 1) --neq, float
-        case (30, 2, 0, 1) -> register (instr_no - 1) --lesseq, int
-        case (31, 2, 0, 1) -> register (instr_no - 1) --greateq, int
-        case (38, _, 0, 1) -> registers[node_id * PARENT_IDX_PER_NODE + 1] --assign
-        case (38, 3, 1, 1) -> registers[node_id * PARENT_IDX_PER_NODE + 1] --assign, float
-        case (35, _, 0, 1) -> register (instr_no - 1) --lit
-        case (35, 3, 0, 2) -> register (instr_no - 1) --lit, float
-        case (47, _, 0, 1) -> registers[node_id * PARENT_IDX_PER_NODE] --arg stack
-        case (47, _, 1, 1) -> register (instr_no - 1) --arg stack
-        case _ -> 0
+    let calc_type = OPERAND_TABLE[node.node_type, instr_offset, node.resulting_type, arg_no] in
+    if calc_type == 1 then
+        registers[node_id * PARENT_IDX_PER_NODE + arg_no]
+    else if calc_type == 2 then
+        i64.u32 node.node_data + 10
+    else if calc_type == 3 then
+        i64.u32 node.node_data + 42
+    else if calc_type == 4 then
+        registers[node_id * PARENT_IDX_PER_NODE + 1]
+    else if calc_type == 5 then
+        registers[node_id * PARENT_IDX_PER_NODE + 1 - arg_no]
+    else if calc_type == 6 then
+        registers[node_id * PARENT_IDX_PER_NODE]
+    else if calc_type == 7 then
+        register (instr_no - 1)
+    else
+        0
 
 let node_has_output (nodes: []Node) (node: Node) (instr_offset: i64) : bool =
-    (node_get_parent_arg_idx nodes node instr_offset) != -1 || match (node.node_type, node.resulting_type, instr_offset)
-        case (26, 2, 0) -> true
-        case (27, _, 0) -> true
-        case (30, 2, 0) -> true
-        case (31, 2, 0) -> true
-        case (35, _, 0) -> true
-        case (35, 3, 1) -> true
-        case (43, _, 0) -> true
-        case (47, _, 0) -> true
-        case _ -> false
+    (node_get_parent_arg_idx nodes node instr_offset) != -1 || HAS_OUTPUT_TABLE[node.node_type, instr_offset, node.resulting_type]
 
 -- let make_branch_constant (node_id: i64) (registers: []i64) (delta: i64) (instr_loc: i64) (idx: i64) : u32 =
 --     let offset = (registers[node_id * PARENT_IDX_PER_NODE + idx] + delta - instr_loc) * 4
@@ -751,28 +1954,39 @@ let signextend(x: u32) =
     u32.i32 (signed_x << 20 >> 20)
     
 let instr_constant [max_vars] (node: Node) (instr_offset: i64) (symtab: Symtab[max_vars]) : u32 =
-    match(node.node_type, node.resulting_type, instr_offset)
-        case (35, _, 0) -> node.node_data - (signextend (node.node_data & 0xFFF)) & 0xFFFFF000
-        case (35, _, 1) -> (node.node_data & 0xFFF) << 20
-        case (40, _, 0) -> (-4 * ((symtab_local_offset symtab node.node_data) + 2)) << 20
-        case (39, _, 0) -> (-4 * ((symtab_local_offset symtab node.node_data) + 2)) << 20
-        case (47, _, 0) -> (4 * node.node_data) << 20
-        case (45, _, 0) -> (4 * node.node_data) << 20
-        case (12, _, 0) -> (-(4 * node.node_data)) << 20
-        case (12, _, 1) -> (4 * node.node_data) << 20
-        case _ -> 0
+    let calc_type = INSTR_CONSTANT_TABLE[node.node_type, instr_offset] in
+    if calc_type == 1 then
+        node.node_data - (signextend (node.node_data & 0xFFF)) & 0xFFFFF000
+    else if calc_type == 2 then
+        (node.node_data & 0xFFF) << 20
+    else if calc_type == 3 then
+        (-4 * ((symtab_local_offset symtab node.node_data) + 2)) << 20
+    else if calc_type == 4 then
+        (4 * node.node_data) << 20
+    else if calc_type == 5 then
+        (-(4 * node.node_data)) << 20
+    else
+        0
 
 let instr_jt (node: Node) 
  (node_id: i64) (instr_offset: i64) (registers: []i64) (func_starts: []u32) (func_ends: []u32): i64 =
-    match(node.node_type, instr_offset)
-        case (7, 0) -> registers[node_id * PARENT_IDX_PER_NODE + 1] --if stat
-        case (8, 0) -> registers[node_id * PARENT_IDX_PER_NODE + 1] + 1 --if else stat
-        case (8, 1) -> registers[node_id * PARENT_IDX_PER_NODE + 2] --if else stat
-        case (9, 0) -> registers[node_id * PARENT_IDX_PER_NODE + 2] + 1 --while stat
-        case (9, 1) -> registers[node_id * PARENT_IDX_PER_NODE] -- while stat
-        case (43, 1) -> i64.u32 func_ends[i64.u32 node.node_data] - 6 --return stat
-        case (10, 0) -> i64.u32 func_starts[i64.u32 node.node_data] --func call expr
-        case _ -> 0
+    let calc_type = INSTR_JT_TABLE[node.node_type, instr_offset] in
+    if calc_type == 1 then
+        registers[node_id * PARENT_IDX_PER_NODE + 1]
+    else if calc_type == 2 then
+        registers[node_id * PARENT_IDX_PER_NODE + 1] + 1
+    else if calc_type == 3 then
+        registers[node_id * PARENT_IDX_PER_NODE + 2]
+    else if calc_type == 4 then
+        registers[node_id * PARENT_IDX_PER_NODE + 2] + 1
+    else if calc_type == 5 then
+        registers[node_id * PARENT_IDX_PER_NODE]
+    else if calc_type == 6 then
+        i64.u32 func_ends[i64.u32 node.node_data] - 6
+    else if calc_type == 7 then
+        i64.u32 func_starts[i64.u32 node.node_data]
+    else
+        0
 
 let get_instr_loc (node: Node) (nodes: []Node) (node_id: i64) (instr_no: i64) (instr_offset: i64) (registers: []i64) =
     if instr_offset == 1 && (node.node_type == node_type_if_else_stat) then
@@ -799,7 +2013,9 @@ let get_data_prop_value [tree_size] (tree: Tree[tree_size]) (node: Node) (rd: i6
     if node.parent == INVALID_NODE_IDX then
         rd
     else
-        let parent_type = tree.nodes[node.parent].node_type in
+        let parent_type = tree.nodes[node.parent].node_type
+        let instr_no = instr_no + i64.u32 NODE_COUNT_TABLE[node.node_type, node.resulting_type]
+        in
         if parent_type == node_type_if_stat || parent_type == node_type_if_else_stat then
             if node.child_idx == 1 || node.child_idx == 2 then
                 instr_no
@@ -814,13 +2030,17 @@ let get_data_prop_value [tree_size] (tree: Tree[tree_size]) (node: Node) (rd: i6
             rd
 
 let get_output_register [tree_size] (tree: Tree[tree_size]) (node: Node) (instr_no: i64) (instr_offset: i64) =
-    match (node.node_type, node.resulting_type, instr_offset)
-        case (11, 2, 0) -> i64.u32 node.node_data + 10
-        case (11, 3, 0) -> i64.u32 node.node_data + 42
-        case (44, _, 0) -> i64.u32 node.node_data + 10
-        case (43, 3, 0) -> 32
-        case (43, _, 0) -> 10
-        case _ -> if node_has_output tree.nodes node instr_offset then register instr_no else 0
+    let calc_type = GET_OUTPUT_TABLE[node.node_type, instr_offset, node.resulting_type] in
+    if calc_type == 1 then
+        i64.u32 node.node_data + 10
+    else if calc_type == 2 then
+        i64.u32 node.node_data + 42
+    else if calc_type == 3 then
+        32
+    else if calc_type == 4 then
+        10
+    else
+        if node_has_output tree.nodes node instr_offset then register instr_no else 0
 
 let get_node_instr [tree_size] [max_vars] (tree: Tree[tree_size]) (node: Node) (instr_no: i64) (node_index: i64) (registers: []i64) (symtab: Symtab[max_vars]) (func_starts: []u32) (func_ends: []u32) (instr_offset: i64): (i64, i64, Instr, i64) =
     let node_type = node.node_type
