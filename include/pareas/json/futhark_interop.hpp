@@ -1,7 +1,7 @@
 #ifndef _PAREAS_COMPILER_FUTHARK_INTEROP_HPP
 #define _PAREAS_COMPILER_FUTHARK_INTEROP_HPP
 
-#include "futhark_generated.h"
+#include "json_futhark_generated.h"
 
 #include <memory>
 #include <string>
@@ -104,7 +104,6 @@ namespace futhark {
     using UniqueLexTable = UniqueOpaqueArray<futhark_opaque_lex_table, futhark_free_opaque_lex_table>;
     using UniqueParseTable = UniqueOpaqueArray<futhark_opaque_parse_table, futhark_free_opaque_parse_table>;
     using UniqueStackChangeTable = UniqueOpaqueArray<futhark_opaque_stack_change_table, futhark_free_opaque_stack_change_table>;
-    using UniqueTokenArray = UniqueOpaqueArray<futhark_opaque_arr_token_1d, futhark_free_opaque_arr_token_1d>;
 
     template <typename T, size_t N>
     struct ArrayTraits;
@@ -190,15 +189,6 @@ namespace futhark {
         constexpr static const auto free_fn = futhark_free_u16_2d;
         constexpr static const auto shape_fn = futhark_shape_u16_2d;
         constexpr static const auto values_fn = futhark_values_u16_2d;
-    };
-
-    template <>
-    struct ArrayTraits<uint32_t, 1> {
-        using Array = futhark_u32_1d;
-        constexpr static const auto new_fn = futhark_new_u32_1d;
-        constexpr static const auto free_fn = futhark_free_u32_1d;
-        constexpr static const auto shape_fn = futhark_shape_u32_1d;
-        constexpr static const auto values_fn = futhark_values_u32_1d;
     };
 
     template <>

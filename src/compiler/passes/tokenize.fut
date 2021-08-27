@@ -41,13 +41,13 @@ local let parse_float (input: []u8) ((_, offset, len): tokenref): f32 =
 -- for annoying string operations further in the compiler, and allows us to simply query and compare the IDs.
 -- For now, this implementation does a rather simply fixed-length radix sort, as names are not supposed to be
 -- very long. Some optimizations are done though, as names can only consist of a-zA-Z0-9_ (63 characters),
--- we only need to sort on 5 instead of 8 bits per characters.
+-- we only need to sort on 6 instead of 8 bits per characters.
 -- IDs are assigned sequentially starting from 0.
 local let link_names [n] (input: []u8) (tokens: [n]tokenref): [n]u32 =
     let (_, offsets, lengths) = unzip3 tokens
-    -- a-zA-Z0-9_ are 26 + 26 + 10 + 1 = 63 characters, so 5 bits will do.
-    let bits_per_char = 5
-    -- Map characters allowed in a function name to its 5-bit representation.
+    -- a-zA-Z0-9_ are 26 + 26 + 10 + 1 = 63 characters, so 6 bits will do.
+    let bits_per_char = 6
+    -- Map characters allowed in a function name to its 6-bit representation.
     let char_to_value (c: u8): u8 =
         if c >= 'a' && c <= 'z' then c - 'a'
         else if c >= 'A' && c <= 'Z' then c - 'A' + ('z' - 'a' + 1)

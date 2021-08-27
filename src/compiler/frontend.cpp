@@ -6,6 +6,8 @@
 #include <fmt/ostream.h>
 #include <fmt/chrono.h>
 
+#include <iostream>
+
 namespace {
     futhark::UniqueLexTable upload_lex_table(futhark_context* ctx) {
         auto initial_state = futhark::UniqueArray<uint16_t, 1>(
@@ -84,7 +86,13 @@ namespace frontend {
         }
     }
 
-    DeviceAst compile(futhark_context* ctx, const std::string& input, pareas::Profiler& p) {
+    DeviceAst compile(futhark_context* ctx, const std::string& input, bool verbose_tree, pareas::Profiler& p, std::FILE* debug_log) {
+        auto debug_log_region = [&](const char* name) {
+            if (debug_log)
+                fmt::print(debug_log, "<<<{}>>>\n", name);
+        };
+
+        debug_log_region("upload");
         p.begin();
         p.begin();
         auto lex_table = upload_lex_table(ctx);
@@ -110,13 +118,22 @@ namespace frontend {
 
         p.begin();
 
+        debug_log_region("tokenize");
         auto tokens = futhark::UniqueTokenArray(ctx);
         p.measure("tokenize", [&]{
             int err = futhark_entry_frontend_tokenize(ctx, &tokens, input_array, lex_table);
             if (err)
                 throw futhark::Error(ctx);
         });
+        lex_table.clear();
 
+        if (verbose_tree) {
+            int32_t result;
+            futhark_entry_frontend_num_tokens(ctx, &result, tokens);
+            fmt::print(std::cerr, "Tokens: {}\n", result);
+        }
+
+        debug_log_region("parse");
         auto node_types = futhark::UniqueArray<uint8_t, 1>(ctx);
         p.measure("parse", [&]{
             bool valid = false;
@@ -126,15 +143,25 @@ namespace frontend {
             if (!valid)
                 throw CompileError(Error::PARSE_ERROR);
         });
+        sct.clear();
+        pt.clear();
 
+        if (verbose_tree) {
+            fmt::print(std::cerr, "Initial nodes: {}\n", node_types.shape()[0]);
+        }
+
+        debug_log_region("build parse tree");
         auto parents = futhark::UniqueArray<int32_t, 1>(ctx);
         p.measure("build parse tree", [&]{
             int err = futhark_entry_frontend_build_parse_tree(ctx, &parents, node_types, arity_array);
             if (err)
                 throw futhark::Error(ctx);
         });
+        arity_array.clear();
+
 
         p.begin();
+        debug_log_region("syntax");
         p.measure("fix bin ops", [&]{
             auto old_node_types = std::move(node_types);
             auto old_parents = std::move(parents);
@@ -142,6 +169,10 @@ namespace frontend {
             if (err)
                 throw futhark::Error(ctx);
         });
+
+        if (verbose_tree) {
+            fmt::print(std::cerr, "Nodes after fix bin ops: {}\n", node_types.shape()[0]);
+        }
 
         p.measure("fix conditionals", [&]{
             auto old_node_types = std::move(node_types);
@@ -235,6 +266,7 @@ namespace frontend {
         p.end("syntax");
 
         p.begin();
+        debug_log_region("sema");
         p.measure("insert derefs", [&]{
             auto old_node_types = std::move(node_types);
             auto old_parents = std::move(parents);
@@ -250,6 +282,7 @@ namespace frontend {
             if (err)
                 throw futhark::Error(ctx);
         });
+        input_array.clear();
 
         auto resolution = futhark::UniqueArray<int32_t, 1>(ctx);
         p.measure("resolve vars", [&]{
@@ -306,7 +339,7 @@ namespace frontend {
             if (err)
                 throw futhark::Error(ctx);
             if (!valid)
-                throw CompileError(Error::INVALID_RETURN);
+                throw CompileError(Error::MISSING_RETURN);
         });
 
         auto ast = DeviceAst(ctx);
@@ -334,6 +367,11 @@ namespace frontend {
 
         p.end("sema");
         p.end("compile");
+
+        if (verbose_tree) {
+            fmt::print(std::cerr, "Final nodes: {}\n", ast.num_nodes());
+            fmt::print(std::cerr, "Functions: {}\n", ast.num_functions());
+        }
 
         return ast;
     }

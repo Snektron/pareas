@@ -16,6 +16,7 @@
 #include <memory>
 #include <chrono>
 #include <charconv>
+#include <cstdio>
 #include <cstdlib>
 #include <cstdint>
 #include <cstring>
@@ -27,8 +28,10 @@ struct Options {
     bool help;
     bool dump_dot;
     unsigned profile;
+    bool verbose_tree;
     bool futhark_verbose;
     bool futhark_debug;
+    bool futhark_debug_extra;
 
     // Options available for the multicore backend
     int threads;
@@ -40,15 +43,18 @@ struct Options {
 
 void print_usage(char* progname) {
     fmt::print(
-        "Usage: {} [options...] <input path>\n"
+        "Usage: {} [options...] <input path>\n"
         "Available options:\n"
         "-o --output <output path>   Write the output to <output path>. (default: b.out)\n"
         "-h --help                   Show this message and exit.\n"
         "--dump-dot                  Dump tree as dot graph.\n"
         "-p --profile <level>        Record (non-futhark) profiling information.\n"
+        "--verbose-tree              Dump some information about the tree to stderr.\n"
         "                            (default: 0, =disabled)\n"
         "--futhark-verbose           Enable Futhark logging.\n"
         "--futhark-debug             Enable Futhark debug logging.\n"
+        "--futhark-debug-extra       Futhark debug logging with extra information.\n"
+        "                            Not compatible with --futhark-debug.\n"
     #if defined(FUTHARK_BACKEND_multicore)
         "Available backend options:\n"
         "-t --threads <amount>       Set the maximum number of threads that may be used\n"
@@ -75,8 +81,10 @@ bool parse_options(Options* opts, int argc, char* argv[]) {
         .help = false,
         .dump_dot = false,
         .profile = 0,
+        .verbose_tree = false,
         .futhark_verbose = false,
         .futhark_debug = false,
+        .futhark_debug_extra = false,
         .threads = 0,
         .device_name = nullptr,
         .futhark_profile = false,
@@ -130,10 +138,14 @@ bool parse_options(Options* opts, int argc, char* argv[]) {
             }
 
             profile_arg = argv[i];
+        } else if (arg == "--verbose-tree") {
+            opts->verbose_tree = true;
         } else if (arg == "--futhark-verbose") {
             opts->futhark_verbose = true;
         } else if (arg == "--futhark-debug") {
             opts->futhark_debug = true;
+        } else if (arg == "--futhark-debug-extra") {
+            opts->futhark_debug_extra = true;
         } else if (!opts->input_path) {
             opts->input_path = argv[i];
         } else {
@@ -150,6 +162,9 @@ bool parse_options(Options* opts, int argc, char* argv[]) {
         return false;
     } else if (!opts->input_path[0]) {
         fmt::print(std::cerr, "Error: <input path> may not be empty\n");
+        return false;
+    } else if (opts->futhark_debug && opts->futhark_debug_extra) {
+        fmt::print(std::cerr, "Error: --futhark-debug is incompatible with --futhark-debug-extra\n");
         return false;
     }
 
@@ -213,7 +228,7 @@ int main(int argc, char* argv[]) {
     p.begin();
     auto config = futhark::ContextConfig(futhark_context_config_new());
     futhark_context_config_set_logging(config.get(), opts.futhark_verbose);
-    futhark_context_config_set_debugging(config.get(), opts.futhark_debug);
+    futhark_context_config_set_debugging(config.get(), opts.futhark_debug || opts.futhark_debug_extra);
 
     #if defined(FUTHARK_BACKEND_multicore)
         futhark_context_config_set_num_threads(config.get(), opts.threads);
@@ -226,6 +241,7 @@ int main(int argc, char* argv[]) {
     #endif
 
     auto ctx = futhark::Context(futhark_context_new(config.get()));
+    futhark_context_set_logging_file(ctx.get(), stderr);
     p.set_sync_callback([ctx = ctx.get()]{
         if (futhark_context_sync(ctx))
             throw futhark::Error(ctx);
@@ -234,26 +250,23 @@ int main(int argc, char* argv[]) {
 
     try {
         p.begin();
-        auto ast = frontend::compile(ctx.get(), input, p);
+        auto ast = frontend::compile(ctx.get(), input, opts.verbose_tree, p, opts.futhark_debug_extra ? stderr : nullptr);
         p.end("frontend");
 
         if (opts.profile > 0)
             p.dump(std::cout);
 
-        fmt::print(std::cerr, "{} nodes\n", ast.num_nodes());
-
         if (opts.dump_dot) {
+            p.begin();
             auto host_ast = ast.download();
+            p.end("ast download");
             host_ast.dump_dot(std::cout);
         }
 
         if (opts.futhark_profile) {
             auto report = MallocPtr<char>(futhark_context_report(ctx.get()));
-            fmt::print("Futhark profile report:\n{}", report);
+            fmt::print(std::cerr, "Futhark profile report:\n{}", report);
         }
-
-        if (futhark_context_sync(ctx.get()) != 0)
-            throw futhark::Error(ctx.get());
     } catch (const frontend::CompileError& err) {
         fmt::print(std::cerr, "Compile error: {}\n", err.what());
         return EXIT_FAILURE;

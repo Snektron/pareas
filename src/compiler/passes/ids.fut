@@ -19,6 +19,7 @@ let assign_ids [n] (node_types: [n]production.t) (resolution: [n]i32) (data_type
     -- normal exclusive scan, and the function declarations also acts as flag to reset the counters for
     -- the `param` and `decl` counters.
     let is_fn_decl = map (== production_fn_decl) node_types
+    let num_fn_decls = is_fn_decl |> map u32.bool |> reduce (+) 0
     let fn_ids =
         is_fn_decl
         |> map u32.bool
@@ -61,7 +62,7 @@ let assign_ids [n] (node_types: [n]production.t) (resolution: [n]i32) (data_type
             |> map2 (\fn_id is_last_decl -> if is_last_decl then i64.u32 fn_id else -1) fn_ids
         in
             scatter
-                (replicate n 0u32)
+                (replicate (i64.u32 num_fn_decls) 0u32)
                 is
                 -- Add one to get a maximum declaration instead of a count.
                 (map (+1) decl_ids)

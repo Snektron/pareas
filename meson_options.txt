@@ -1,1 +1,1 @@
-option('futhark-backend', type: 'combo', choices: ['c', 'multicore', 'opencl', 'cuda'], value: 'c', description: 'Select the backend that Futhark code compiles to')
+option('futhark-backend', type: 'combo', choices: ['c', 'multicore', 'opencl', 'cuda'], value: 'c', description: 'Select the backend that Futhark code compiles to', yield: true)

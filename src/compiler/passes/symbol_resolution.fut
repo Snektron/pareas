@@ -59,7 +59,7 @@ let resolve_fns [n] (node_types: [n]production.t) (data: [n]u32): (bool, [n]i32)
     let resolution =
         data
         |> map i32.u32
-        |> map2 (\is_call name_id -> if is_call then copy fn_decl_by_name[name_id] else -1) is_fn_call
+        |> map2 (\is_call name_id -> if is_call then fn_decl_by_name[name_id] else -1) is_fn_call
     -- These must all yield something other than -1.
     let calls_valid =
         resolution

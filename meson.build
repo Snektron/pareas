@@ -14,6 +14,9 @@ add_project_arguments(
     language: ['c', 'cpp'],
 )
 
+futhark = find_program('futhark')
+futhark_wrapper = find_program('src/tools/compile_futhark.py')
+
 inc = include_directories('include')
 
 fmt_dep = subproject('fmt').get_variable('fmt_dep')
@@ -52,6 +55,7 @@ lpg_sources = files(
 pareas_lpg_exe = executable(
     'pareas-lpg',
     lpg_sources,
+    build_by_default: not meson.is_subproject(),
     dependencies: fmt_dep,
     include_directories: inc,
 )
@@ -64,26 +68,29 @@ pareas_prof_dep = declare_dependency(
 )
 
 # Compiler
-dependencies = [pareas_prof_dep, fmt_dep, dependency('threads')]
+futhark_deps = [dependency('threads')]
 
 # Build futhark library
+futhark_wrapper_exe = find_program('src/tools/compile_futhark.py')
 futhark_backend = get_option('futhark-backend')
 
 if futhark_backend == 'opencl'
-    dependencies += dependency('OpenCL')
+    futhark_deps += dependency('OpenCL')
 elif futhark_backend == 'cuda'
-    dependencies += dependency('cuda', modules: ['cuda', 'cudart', 'nvrtc'])
+    futhark_deps += dependency('cuda', modules: ['cuda', 'cudart', 'nvrtc'])
 endif
 
+# Compiler
 grammar = custom_target(
     'grammar',
     input: ['src/compiler/lexer/pareas.lex', 'src/compiler/parser/pareas.g'],
     output: ['pareas_grammar.hpp', 'pareas_grammar.cpp', 'pareas_grammar.fut', 'pareas_grammar.S', 'pareas_grammar.dat'],
+    build_by_default: false,
     command: [
         pareas_lpg_exe,
         '--lexer', '@INPUT0@',
         '--parser', '@INPUT1@',
-        '-o', 'pareas_grammar',
+        '-o', '@OUTDIR@/pareas_grammar',
         '--namespace', 'grammar',
     ],
 )
@@ -92,7 +99,7 @@ grammar_cpp = grammar[1]
 grammar_fut = grammar[2]
 grammar_asm = grammar[3]
 
-futhark_sources = files(
+futhark_sources = [
     'lib/github.com/diku-dk/sorts/radix_sort.fut',
     'lib/github.com/diku-dk/segmented/segmented.fut',
     'src/compiler/string.fut',
@@ -116,13 +123,13 @@ futhark_sources = files(
     'src/compiler/passes/type_resolution.fut',
     'src/compiler/passes/check_return_paths.fut',
     'src/compiler/passes/ids.fut',
-)
+]
 
 futhark_compile_command = [
-    find_program('src/tools/compile_futhark.py'),
+    futhark_wrapper_exe,
     '--futhark', find_program('futhark'),
     '--futhark-backend', futhark_backend,
-    '--output', 'futhark_generated',
+    '--output', '@OUTDIR@/futhark_generated',
     '--dir', '@PRIVATE_DIR@',
     '--main', 'src/compiler/frontend.fut',
 ]
@@ -155,8 +162,75 @@ sources = files(
 pareas_exe = executable(
     'pareas',
     [grammar_hpp, grammar_cpp, grammar_asm, sources, futhark_generated],
-    install: true,
-    build_by_default: true,
-    dependencies: dependencies,
+    build_by_default: not meson.is_subproject(),
+    dependencies: [pareas_prof_dep, fmt_dep, futhark_deps],
+    include_directories: inc,
+)
+
+# JSON test
+
+json_sources = [
+    'src/json/main.cpp',
+]
+
+json_futhark_sources = [
+    'lib/github.com/diku-dk/sorts/radix_sort.fut',
+    'src/compiler/string.fut',
+    'src/json/main.fut',
+    'src/compiler/lexer/lexer.fut',
+    'src/compiler/parser/binary_tree.fut',
+    'src/compiler/parser/bracket_matching.fut',
+    'src/compiler/parser/parser.fut',
+    'src/compiler/util.fut',
+]
+
+json_grammar = custom_target(
+    'json-grammar',
+    input: ['src/json/json.lex', 'src/json/json.g'],
+    output: ['json_grammar.hpp', 'json_grammar.cpp', 'json_grammar.fut', 'json_grammar.S', 'json_grammar.dat'],
+    command: [
+        pareas_lpg_exe,
+        '--lexer', '@INPUT0@',
+        '--parser', '@INPUT1@',
+        '-o', '@OUTDIR@/json_grammar',
+        '--namespace', 'json',
+    ],
+)
+json_grammar_hpp = json_grammar[0]
+json_grammar_cpp = json_grammar[1]
+json_grammar_fut = json_grammar[2]
+json_grammar_asm = json_grammar[3]
+
+json_futhark_compile_command = [
+    futhark_wrapper,
+    '--futhark', futhark,
+    '--futhark-backend', futhark_backend,
+    '--output', '@OUTDIR@/json_futhark_generated',
+    '--dir', '@PRIVATE_DIR@',
+    '--main', 'src/json/main.fut',
+]
+
+json_inputs = []
+
+foreach source : json_futhark_sources
+    json_futhark_compile_command += ['-f', '@INPUT@0@@'.format(json_inputs.length()), source]
+    json_inputs += source
+endforeach
+
+json_futhark_compile_command += ['-f', '@INPUT@0@@'.format(json_inputs.length()), 'gen/json_grammar.fut']
+json_inputs += json_grammar_fut
+
+json_futhark_generated = custom_target(
+    'json-futhark',
+    input: json_inputs,
+    output: ['json_futhark_generated.c', 'json_futhark_generated.h'],
+    command: json_futhark_compile_command,
+)
+
+pareas_json_exe = executable(
+    'pareas-json',
+    [json_grammar_hpp, json_grammar_cpp, json_grammar_asm, json_sources, json_futhark_generated],
+    build_by_default: not meson.is_subproject(),
+    dependencies: [pareas_prof_dep, fmt_dep, futhark_deps],
     include_directories: inc,
 )
