@@ -1,5 +1,5 @@
 import "instr"
-import "../lib/github.com/diku-dk/segmented/segmented"
+import "../../../lib/github.com/diku-dk/segmented/segmented"
 
 type FuncInfo = {
     id: u32,

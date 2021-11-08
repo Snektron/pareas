@@ -1,5 +1,5 @@
 import "codegen/tree"
-import "datatypes"
+import "codegen/datatypes"
 import "codegen/instr"
 import "codegen/instr_count"
 import "codegen/symtab"
@@ -7,18 +7,11 @@ import "codegen/register"
 import "codegen/preprocess"
 import "codegen/optimizer"
 import "codegen/postprocess"
---  import "bridge"
 
---Frontend bridge entry
---  entry make_from_frontend [n]
---          (node_types: [n]front_node_type)
---          (node_res_types: [n]front_data_type)
---          (node_parents: [n]front_node_idx_type)
---          (node_depth: [n]front_depth_type)
---          (node_child_idx : [n]front_child_idx_type)
---          (node_data: [n]front_node_data_type)
---          (max_depth: front_depth_type) : Tree[n] =
---      backend_convert node_types node_res_types node_parents node_depth node_child_idx node_data max_depth
+type Tree [n] = Tree [n]
+type Symtab [n] = Symtab [n]
+type FuncInfo = FuncInfo
+type Instr = Instr
 
 let make_variable (data_type: u8) (offset: u32) : Variable =
     {
@@ -75,14 +68,14 @@ let split_instr (instr: Instr) =
     (instr.instr, instr.rd, instr.rs1, instr.rs2, instr.jt)
 
 --Stage 3: instruction gen
-entry stage_instr_gen [n] [m] [k] (tree: Tree[n]) (symtab: Symtab[m]) (instr_offset: [n]u32) (func_tab: [k]FuncInfo) : []Instr =
+entry stage_instr_gen [n] [k] (tree: Tree[n]) (instr_offset: [n]u32) (func_tab: [k]FuncInfo) : []Instr =
     let func_start = map (.start) func_tab
     let func_size = map (.size) func_tab
     let max_instrs = if n == 0 then 0 else i64.u32 instr_offset[n-1]
     let instr_offset_i64 = map i64.u32 instr_offset
     let func_ends = iota k |> map (\i -> func_start[i] + func_size[i])
     in
-    compile_tree tree symtab instr_offset_i64 max_instrs func_start func_ends
+    compile_tree tree instr_offset_i64 max_instrs func_start func_ends
 
 let make_instr (instr: u32) (rd: i64) (rs1: i64) (rs2: i64) (jt: u32) =
     {

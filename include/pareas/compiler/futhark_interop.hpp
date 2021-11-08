@@ -105,6 +105,9 @@ namespace futhark {
     using UniqueParseTable = UniqueOpaqueArray<futhark_opaque_parse_table, futhark_free_opaque_parse_table>;
     using UniqueStackChangeTable = UniqueOpaqueArray<futhark_opaque_stack_change_table, futhark_free_opaque_stack_change_table>;
     using UniqueTokenArray = UniqueOpaqueArray<futhark_opaque_arr_token_1d, futhark_free_opaque_arr_token_1d>;
+    using UniqueTree = UniqueOpaqueArray<futhark_opaque_Tree, futhark_free_opaque_Tree>;
+    using UniqueFuncInfoArray = UniqueOpaqueArray<futhark_opaque_arr_FuncInfo_1d, futhark_free_opaque_arr_FuncInfo_1d>;
+    using UniqueInstrArray = UniqueOpaqueArray<futhark_opaque_arr_Instr_1d, futhark_free_opaque_arr_Instr_1d>;
 
     template <typename T, size_t N>
     struct ArrayTraits;
@@ -163,6 +166,15 @@ namespace futhark {
         const int64_t* shape() const {
             return ArrayTraits<T, N>::shape_fn(this->handle.ctx, this->handle.data);
         }
+    };
+
+    template <>
+    struct ArrayTraits<bool, 1> {
+        using Array = futhark_bool_1d;
+        constexpr static const auto new_fn = futhark_new_bool_1d;
+        constexpr static const auto free_fn = futhark_free_bool_1d;
+        constexpr static const auto shape_fn = futhark_shape_bool_1d;
+        constexpr static const auto values_fn = futhark_values_bool_1d;
     };
 
     template <>

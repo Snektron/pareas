@@ -135,7 +135,7 @@ DeviceAst::~DeviceAst() {
         futhark_free_i32_1d(this->ctx, this->child_indexes);
 
     if (this->fn_tab)
-        futhark_free_i32_1d(this->ctx, this->fn_tab);
+        futhark_free_u32_1d(this->ctx, this->fn_tab);
 }
 
 size_t DeviceAst::num_nodes() const {
@@ -147,7 +147,7 @@ size_t DeviceAst::num_nodes() const {
 size_t DeviceAst::num_functions() const {
     if (!this->fn_tab)
         return 0;
-    return futhark_shape_i32_1d(this->ctx, this->fn_tab)[0];
+    return futhark_shape_u32_1d(this->ctx, this->fn_tab)[0];
 }
 
 HostAst DeviceAst::download() const {
@@ -163,7 +163,7 @@ HostAst DeviceAst::download() const {
         .data_types = std::make_unique<DataType[]>(num_nodes),
         .node_depths = std::make_unique<int32_t[]>(num_nodes),
         .child_indexes = std::make_unique<int32_t[]>(num_nodes),
-        .fn_tab = std::make_unique<int32_t[]>(num_functions)
+        .fn_tab = std::make_unique<uint32_t[]>(num_functions)
     };
 
     int err = futhark_values_u8_1d(
@@ -184,7 +184,7 @@ HostAst DeviceAst::download() const {
     err |= futhark_values_i32_1d(this->ctx, this->node_depths, ast.node_depths.get());
     err |= futhark_values_i32_1d(this->ctx, this->child_indexes, ast.child_indexes.get());
 
-    err |= futhark_values_i32_1d(this->ctx, this->fn_tab, ast.fn_tab.get());
+    err |= futhark_values_u32_1d(this->ctx, this->fn_tab, ast.fn_tab.get());
 
     if (err)
         throw futhark::Error(this->ctx);

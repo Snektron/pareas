@@ -60,30 +60,24 @@ let check_return_paths [n] (node_types: [n]production.t) (parents: [n]i32) (prev
         |> map (== -1)
         |> map2 (\parent first_child -> if first_child then parent else -1) parents
         |> invert
-    -- We will also need to know whether a function returns void.
-    let is_void_fn_decl =
-        map2
-            (\nty dty -> nty == production_fn_decl && dty == data_type.void)
-            node_types
-            data_types
     -- Build the boolean expression tree.
     -- First, produce the initial value and operator.
-    in map4
+    in map3
         -- Nodes which have only one child/which pass up their value are simply mapped to #or.
-        (\nty parent next_sibling is_void_fn_decl ->
+        (\nty parent next_sibling ->
             if nty == production_stat_return then #true
             else if parent == -1 then #or
             -- Only the second child of an if/else node becomes and-type node.
             else if node_types[parent] == production_stat_if_else && nty == production_stat_list && next_sibling != -1 then #and
-            -- Cannot guarantee these types returning, so return false from these
+            -- Cannot guarantee these types returning, so return false from these.
             else if node_types[parent] == production_stat_if || node_types[parent] == production_stat_while then #false
-            else if nty == production_fn_decl then
-                if is_void_fn_decl then #or else #and
+            else if nty == production_fn_decl then #true
+            -- The return type of a void function maps to true as these don't need to end every path with a return statement.
+            else if nty == production_type_void && node_types[parent] == production_fn_decl then #true
             else #or)
         node_types
         parents
         next_siblings
-        is_void_fn_decl
     -- Now add the children
     |> zip3
         first_childs

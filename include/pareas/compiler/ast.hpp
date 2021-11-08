@@ -32,7 +32,7 @@ struct HostAst {
     std::unique_ptr<int32_t[]> node_depths;
     std::unique_ptr<int32_t[]> child_indexes;
 
-    std::unique_ptr<int32_t[]> fn_tab;
+    std::unique_ptr<uint32_t[]> fn_tab;
 
     void dump_dot(std::ostream& os) const;
 };
@@ -47,7 +47,7 @@ struct DeviceAst {
     futhark_i32_1d* node_depths;
     futhark_i32_1d* child_indexes;
 
-    futhark_i32_1d* fn_tab;
+    futhark_u32_1d* fn_tab;
 
     explicit DeviceAst(futhark_context* ctx);
 

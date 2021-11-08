@@ -102,10 +102,13 @@ grammar_asm = grammar[3]
 futhark_sources = [
     'lib/github.com/diku-dk/sorts/radix_sort.fut',
     'lib/github.com/diku-dk/segmented/segmented.fut',
+    'src/compiler/main.fut',
     'src/compiler/string.fut',
     'src/compiler/util.fut',
     'src/compiler/datatypes.fut',
     'src/compiler/frontend.fut',
+    'src/compiler/backend.fut',
+    'src/compiler/bridge.fut',
     'src/compiler/lexer/lexer.fut',
     'src/compiler/parser/binary_tree.fut',
     'src/compiler/parser/bracket_matching.fut',
@@ -123,6 +126,14 @@ futhark_sources = [
     'src/compiler/passes/type_resolution.fut',
     'src/compiler/passes/check_return_paths.fut',
     'src/compiler/passes/ids.fut',
+    'src/compiler/codegen/datatypes.fut',
+    'src/compiler/codegen/instr.fut',
+    'src/compiler/codegen/instr_count.fut',
+    'src/compiler/codegen/optimizer.fut',
+    'src/compiler/codegen/postprocess.fut',
+    'src/compiler/codegen/preprocess.fut',
+    'src/compiler/codegen/register.fut',
+    'src/compiler/codegen/tree.fut',
 ]
 
 futhark_compile_command = [
@@ -131,7 +142,7 @@ futhark_compile_command = [
     '--futhark-backend', futhark_backend,
     '--output', '@OUTDIR@/futhark_generated',
     '--dir', '@PRIVATE_DIR@',
-    '--main', 'src/compiler/frontend.fut',
+    '--main', 'src/compiler/main.fut',
 ]
 
 inputs = []
@@ -157,6 +168,8 @@ sources = files(
     'src/compiler/main.cpp',
     'src/compiler/frontend.cpp',
     'src/compiler/ast.cpp',
+    'src/compiler/module.cpp',
+    'src/compiler/backend.cpp',
 )
 
 pareas_exe = executable(

@@ -4,6 +4,7 @@
 #include "pareas/compiler/futhark_interop.hpp"
 #include "pareas/compiler/ast.hpp"
 #include "pareas/compiler/frontend.hpp"
+#include "pareas/compiler/backend.hpp"
 #include "pareas/profiler/profiler.hpp"
 
 #include <fmt/format.h>
@@ -252,6 +253,10 @@ int main(int argc, char* argv[]) {
         p.begin();
         auto ast = frontend::compile(ctx.get(), input, opts.verbose_tree, p, opts.futhark_debug_extra ? stderr : nullptr);
         p.end("frontend");
+
+        p.begin();
+        backend::compile(ctx.get(), ast, p);
+        p.end("backend");
 
         if (opts.profile > 0)
             p.dump(std::cout);

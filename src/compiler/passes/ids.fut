@@ -12,7 +12,7 @@ import "../../../lib/github.com/diku-dk/segmented/segmented"
 --   points to.
 -- This function also computes a function table, which simply contains the amount of declarations indexed
 -- by function-ID. The required arrays are computed in this function anyway.
-let assign_ids [n] (node_types: [n]production.t) (resolution: [n]i32) (data_types: [n]data_type) (data: [n]u32): ([n]u32, []i32) =
+let assign_ids [n] (node_types: [n]production.t) (resolution: [n]i32) (data_types: [n]data_type) (data: [n]u32): ([n]u32, []u32) =
     -- Even though the tree is strictly speaking not in any order right now, there is no pass that
     -- changes the relative order of the nodes we're interested in (`fn_decl`, `atom_decl` and `param`),
     -- so we're just going to do a (segmented) scan to assign the IDs. Function IDs will simply be a
@@ -66,8 +66,6 @@ let assign_ids [n] (node_types: [n]production.t) (resolution: [n]i32) (data_type
                 is
                 -- Add one to get a maximum declaration instead of a count.
                 (map (+1) decl_ids)
-            -- Codegen wants this as i32.
-            |> map i32.u32
     -- Insert everything back into the data vector.
     let data =
         map4

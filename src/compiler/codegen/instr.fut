@@ -1,8 +1,7 @@
 import "tree"
 import "datatypes"
-import "symtab"
 import "instr_count"
-import "../lib/github.com/diku-dk/sorts/radix_sort"
+import "../../../lib/github.com/diku-dk/sorts/radix_sort"
 
 type Instr = {
     instr: u32,
@@ -1870,13 +1869,13 @@ let OPERAND_TABLE : [][][][]i8 = [
     ] --Arg stack
 ]
 
-let node_instr(node_type: NodeType) (data_type: DataType) (instr_offset: i64) : u32 =
+let node_instr (node_type: NodeType) (data_type: DataType) (instr_offset: i64) : u32 =
     INSTR_TABLE[node_type, instr_offset, data_type]
 
 let has_instr (node_type: NodeType) (data_type: DataType) (instr_offset: i64) : bool =
     HAS_INSTR_TABLE[node_type, instr_offset, data_type]
 
-let node_has_return(_ : NodeType) (data_type : DataType) : bool =
+let node_has_return (_ : NodeType) (data_type : DataType) : bool =
     !(data_type == datatype_void || data_type == node_type_invalid)
 
 let parent_arg_idx (node: Node) : i64 =
@@ -1953,14 +1952,14 @@ let signextend(x: u32) =
     let signed_x = i32.u32 x in
     u32.i32 (signed_x << 20 >> 20)
     
-let instr_constant [max_vars] (node: Node) (instr_offset: i64) (symtab: Symtab[max_vars]) : u32 =
+let instr_constant (node: Node) (instr_offset: i64) : u32 =
     let calc_type = INSTR_CONSTANT_TABLE[node.node_type, instr_offset] in
     if calc_type == 1 then
         node.node_data - (signextend (node.node_data & 0xFFF)) & 0xFFFFF000
     else if calc_type == 2 then
         (node.node_data & 0xFFF) << 20
     else if calc_type == 3 then
-        (-(4 * ((symtab_local_offset symtab node.node_data) + 2))) << 20
+        (-(4 * (node.node_data + 2))) << 20
     else if calc_type == 4 then
         (4 * node.node_data) << 20
     else if calc_type == 5 then
@@ -2042,7 +2041,7 @@ let get_output_register [tree_size] (tree: Tree[tree_size]) (node: Node) (instr_
     else
         if node_has_output tree.nodes node instr_offset then register instr_no else 0
 
-let get_node_instr [tree_size] [max_vars] (tree: Tree[tree_size]) (node: Node) (instr_no: i64) (node_index: i64) (registers: []i64) (symtab: Symtab[max_vars]) (func_starts: []u32) (func_ends: []u32) (instr_offset: i64): (i64, i64, Instr, i64) =
+let get_node_instr [tree_size] (tree: Tree[tree_size]) (node: Node) (instr_no: i64) (node_index: i64) (registers: []i64) (func_starts: []u32) (func_ends: []u32) (instr_offset: i64): (i64, i64, Instr, i64) =
     let node_type = node.node_type
     let data_type = node.resulting_type
     let rd = get_output_register tree node instr_no instr_offset
@@ -2052,7 +2051,7 @@ let get_node_instr [tree_size] [max_vars] (tree: Tree[tree_size]) (node: Node) (
             instr_loc,
             node_get_parent_arg_idx tree.nodes node instr_offset,
             {
-                instr = node_instr node_type data_type instr_offset | instr_constant node instr_offset symtab,
+                instr = node_instr node_type data_type instr_offset | instr_constant node instr_offset,
                 rd = rd,
                 rs1 = node_get_instr_arg node_index node registers 0 instr_no instr_offset,
                 rs2 = node_get_instr_arg node_index node registers 1 instr_no instr_offset,
@@ -2061,7 +2060,7 @@ let get_node_instr [tree_size] [max_vars] (tree: Tree[tree_size]) (node: Node) (
             get_data_prop_value tree node rd instr_no
         )
 
-let compile_node [tree_size] [max_vars] (tree: Tree[tree_size]) (symtab: Symtab[max_vars]) (registers: []i64) (instr_offset: [tree_size]i64) (func_starts: []u32) (func_ends: []u32)
+let compile_node [tree_size] (tree: Tree[tree_size]) (registers: []i64) (instr_offset: [tree_size]i64) (func_starts: []u32) (func_ends: []u32)
         (node_index: i64) =
     let node = tree.nodes[node_index]
     let node_instr = instr_offset[node_index]
@@ -2069,7 +2068,7 @@ let compile_node [tree_size] [max_vars] (tree: Tree[tree_size]) (symtab: Symtab[
     iota 4i64 |>
         map (\i ->
                 if has_instr node.node_type node.resulting_type i then
-                    get_node_instr tree node (node_instr+i) node_index registers symtab func_starts func_ends i
+                    get_node_instr tree node (node_instr+i) node_index registers func_starts func_ends i
                 else if i == 0 then
                     (-1, node_get_parent_arg_idx tree.nodes node 0, EMPTY_INSTR, get_data_prop_value tree node 0 node_instr)
                 else
@@ -2092,7 +2091,7 @@ let check_idx_node_depth [tree_size] (tree: Tree[tree_size]) (depth: i32) (i: i6
 let bit_width (x: i32): i32 =
     i32.num_bits - (i32.clz x)
 
-let compile_tree [tree_size] [max_vars] [num_funcs] (tree: Tree[tree_size]) (symtab: Symtab[max_vars]) (instr_offset: [tree_size]i64) (max_instrs: i64) (func_starts: [num_funcs]u32) (func_ends: [num_funcs]u32) =
+let compile_tree [tree_size] [num_funcs] (tree: Tree[tree_size]) (instr_offset: [tree_size]i64) (max_instrs: i64) (func_starts: [num_funcs]u32) (func_ends: [num_funcs]u32) =
     let idx_array = iota tree_size |> radix_sort (bit_width tree.max_depth) (\bit idx -> i32.get_bit bit tree.nodes[idx].depth)
     let depth_starts = iota tree_size |> filter (\i -> i == 0 || tree.nodes[idx_array[i]].depth != tree.nodes[idx_array[i-1]].depth)
     let initial_registers = replicate (tree_size * PARENT_IDX_PER_NODE) 0i64
@@ -2104,7 +2103,7 @@ let compile_tree [tree_size] [max_vars] [num_funcs] (tree: Tree[tree_size]) (sym
             let end = if j == tree.max_depth then tree_size else depth_starts[j + 1]
             let (idx, parent_idx, instrs, new_regs) =
                 idx_array[start:end] |>
-                map (compile_node tree symtab (copy registers) instr_offset func_starts func_ends) |>
+                map (compile_node tree (copy registers) instr_offset func_starts func_ends) |>
                 flatten |>
                 unzip4
             in
