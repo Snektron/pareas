@@ -1,7 +1,29 @@
-function a() : int {
-    a : int = -(2+2);
+function a(b : int, c: int) : int {
+    a : int = -(2+2+b+c);
+    return a;
 }
 
-function b() : int {
-    a: int = 3;
+
+function bsub(a : int) : float {
+    while(a < 10) {
+        if(a > 5) {
+            a = a + 3;
+        }
+        else {
+            a = a + 1;
+        }
+    }
+    if(a > 30) {
+        return 2.0;
+    }
+    else {
+        return 3.2;
+    }
+}
+
+function b(arg : int) : int {
+    aha: int = 3.0@int;
+    b : float = bsub(arg);
+
+    return aha * (2 + b@int);
 }

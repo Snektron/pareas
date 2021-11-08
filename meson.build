@@ -65,6 +65,21 @@ sources = [
     'src/main.cpp'
 ]
 
+#Conversion executable
+convert_sources = [
+    'src/codegen/astnode.cpp',
+    'src/codegen/datatype.cpp',
+    'src/codegen/depthtree.cpp',
+    'src/codegen/lexer.cpp',
+    'src/codegen/parser.cpp',
+    'src/codegen/symtab.cpp',
+    'src/codegen/treeproperties.cpp',
+    'src/codegen/token.cpp',
+    'src/converter/converter.cpp',
+    'src/profiler/profiler.cpp',
+    'src/conversion.cpp'
+]
+
 # Test executable
 test_old_sources = [
     'src/test/old/coderenderer.cpp',
@@ -128,5 +143,14 @@ executable(
     test_sources,
     install: true,
     build_by_default: true,
+    include_directories: [include_directories('src'), include_directories('include')]
+)
+
+executable(
+    'pareas-conversion',
+    convert_sources,
+    install: true,
+    build_by_default: true,
+    dependencies: [fmt_dep],
     include_directories: [include_directories('src'), include_directories('include')]
 )

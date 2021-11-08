@@ -146,6 +146,8 @@ void ASTNode::resolveType() {
     };
 
     switch(this->type) {
+        case NodeType::FUNC_DECL:
+            break;
         case NodeType::IF_STAT:
         case NodeType::IF_ELSE_STAT:
             assert_type(0, {DataType::INT});
