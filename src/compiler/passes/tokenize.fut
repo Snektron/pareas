@@ -86,7 +86,7 @@ local let link_names [n] (input: []u8) (tokens: [n]tokenref): [n]u32 =
         |> map (\i -> if i == 0 then false else str_eq order[i] order[i - 1])
         -- Invert this mapping, so that we get a mask whether this string is the first of a
         -- sequence of equal strings.
-        |> map (!)
+        |> map (\x -> !x)
         -- Perform an (exclusive) scan to get the IDs.
         |> map u32.bool
         |> scan (+) 0

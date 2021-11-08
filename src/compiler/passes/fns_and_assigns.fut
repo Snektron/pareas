@@ -255,7 +255,7 @@ let insert_derefs [n] (node_types: [n]production.t) (parents: [n]i32) (prev_sibl
                 || node_types[parent] == production_param)
             is_first_child
             parents
-        |> map (!)
+        |> map (\x -> !x)
         |> map2 (&&) result_is_lvalue
     -- Count the number of dereference nodes to insert
     let m =
