@@ -335,7 +335,7 @@ namespace frontend {
 
         p.measure("check convergence", [&]{
             bool valid;
-            int err = futhark_entry_frontend_check_convergence(ctx, &valid, node_types, parents, prev_siblings, data_types);
+            int err = futhark_entry_frontend_check_convergence(ctx, &valid, node_types, parents, prev_siblings);
             if (err)
                 throw futhark::Error(ctx);
             if (!valid)

@@ -3,7 +3,9 @@ start -> fn_decl_list;
 fn_decl_list -> fn_decl fn_decl_list;
 fn_decl_list [fn_decl_list_end] -> ;
 
-fn_decl -> 'fn' expr compound_stat;
+fn_decl -> 'fn' fn_decl_dummy expr compound_stat;
+
+fn_decl_dummy -> ;
 
 type [type_int] -> 'int';
 type [type_float] -> 'float';

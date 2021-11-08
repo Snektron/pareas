@@ -18,6 +18,7 @@ type front_node_data_type = u32
 let NODE_TYPE_LOOKUP = mk_production_array node_type_invalid [
         (production_fn_decl_list, node_type_statement_list),
         (production_fn_decl, node_type_func_decl),
+        (production_fn_decl_dummy, node_type_func_decl_dummy),
         (production_stat_while, node_type_while_stat),
         (production_stat_if, node_type_if_stat),
         (production_stat_expr, node_type_expr_stat),

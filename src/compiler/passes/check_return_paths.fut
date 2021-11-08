@@ -52,7 +52,7 @@ local let iter [n] (expr: [n]bool_expr_node): [n]bool_expr_node =
 -- | As type resolving works by first computing a type that is valid for the expression if the program is valid,
 -- we cannot also check whether all paths in a function return a value, as this would require picking the child with the
 -- right value when analysing an `if_else` node. Instead, this check is performed separately in this pass.
-let check_return_paths [n] (node_types: [n]production.t) (parents: [n]i32) (prev_siblings: [n]i32) (data_types: [n]data_type.t) =
+let check_return_paths [n] (node_types: [n]production.t) (parents: [n]i32) (prev_siblings: [n]i32): bool =
     -- The children of each node are going to be its first child and its sibling, so compute those.
     let next_siblings = invert prev_siblings
     let first_childs =
@@ -71,7 +71,7 @@ let check_return_paths [n] (node_types: [n]production.t) (parents: [n]i32) (prev
             else if node_types[parent] == production_stat_if_else && nty == production_stat_list && next_sibling != -1 then #and
             -- Cannot guarantee these types returning, so return false from these.
             else if node_types[parent] == production_stat_if || node_types[parent] == production_stat_while then #false
-            else if nty == production_fn_decl then #true
+            else if nty == production_fn_decl then #and
             -- The return type of a void function maps to true as these don't need to end every path with a return statement.
             else if nty == production_type_void && node_types[parent] == production_fn_decl then #true
             else #or)

@@ -119,32 +119,32 @@ namespace backend {
 
         // Stage 7, jump fix
         auto mod = DeviceModule(ctx);
-        // p.measure("Jump Fix", [&] {
-        //     auto old_instr = std::move(instr);
+        p.measure("Jump Fix", [&] {
+            auto old_instr = std::move(instr);
 
-        //     int err = futhark_entry_backend_fix_jumps(
-        //         ctx,
-        //         &instr,
-        //         &mod.func_id,
-        //         &mod.func_start,
-        //         &mod.func_size,
-        //         instr,
-        //         functab
-        //     );
-        //     if(err)
-        //         throw futhark::Error(ctx);
-        // });
+            int err = futhark_entry_backend_fix_jumps(
+                ctx,
+                &instr,
+                &mod.func_id,
+                &mod.func_start,
+                &mod.func_size,
+                old_instr,
+                functab
+            );
+            if(err)
+                throw futhark::Error(ctx);
+        });
 
-        // // Stage 8, postprocess
-        // p.measure("postprocess", [&] {
-        //     int err = futhark_entry_backend_postprocess(
-        //         ctx,
-        //         &mod.instructions,
-        //         instr
-        //     );
-        //     if(err)
-        //         throw futhark::Error(ctx);
-        // });
+        // Stage 8, postprocess
+        p.measure("postprocess", [&] {
+            int err = futhark_entry_backend_postprocess(
+                ctx,
+                &mod.instructions,
+                instr
+            );
+            if(err)
+                throw futhark::Error(ctx);
+        });
 
         return mod;
     }

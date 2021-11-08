@@ -97,8 +97,8 @@ entry frontend_resolve_data_types [n] (node_types: [n]production.t) (parents: [n
 entry frontend_check_return_types [n] (node_types: [n]production.t) (parents: [n]i32) (data_types: [n]data_type): bool =
     frontend.check_return_types node_types parents data_types
 
-entry frontend_check_convergence [n] (node_types: [n]production.t) (parents: [n]i32) (prev_siblings: [n]i32) (data_types: [n]data_type): bool =
-    frontend.check_convergence node_types parents prev_siblings data_types
+entry frontend_check_convergence [n] (node_types: [n]production.t) (parents: [n]i32) (prev_siblings: [n]i32): bool =
+    frontend.check_convergence node_types parents prev_siblings
 
 entry frontend_build_ast [n]
     (node_types: *[n]production.t)
