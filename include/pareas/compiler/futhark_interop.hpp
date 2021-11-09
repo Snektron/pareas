@@ -230,6 +230,15 @@ namespace futhark {
         constexpr static const auto shape_fn = futhark_shape_i32_2d;
         constexpr static const auto values_fn = futhark_values_i32_2d;
     };
+
+    template<>
+    struct ArrayTraits<int64_t, 1> {
+        using Array = futhark_i64_1d;
+        constexpr static const auto new_fn = futhark_new_i64_1d;
+        constexpr static const auto free_fn = futhark_free_i64_1d;
+        constexpr static const auto shape_fn = futhark_shape_i64_1d;
+        constexpr static const auto values_fn = futhark_values_i64_1d;
+    };
 }
 
 #endif

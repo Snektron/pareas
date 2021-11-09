@@ -81,6 +81,23 @@ namespace backend {
                 throw futhark::Error(ctx);
         });
 
+        //Print instr gen
+        auto instr_gen_opcodes = futhark::UniqueArray<uint32_t, 1>(ctx);
+        auto instr_gen_rd = futhark::UniqueArray<int64_t, 1>(ctx);
+        auto instr_gen_rs1 = futhark::UniqueArray<int64_t, 1>(ctx);
+        auto instr_gen_rs2 = futhark::UniqueArray<int64_t, 1>(ctx);
+        auto instr_gen_jt = futhark::UniqueArray<uint32_t, 1>(ctx);
+        int err = futhark_entry_backend_split_instr(
+            ctx,
+            &instr_gen_opcodes,
+            &instr_gen_rd,
+            &instr_gen_rs1,
+            &instr_gen_rs2,
+            &instr_gen_jt,
+            instr
+            );
+
+
         // Stage 4, optimizer
         auto optimize = futhark::UniqueArray<bool, 1>(ctx);
         p.measure("optimize", [&] {

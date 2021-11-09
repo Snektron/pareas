@@ -151,3 +151,6 @@ entry backend_fix_jumps [n] [m] (instrs: [n]Instr) (func_tab: [m]FuncInfo): ([]I
 
 entry backend_postprocess [n] (instrs: [n]Instr) =
     backend.stage_postprocess instrs
+
+entry backend_split_instr [n] (instrs: [n]Instr) =
+    map backend.split_instr instrs |> unzip5

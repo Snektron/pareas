@@ -2,22 +2,14 @@ import "codegen/tree"
 import "codegen/datatypes"
 import "codegen/instr"
 import "codegen/instr_count"
-import "codegen/symtab"
 import "codegen/register"
 import "codegen/preprocess"
 import "codegen/optimizer"
 import "codegen/postprocess"
 
 type Tree [n] = Tree [n]
-type Symtab [n] = Symtab [n]
 type FuncInfo = FuncInfo
 type Instr = Instr
-
-let make_variable (data_type: u8) (offset: u32) : Variable =
-    {
-        decl_type = i32.u8 data_type,
-        offset = offset
-    }
 
 let make_node (node_type: u8) (data_type: u8, parent: i32, depth: i32, child_idx: i32, node_data: u32) : Node =
     {
@@ -37,11 +29,6 @@ let make_functab (id: u32) (start: u32) (size: u32) =
     }
 
 -- Data structure rewrite functions
-entry make_symtab [m] (data_types: [m]u8) (offsets: [m]u32) : Symtab[m] =
-    {
-        variables = map2 make_variable data_types offsets
-    }
-
 entry make_tree [n] (max_depth: i32) (node_types: [n]u8) (data_types: [n]u8) (parents: [n]i32)
                     (depth: [n]i32) (child_idx: [n]i32) (node_data: [n]u32): Tree[n] =
     {
