@@ -3,7 +3,22 @@
 
 #include "futhark_generated.h"
 
+#include <memory>
+#include <iosfwd>
 #include <cstdint>
+
+struct HostModule {
+    size_t num_functions;
+    size_t num_instructions;
+
+    std::unique_ptr<uint32_t[]> func_id;
+    std::unique_ptr<uint32_t[]> func_start;
+    std::unique_ptr<uint32_t[]> func_size;
+
+    std::unique_ptr<uint32_t[]> instructions;
+
+    void dump(std::ostream& os) const;
+};
 
 struct DeviceModule {
     futhark_context* ctx;
@@ -22,6 +37,11 @@ struct DeviceModule {
     DeviceModule& operator=(DeviceModule&& other);
 
     ~DeviceModule();
+
+    size_t num_functions() const;
+    size_t num_instructions() const;
+
+    HostModule download() const;
 };
 
 #endif

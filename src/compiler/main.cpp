@@ -30,6 +30,7 @@ struct Options {
     bool dump_dot;
     unsigned profile;
     bool verbose_tree;
+    bool verbose_mod;
     bool futhark_verbose;
     bool futhark_debug;
     bool futhark_debug_extra;
@@ -52,6 +53,8 @@ void print_usage(char* progname) {
         "-p --profile <level>        Record (non-futhark) profiling information.\n"
         "--verbose-tree              Dump some information about the tree to stderr.\n"
         "                            (default: 0, =disabled)\n"
+        "--verbose-mod               Dump some information about the final module to\n"
+        "                            stderr.\n"
         "--futhark-verbose           Enable Futhark logging.\n"
         "--futhark-debug             Enable Futhark debug logging.\n"
         "--futhark-debug-extra       Futhark debug logging with extra information.\n"
@@ -83,6 +86,7 @@ bool parse_options(Options* opts, int argc, char* argv[]) {
         .dump_dot = false,
         .profile = 0,
         .verbose_tree = false,
+        .verbose_mod = false,
         .futhark_verbose = false,
         .futhark_debug = false,
         .futhark_debug_extra = false,
@@ -141,6 +145,8 @@ bool parse_options(Options* opts, int argc, char* argv[]) {
             profile_arg = argv[i];
         } else if (arg == "--verbose-tree") {
             opts->verbose_tree = true;
+        } else if (arg == "--verbose-mod") {
+            opts->verbose_mod = true;
         } else if (arg == "--futhark-verbose") {
             opts->futhark_verbose = true;
         } else if (arg == "--futhark-debug") {
@@ -255,7 +261,7 @@ int main(int argc, char* argv[]) {
         p.end("frontend");
 
         p.begin();
-        backend::compile(ctx.get(), ast, p);
+        auto module = backend::compile(ctx.get(), ast, p);
         p.end("backend");
 
         if (opts.profile > 0)
@@ -267,6 +273,20 @@ int main(int argc, char* argv[]) {
             p.end("ast download");
             host_ast.dump_dot(std::cout);
         }
+
+        auto host_mod = module.download();
+
+        if (opts.verbose_mod) {
+            host_mod.dump(std::cerr);
+        }
+
+        auto out = std::ofstream(opts.output_path, std::ios::binary);
+        if (!out) {
+            fmt::print(std::cerr, "Failed to open output file '{}'\n", opts.output_path);
+            return EXIT_FAILURE;
+        }
+
+        out.write(reinterpret_cast<const char*>(host_mod.instructions.get()), host_mod.num_instructions * sizeof(uint32_t));
 
         if (opts.futhark_profile) {
             auto report = MallocPtr<char>(futhark_context_report(ctx.get()));
