@@ -623,7 +623,7 @@ let NODE_GET_PARENT_ARG_IDX_LOOKUP : [][][]i8 = [
         [0,     0,      0,      0,      0,      0]
     ], --Empty statement
     [ -- Inval  Void    Int     Float   Int_ref Float_ref
-        [2,     2,      2,      2,      2,      2],
+        [0,     0,      0,      0,      0,      0],
         [0,     0,      0,      0,      0,      0],
         [0,     0,      0,      0,      0,      0],
         [0,     0,      0,      0,      0,      0]
