@@ -1,6 +1,10 @@
 #include "pareas/compiler/backend.hpp"
 #include "pareas/compiler/futhark_interop.hpp"
 
+#include <fmt/format.h>
+#include <fmt/ostream.h>
+#include <iostream>
+
 namespace backend {
     DeviceModule compile(futhark_context* ctx, DeviceAst& ast, pareas::Profiler& p) {
         auto tree = futhark::UniqueTree(ctx);
@@ -87,7 +91,7 @@ namespace backend {
         auto instr_gen_rs1 = futhark::UniqueArray<int64_t, 1>(ctx);
         auto instr_gen_rs2 = futhark::UniqueArray<int64_t, 1>(ctx);
         auto instr_gen_jt = futhark::UniqueArray<uint32_t, 1>(ctx);
-        int err = futhark_entry_backend_split_instr(
+        futhark_entry_backend_split_instr(
             ctx,
             &instr_gen_opcodes,
             &instr_gen_rd,
@@ -95,8 +99,17 @@ namespace backend {
             &instr_gen_rs2,
             &instr_gen_jt,
             instr
-            );
+        );
 
+        auto h_opcodes = instr_gen_opcodes.download();
+        auto h_rd = instr_gen_rd.download();
+        auto h_rs1 = instr_gen_rs1.download();
+        auto h_rs2 = instr_gen_rs2.download();
+        auto h_jt = instr_gen_jt.download();
+
+        for (size_t i = 0; i < h_opcodes.size(); ++i) {
+            fmt::print(std::cerr, "{:0>32b} {} {} {} {}\n", h_opcodes[i], h_rd[i], h_rs1[i], h_rs2[i], h_jt[i]);
+        }
 
         // Stage 4, optimizer
         auto optimize = futhark::UniqueArray<bool, 1>(ctx);

@@ -7,6 +7,7 @@
 #include <string>
 #include <stdexcept>
 #include <utility>
+#include <vector>
 #include <cstdint>
 #include <cassert>
 #include <cstdio>
@@ -165,6 +166,12 @@ namespace futhark {
 
         const int64_t* shape() const {
             return ArrayTraits<T, N>::shape_fn(this->handle.ctx, this->handle.data);
+        }
+
+        std::vector<T> download() const {
+            auto out = std::vector<T>(this->shape()[0]);
+            this->values(out.data());
+            return out;
         }
     };
 
