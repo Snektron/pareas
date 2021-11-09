@@ -78,29 +78,21 @@ let convert_node_type (node_type: front_node_type) =
 let convert_data_type (data_type: front_data_type) =
     DATA_TYPE_LOOKUP[i32.u8 data_type]
 
-let convert_node_idx (idx: front_node_idx_type) =
-    idx
-
-let convert_child_idx (child_idx: front_child_idx_type) =
-    child_idx
-
-let convert_node_data (node_data: front_node_data_type) =
-    node_data
-
 let backend_convert_node (
         node_type: front_node_type,
         data_type: front_data_type,
         parent: front_node_idx_type,
         depth: front_depth_type,
         child_idx: front_child_idx_type,
-        data: front_node_data_type) : Node =
+        data: front_node_data_type
+    ): Node =
     {
         node_type = convert_node_type node_type,
         resulting_type = convert_data_type data_type,
-        parent = convert_node_idx parent,
+        parent = parent,
         depth = depth,
-        child_idx = convert_child_idx child_idx,
-        node_data = convert_node_data data
+        child_idx = child_idx,
+        node_data = data
     }
 
 let zip6 [n] 'a 'b 'c 'd 'e 'f
