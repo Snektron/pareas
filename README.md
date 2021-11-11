@@ -44,7 +44,7 @@ See `src/json/json.lex` and `src/json/json.g` for an example of how lexer and pa
 
 ## Project Structure
 
-Pareas is built using the help of several tools which are also located in this project and are built as part of the compilation process. The project is laid out as follows
+Pareas is built using the help of several tools which are also located in this project and are built as part of the compilation process. The project is laid out as follows:
 * `src/tools/compile_futhark.py` is a tool used during building that helps with compiling Futhark. Normally, the Futhark compiler is invoked on a single source root and finds other imports by relative paths. This projects generates some Futhark files during it's build process. To avoid polluting the source directory, we copy the source tree of Futhark files into the source directory, where the generated files are also placed in. Generated files appear under the `gen` folder as if relative to the project root, so to import a generated file from `src/compiler/frontent.fut` one has to import `../../gen/generated_file`.
 * `src/compiler/` contains the compiler itself. The Futhark files in this directory implement the meat of the compiler, while the c++ files implement some driving logic such as reading the input and writing the output.
 * `src/json/` contains an example json parser implemented using similar techniques used for the main compiler.
@@ -57,8 +57,8 @@ The frontend of the project consists of `src/compiler/frontend.fut` and all the 
 
 Building Pareas requires the following dependencies:
 * A C++17-capable compiler such as clang or gcc.
-* The [https://mesonbuild.com/](Meson) build system.
-* [https://ninja-build.org](Ninja) or [https://github.com/michaelforney/samurai](Samurai) to build.
+* The [Meson](https://mesonbuild.com/) build system.
+* [Ninja](https://ninja-build.org) or [Samurai](https://github.com/michaelforney/samurai) to build.
 * A [Futhark](https://github.com/diku-dk/futhark) compiler. The latest tested version is 20.6.
 * Python, which is required for Meson as well as some build tools included in the project.
 
@@ -83,7 +83,7 @@ $ ninja
 
 Futhark requires OpenCL 1.2. Unfortunately, Mesa only implements OpenCL up to version 1.1. In order to work around this, one can install the AMDGPU-PRO version of OpenCL. Note that this library does not require the entire AMDGPU-PRO stack, just the OpenCL implementation is sufficient, and this works alongside Mesa.
 
-To install the OpenCL implementation from AMDGPU-PRO, first download the latest version of the driver from [https://www.amd.com/en/support](AMD). Then run:
+To install the OpenCL implementation from AMDGPU-PRO, first download the latest version of the driver from [AMD](https://www.amd.com/en/support). Then run:
 ```
 # Extract the package
 $ tar xf amdgpu-pro-<version>.tar.xz
