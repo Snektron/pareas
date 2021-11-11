@@ -56,7 +56,7 @@ The frontend of the project consists of `src/compiler/frontend.fut` and all the 
 ## Building
 
 Building Pareas requires the following dependencies:
-* A C++17-capable compiler such as clang or gcc.
+* A C++20-capable compiler such as clang or gcc.
 * The [Meson](https://mesonbuild.com/) build system.
 * [Ninja](https://ninja-build.org) or [Samurai](https://github.com/michaelforney/samurai) to build.
 * A [Futhark](https://github.com/diku-dk/futhark) compiler. The latest tested version is 20.6.
