@@ -26,6 +26,7 @@ class SymbolTable {
         std::vector<std::unordered_map<std::string, uint32_t>> id_map;
         std::unordered_map<std::string, uint32_t> func_id_map;
         std::unordered_map<uint32_t, std::string> rev_id_map;
+        std::unordered_map<uint32_t, std::string> rev_func_map;
 
         std::vector<uint8_t> data_types;
         std::vector<uint8_t> globals;

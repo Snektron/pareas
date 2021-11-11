@@ -32,6 +32,8 @@ uint32_t SymbolTable::declareFunction(const std::string& name, DataType type, co
     this->func_ret_types.push_back(type);
     this->arg_lists.push_back(arg_types);
 
+    this->rev_func_map[id] = name;
+
     return id;
 }
 
@@ -97,13 +99,7 @@ std::ostream& operator<<(std::ostream& os, const SymbolTable& tab) {
 }
 
 std::string SymbolTable::getFunctionName(uint32_t id) const {
-    for(auto& entries : this->func_id_map) {
-        if(entries.second == id) {
-            return entries.first;
-        }
-    }
-
-    throw ParseException("Tried to resolve unknown id ", id);
+    return this->rev_func_map.at(id);
 }
 
 std::string SymbolTable::getVarName(uint32_t id) const {
