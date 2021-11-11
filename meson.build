@@ -4,7 +4,7 @@ project(
     version: '0.0.0',
     default_options: [
         'cpp_std=c++2a',
-        'buildtype=debugoptimized',
+        'buildtype=release',
     ]
 )
 
@@ -121,6 +121,20 @@ test_sources = [
     'src/test/unaryexprastnodetempl.cpp'
 ]
 
+# pareas2c executable
+pareas2c_sources = [
+    'src/codegen/astnode.cpp',
+    'src/codegen/datatype.cpp',
+    'src/codegen/depthtree.cpp',
+    'src/codegen/lexer.cpp',
+    'src/codegen/parser.cpp',
+    'src/codegen/symtab.cpp',
+    'src/codegen/treeproperties.cpp',
+    'src/codegen/token.cpp',
+    'src/converter/pareas2c.cpp'
+]
+
+
 executable(
     'pareas',
     [sources, futhark_generated],
@@ -149,6 +163,15 @@ executable(
 executable(
     'pareas-conversion',
     convert_sources,
+    install: true,
+    build_by_default: true,
+    dependencies: [fmt_dep],
+    include_directories: [include_directories('src'), include_directories('include')]
+)
+
+executable(
+    'pareas2c',
+    pareas2c_sources,
     install: true,
     build_by_default: true,
     dependencies: [fmt_dep],

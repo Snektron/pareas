@@ -13,6 +13,7 @@ enum class DataType {
 };
 
 DataType reference_of(DataType);
+DataType value_of(DataType);
 
 std::ostream& operator<<(std::ostream&, const DataType&);
 

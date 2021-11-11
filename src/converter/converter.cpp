@@ -219,6 +219,8 @@ namespace pareas {
         this->os << "fn ";
         this->os << this->symtab->getFunctionName(node->getInteger());
 
+        std::cerr << "decl:" << this->symtab->getFunctionName(node->getInteger()) << std::endl;
+
         auto children = node->getChildren();
         this->convert(children[1]);
 
@@ -231,6 +233,15 @@ namespace pareas {
         this->convert(children[2]);
 
         this->exitScope();
+        this->printIndent();
+
+        if(node->getResultingType() == DataType::INT) {
+            this->os << "    return 0;" << std::endl;
+        }
+        else if(node->getResultingType() == DataType::FLOAT) {
+            this->os << "    return 0.0;" << std::endl;
+        }
+
         this->printIndent();
         this->os << "}" << std::endl << std::endl;
     }
@@ -416,6 +427,8 @@ namespace pareas {
 
     void SourceConverter::convertFuncCall(const ASTNode* node) {
         this->os << this->symtab->getFunctionName(node->getInteger());
+
+        std::cerr << "call:" << this->symtab->getFunctionName(node->getInteger()) << std::endl;
 
         this->convert(node->getChildren()[0]);
     }

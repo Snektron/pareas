@@ -340,10 +340,12 @@ ASTNode* Parser::parseReturnStatement() {
     Token lookahead = this->lexer.lookahead();
     uint32_t func_id = this->symtab.getCurrentFunction();
     if(lookahead.type == TokenType::SEMICOLON) {
+        this->expect(TokenType::SEMICOLON);
         return new ASTNode(NodeType::RETURN_STAT, DataType::VOID, func_id, {});
     }
     else {
         std::unique_ptr<ASTNode> expr(this->parseExpression());
+        this->expect(TokenType::SEMICOLON);
         return new ASTNode(NodeType::RETURN_STAT, DataType::VOID, func_id, {expr.release()});
     }
 }
