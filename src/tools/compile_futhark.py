@@ -5,7 +5,7 @@ import subprocess
 import os
 import sys
 
-p = argparse.ArgumentParser(description='Futhark compiler wrapper which deaps with generated files')
+p = argparse.ArgumentParser(description='Futhark compiler wrapper which deals with generated files')
 p.add_argument('--dir', required=True, help='Directory to place futhark sources in')
 p.add_argument('--futhark', required=True, help='Futhark compiler binary path')
 p.add_argument('--futhark-backend', required=True, help='Futhark compilation backend (cuda, opencl, multicore, c)')
