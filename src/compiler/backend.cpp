@@ -123,7 +123,7 @@ namespace backend {
 
         // Stage 7, jump fix
         auto mod = DeviceModule(ctx);
-        p.measure("Jump Fix", [&] {
+        p.measure("jump fix", [&] {
             auto old_instr = std::move(instr);
 
             int err = futhark_entry_backend_fix_jumps(
