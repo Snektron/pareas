@@ -45,19 +45,21 @@ local let parse_float (input: []u8) ((_, offset, len): tokenref): f32 =
 -- IDs are assigned sequentially starting from 0.
 local let link_names [n] (input: []u8) (tokens: [n]tokenref): [n]u32 =
     let (_, offsets, lengths) = unzip3 tokens
-    -- a-zA-Z0-9_ are 26 + 26 + 10 + 1 = 63 characters, so 6 bits will do.
+    -- a-zA-Z0-9_ are 26 + 26 + 10 + 1= 63 characters, plus one for the out-of-bounds value, so 6 bits will do nicely.
     let bits_per_char = 6
     -- Map characters allowed in a function name to its 6-bit representation.
+    -- Note: This function maps a char to 1-63 instead of 0-62, as the out-of-bounds value (0) needs to
+    -- compare different than any of the other characters in order to obtain a good sorting.
     let char_to_value (c: u8): u8 =
-        if c >= 'a' && c <= 'z' then c - 'a'
-        else if c >= 'A' && c <= 'Z' then c - 'A' + ('z' - 'a' + 1)
-        else if c >= '0' && c <= '0' then c - '0' + ('z' - 'a' + 1) + ('Z' - 'A' + 1)
-        else c - '_' + ('z' - 'a' + 1) + ('Z' - 'A' + 1) + ('9' - '0' + 1)
+        if c >= 'a' && c <= 'z' then c - 'a' + 1
+        else if c >= 'A' && c <= 'Z' then c - 'A' + 27
+        else if c >= '0' && c <= '9' then c - '0' + 53
+        else 63 -- '_'
     -- Get a particular bit in the string at `index`.
     let get_name_bit (bit: i32) (index: i32): i32 =
         let bit_in_char = bit % bits_per_char
         let byte_in_string = bit / bits_per_char
-        in if byte_in_string >= lengths[index] then 0 else
+        in if byte_in_string >= lengths[index] then 0 else -- Return 0 if out of bounds.
         let c = input[offsets[index] + byte_in_string]
         in u8.get_bit bit_in_char (char_to_value c)
     -- To finally assign an ID to ever string, we need to know whether it is equal to another string.
@@ -102,7 +104,7 @@ local let link_names [n] (input: []u8) (tokens: [n]tokenref): [n]u32 =
 let tokenize (input: []u8) (lt: lex_table []) =
     lexer.lex input lt
     -- Filter out tokens whitespace tokens (which should be ignored by the parser).
-    |> filter (\(t, _, _) ->  t != token_whitespace && t != token_comment && t != token_binary_minus_whitespace)
+    |> filter (\(t, _, _) -> t != token_whitespace && t != token_comment && t != token_binary_minus_whitespace)
 
 -- | This function builds a data vector for the token types, containing the following elements:
 -- - For each atom_name, a unique 32-bit integer for the name associated to the atom.
