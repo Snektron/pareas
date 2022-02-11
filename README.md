@@ -77,6 +77,31 @@ $ meson .. -Dfuthark-backend=[opencl|cuda|c|multicore]
 $ ninja
 ```
 
+## Citing
+
+This repository contains the source code from the following Master Thesis projects:
+* Robin Voetter, "Parallel Lexing, Parsing and Semantic Analysis on the GPU", 2021, https://theses.liacs.nl/2052
+* Marcel Huijben, "Parallel Code Generation on the GPU", 2021, https://theses.liacs.nl/2053
+
+If you use any of the material provided in the repository, please cite the above.
+
+```
+@mastersthesis{voetter2021,
+    author = {Robin Voetter},
+    title = {Parallel Lexing, Parsing and Semantic Analysis on the GPU},
+    school = {Leiden University},
+    year = {2021},
+}
+```
+```
+@mastersthesis{huijben2021,
+    author = {Marcel Huijben},
+    title = {Parallel Code Generation on the GPU},
+    school = {Leiden University},
+    year = {2021},
+}
+```
+
 ## Troubleshooting
 
 ### OpenCL on AMD GPUs under Linux
