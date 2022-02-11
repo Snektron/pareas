@@ -66,7 +66,7 @@ let replace_float_compare_types [n] (tree: Tree[n]) =
 -- If float and number of int args + float_args - 8 < 8 -> int
 -- Else stack
 
-let calling_convention_node_replace_sub (n: Node) (def: NodeType) (fltint: NodeType) (stack: NodeType) =
+let calling_convention_node_replace_sub (n: Node) (default: NodeType) (fltint: NodeType) (stack: NodeType) =
     if n.resulting_type == datatype_float_ref || n.resulting_type == datatype_float then
         if n.node_data < 8 then
             n
@@ -85,7 +85,7 @@ let calling_convention_node_replace_sub (n: Node) (def: NodeType) (fltint: NodeT
         let reg_offset = num_int_args + (if num_float_args < 8 then 0 else num_float_args - 8)
         in
         if reg_offset < 8 then
-            copy_node_with_nodetype n def (u32.i32 reg_offset)
+            copy_node_with_nodetype n default (u32.i32 reg_offset)
         else
             copy_node_with_nodetype n stack (u32.i32 (reg_offset - 8))
 
