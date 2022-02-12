@@ -1,0 +1,16 @@
+fn fib[n: int]: int {
+    if n < 2 {
+        return n;
+    }
+
+    var x0 = 0;
+    var x1 = 1;
+    while n > 0 {
+        var tmp = x0 + x1;
+        x0 = x1;
+        x1 = tmp;
+        n = n - 1;
+    }
+
+    return x1;
+}

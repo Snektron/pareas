@@ -1,0 +1,9 @@
+fn sqrt[a: float]: float {
+    var x = 0.5 * a;
+    var i = 10;
+    while i > 0 {
+        x = 0.5 * (x + a / x);
+        i = i - 1;
+    }
+    return x;
+}
