@@ -9,7 +9,7 @@ local type~ lex_table [n] = lexer.lex_table [n] token.t
 local type tokenref = (token.t, i32, i32)
 
 -- | Parse an integer literal token into an u32. Overflow is not handled.
--- As integers are not supposed to be very long, the parsing of each itneger is simply done
+-- As integers are not supposed to be very long, the parsing of each integer is simply done
 -- as a simple loop.
 -- As the lexer guarantees that integer literals are a simple sequence of digits, there is no
 -- check required whether all the characters are integers.
