@@ -15,7 +15,7 @@ The basic usage of the Pareas compiler is
 ```
 $ pareas <input path> -o <output path>
 ```
-See `pareas --help` for additional options.
+See `pareas --help` for additional options. See `doc/language.md` for a description of the programming language.
 
 ### The json parser
 
@@ -40,7 +40,7 @@ The output of this tools is a bunch of tables that are to be embedded in C++ and
 * `<output basename>.S` containing an incbin statement for the generated data files.
 * `<output basename>.fut` containing Futhark definitions for tokens and productions.
 
-See `src/json/json.lex` and `src/json/json.g` for an example of how lexer and parser grammar files should look like.
+See `doc/lpg.md` for a syntax description of both the lexical analyzer and parser generators. Also see `src/json/json.lex` and `src/json/json.g` for an example of how lexer and parser grammar files should look like.
 
 ## Project Structure
 

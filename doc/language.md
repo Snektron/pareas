@@ -82,7 +82,7 @@ fn assignment[]: void {
 }
 ```
 
-Variables in pareas may be declared and assigned in expressions as well:
+Variables in Pareas may be declared and assigned in expressions as well:
 ```
 fn decl_in_expr[]: void {
     var a = 0;
