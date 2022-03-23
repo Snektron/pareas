@@ -29,6 +29,7 @@ struct Options {
     bool help;
     bool dump_dot;
     unsigned profile;
+    bool check;
     bool verbose_tree;
     bool verbose_mod;
     bool futhark_verbose;
@@ -44,6 +45,16 @@ struct Options {
 };
 
 void print_usage(char* progname) {
+    #if defined(FUTHARK_BACKEND_c)
+        const char* backend = "c";
+    #elif defined(FUTHARK_BACKEND_cuda)
+        const char* backend = "CUDA";
+    #elif defined(FUTHARK_BACKEND_opencl)
+        const char* backend = "OpenCL";
+    #elif defined(FUTHARK_BACKEND_multicore)
+        const char* backend = "multicore";
+    #endif
+
     fmt::print(
         "Usage: {} [options...] <input path>\n"
         "Available options:\n"
@@ -51,6 +62,8 @@ void print_usage(char* progname) {
         "-h --help                   Show this message and exit.\n"
         "--dump-dot                  Dump tree as dot graph.\n"
         "-p --profile <level>        Record (non-futhark) profiling information.\n"
+        "--check                     Only run check the program for validity; do not\n"
+        "                            attempt to generate code.\n"
         "--verbose-tree              Dump some information about the tree to stderr.\n"
         "                            (default: 0, =disabled)\n"
         "--verbose-mod               Dump some information about the final module to\n"
@@ -69,12 +82,15 @@ void print_usage(char* progname) {
         "                            device which name contains <name> may be used. The\n"
         "                            special value #k may be used to select the k-th\n"
         "                            device reported by the platform.\n"
+        "                            This value may also be set via the PAREAS_DEVICE\n"
+        "                            environment variable.\n"
         "--futhark-profile           Enable Futhark profiling and print report at exit.\n"
     #endif
         "\n"
         "When <input path> and/or <output path> are '-', standard input and standard\n"
-        "output are used respectively.\n",
-        progname
+        "output are used respectively.\n"
+        "Backend: {}\n",
+        progname, backend
     );
 }
 
@@ -143,6 +159,8 @@ bool parse_options(Options* opts, int argc, char* argv[]) {
             }
 
             profile_arg = argv[i];
+        } else if (arg == "--check") {
+            opts->check = true;
         } else if (arg == "--verbose-tree") {
             opts->verbose_tree = true;
         } else if (arg == "--verbose-mod") {
@@ -240,8 +258,9 @@ int main(int argc, char* argv[]) {
     #if defined(FUTHARK_BACKEND_multicore)
         futhark_context_config_set_num_threads(config.get(), opts.threads);
     #elif defined(FUTHARK_BACKEND_opencl) || defined(FUTHARK_BACKEND_cuda)
+        const char* device_name = opts.device_name ? opts.device_name : std::getenv("PAREAS_DEVICE");
         if (opts.device_name) {
-            futhark_context_config_set_device(config.get(), opts.device_name);
+            futhark_context_config_set_device(config.get(), device_name);
         }
 
         futhark_context_config_set_profiling(config.get(), opts.futhark_profile);
@@ -260,13 +279,6 @@ int main(int argc, char* argv[]) {
         auto ast = frontend::compile(ctx.get(), input, opts.verbose_tree, p, opts.futhark_debug_extra ? stderr : nullptr);
         p.end("frontend");
 
-        p.begin();
-        auto module = backend::compile(ctx.get(), ast, p);
-        p.end("backend");
-
-        if (opts.profile > 0)
-            p.dump(std::cout);
-
         if (opts.dump_dot) {
             p.begin();
             auto host_ast = ast.download();
@@ -274,19 +286,28 @@ int main(int argc, char* argv[]) {
             host_ast.dump_dot(std::cout);
         }
 
-        auto host_mod = module.download();
+        if (!opts.check) {
+            p.begin();
+            auto module = backend::compile(ctx.get(), ast, p);
+            p.end("backend");
 
-        if (opts.verbose_mod) {
-            host_mod.dump(std::cerr);
+            auto host_mod = module.download();
+
+            if (opts.verbose_mod) {
+                host_mod.dump(std::cerr);
+            }
+
+            auto out = std::ofstream(opts.output_path, std::ios::binary);
+            if (!out) {
+                fmt::print(std::cerr, "Failed to open output file '{}'\n", opts.output_path);
+                return EXIT_FAILURE;
+            }
+
+            out.write(reinterpret_cast<const char*>(host_mod.instructions.get()), host_mod.num_instructions * sizeof(uint32_t));
         }
 
-        auto out = std::ofstream(opts.output_path, std::ios::binary);
-        if (!out) {
-            fmt::print(std::cerr, "Failed to open output file '{}'\n", opts.output_path);
-            return EXIT_FAILURE;
-        }
-
-        out.write(reinterpret_cast<const char*>(host_mod.instructions.get()), host_mod.num_instructions * sizeof(uint32_t));
+        if (opts.profile > 0)
+            p.dump(std::cout);
 
         if (opts.futhark_profile) {
             auto report = MallocPtr<char>(futhark_context_report(ctx.get()));
