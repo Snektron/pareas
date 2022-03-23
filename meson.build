@@ -3,7 +3,7 @@ project(
     ['c', 'cpp'],
     version: '0.0.0',
     default_options: [
-        'cpp_std=c++2a',
+        'cpp_std=c++20',
         'buildtype=debugoptimized',
     ]
 )
@@ -13,6 +13,8 @@ add_project_arguments(
     ['-fno-math-errno'],
     language: ['c', 'cpp'],
 )
+
+fs = import('fs')
 
 futhark = find_program('futhark')
 futhark_wrapper = find_program('src/tools/compile_futhark.py')
@@ -143,6 +145,7 @@ futhark_compile_command = [
     '--output', '@OUTDIR@/futhark_generated',
     '--dir', '@PRIVATE_DIR@',
     '--main', 'src/compiler/main.fut',
+    '--hash', '@OUTDIR@/futhark_config.h',
 ]
 
 inputs = []
@@ -158,7 +161,7 @@ inputs += grammar_fut
 futhark_generated = custom_target(
     'futhark',
     input: inputs,
-    output: ['futhark_generated.c', 'futhark_generated.h'],
+    output: ['futhark_generated.c', 'futhark_generated.h', 'futhark_config.hash'],
     command: futhark_compile_command,
 )
 

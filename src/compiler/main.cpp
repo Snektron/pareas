@@ -1,4 +1,5 @@
 #include "futhark_generated.h"
+#include "futhark_config.h"
 #include "pareas_grammar.hpp"
 
 #include "pareas/compiler/futhark_interop.hpp"
@@ -17,6 +18,8 @@
 #include <memory>
 #include <chrono>
 #include <charconv>
+#include <filesystem>
+#include <sstream>
 #include <cstdio>
 #include <cstdlib>
 #include <cstdint>
@@ -42,6 +45,7 @@ struct Options {
     // Options abailable for the OpenCL and CUDA backends
     const char* device_name;
     bool futhark_profile;
+    bool disable_kernel_cache;
 };
 
 void print_usage(char* progname) {
@@ -65,7 +69,6 @@ void print_usage(char* progname) {
         "--check                     Only run check the program for validity; do not\n"
         "                            attempt to generate code.\n"
         "--verbose-tree              Dump some information about the tree to stderr.\n"
-        "                            (default: 0, =disabled)\n"
         "--verbose-mod               Dump some information about the final module to\n"
         "                            stderr.\n"
         "--futhark-verbose           Enable Futhark logging.\n"
@@ -85,10 +88,17 @@ void print_usage(char* progname) {
         "                            This value may also be set via the PAREAS_DEVICE\n"
         "                            environment variable.\n"
         "--futhark-profile           Enable Futhark profiling and print report at exit.\n"
+        "--disable-kernel-cache      Do not cache compiled kernels.\n"
     #endif
         "\n"
         "When <input path> and/or <output path> are '-', standard input and standard\n"
         "output are used respectively.\n"
+        "\n"
+    #if defined(FUTHARK_BACKEND_opencl) || defined(FUTHARK_BACKEND_cuda)
+        "To reduce compiler startup time, GPU-kernels are cached by default. These are\n"
+        "stored in $XDG_CACHE_HOME/pareas/ or ~/cache/pareas/.\n"
+        "\n"
+    #endif
         "Backend: {}\n",
         progname, backend
     );
@@ -101,6 +111,7 @@ bool parse_options(Options* opts, int argc, char* argv[]) {
         .help = false,
         .dump_dot = false,
         .profile = 0,
+        .check = false,
         .verbose_tree = false,
         .verbose_mod = false,
         .futhark_verbose = false,
@@ -109,6 +120,7 @@ bool parse_options(Options* opts, int argc, char* argv[]) {
         .threads = 0,
         .device_name = nullptr,
         .futhark_profile = false,
+        .disable_kernel_cache = false,
     };
 
     const char* threads_arg = nullptr;
@@ -138,6 +150,9 @@ bool parse_options(Options* opts, int argc, char* argv[]) {
                 continue;
             } else if (arg == "--futhark-profile") {
                 opts->futhark_profile = true;
+                continue;
+            } else if (arg == "--disable-kernel-cache") {
+                opts->disable_kernel_cache = true;
                 continue;
             }
         #endif
@@ -229,6 +244,75 @@ struct Free {
 template <typename T>
 using MallocPtr = std::unique_ptr<T, Free<T>>;
 
+bool load_cached_kernel(futhark_context_config* cfg, const char* device_name, std::filesystem::path& cache_path) {
+    auto cache_home = std::filesystem::path{};
+
+    const char* xdg_cache_home = std::getenv("XDG_CACHE_HOME");
+    if (xdg_cache_home) {
+        cache_home = xdg_cache_home;
+    } else {
+        const char* home = std::getenv("HOME");
+        if (!home) {
+            fmt::print(std::cerr, "Error: $HOME not set\n");
+            return false;
+        }
+
+        cache_home = home;
+        cache_home /= ".cache";
+    }
+
+    cache_home /= "pareas";
+
+    std::error_code err;
+    std::filesystem::create_directories(cache_home, err);
+    if (err) {
+        fmt::print(std::cerr, "Error: Failed to create cache directory: {}\n", err.message());
+        return false;
+    }
+
+    auto cache_file_name = std::stringstream();
+    cache_file_name << FUTHARK_SOURCE_HASH;
+
+    if (device_name) {
+        cache_file_name << ':';
+        auto to_hex = [](int c) {
+            return c < 10 ? c + '0' : c + 'a';
+        };
+        for (size_t i = 0; device_name[i]; ++i) {
+            cache_file_name.put(to_hex(device_name[i] & 0xF));
+            cache_file_name.put(to_hex(device_name[i] >> 4));
+        }
+    }
+
+    #if defined(FUTHARK_BACKEND_opencl)
+        cache_file_name << ".bin";
+    #elif defined(FUTHARK_BACKEND_cuda)
+        cache_file_name << ".ptx";
+    #endif
+
+    cache_path = cache_home / cache_file_name.str();
+    auto status = std::filesystem::status(cache_path);
+
+    if (!std::filesystem::exists(status)) {
+        #if defined(FUTHARK_BACKEND_opencl)
+            futhark_context_config_dump_binary_to(cfg, cache_path.c_str());
+        #elif defined(FUTHARK_BACKEND_cuda)
+            futhark_context_config_dump_ptx_to(cfg, cache_path.c_str());
+        #endif
+    } else if (!std::filesystem::is_regular_file(status)) {
+        fmt::print(std::cerr, "Error: Cache hit is a directory\n");
+        return false;
+    } else {
+        #if defined(FUTHARK_BACKEND_opencl)
+            futhark_context_config_load_binary_from(cfg, cache_path.c_str());
+        #elif defined(FUTHARK_BACKEND_cuda)
+            futhark_context_config_load_ptx_from(cfg, cache_path.c_str());
+        #endif
+    }
+
+    return true;
+}
+
 int main(int argc, char* argv[]) {
     Options opts;
     if (!parse_options(&opts, argc, argv)) {
@@ -264,6 +348,11 @@ int main(int argc, char* argv[]) {
         }
 
         futhark_context_config_set_profiling(config.get(), opts.futhark_profile);
+
+        auto kernel_cache_path = std::filesystem::path{};
+        if (!opts.disable_kernel_cache && !load_cached_kernel(config.get(), device_name, kernel_cache_path)) {
+            return EXIT_FAILURE;
+        }
     #endif
 
     auto ctx = futhark::Context(futhark_context_new(config.get()));
