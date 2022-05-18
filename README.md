@@ -83,6 +83,9 @@ This repository contains the source code from the following Master Thesis projec
 * Robin Voetter, "Parallel Lexing, Parsing and Semantic Analysis on the GPU", 2021, https://theses.liacs.nl/2052
 * Marcel Huijben, "Parallel Code Generation on the GPU", 2021, https://theses.liacs.nl/2053
 
+And the following publication:
+* Robin F. Voetter, Marcel Huijben, Kristian F. D. Rietveld, "Compilation on the GPU?: a feasibility study", 2022, https://dl.acm.org/doi/10.1145/3528416.3530249
+
 If you use any of the material provided in the repository, please cite the above.
 
 ```
@@ -99,6 +102,25 @@ If you use any of the material provided in the repository, please cite the above
     title = {Parallel Code Generation on the GPU},
     school = {Leiden University},
     year = {2021},
+}
+```
+```
+@inproceedings{10.1145/3528416.3530249,
+    author = {Voetter, Robin F. and Huijben, Marcel and Rietveld, Kristian F. D.},
+    title = {Compilation on the GPU? A Feasibility Study},
+    year = {2022},
+    isbn = {9781450393386},
+    publisher = {Association for Computing Machinery},
+    address = {New York, NY, USA},
+    url = {https://doi.org/10.1145/3528416.3530249},
+    doi = {10.1145/3528416.3530249},
+    abstract = {The emergence of highly parallel architectures has led to a renewed interest in parallel compilation. In particular, the widespread availability of GPU architectures raises the question whether compilation on the GPU is feasible. In this paper, we describe the first design and implementation of a parallel compiler from a simple imperative programming language to RISC-V machine code, that is fully executed on a GPU. To accomplish this, all stages from parsing to machine code generation were redesigned to exploit fine-grained parallelism. Experimental evaluation of the implemented prototype demonstrates our proposed parallel techniques to be effective and implementation of compilation on the GPU to be feasible. Finally, we propose a number of avenues for future work and hope to revitalize research into parallel compilation conducted in the 1980s.},
+    booktitle = {Proceedings of the 19th ACM International Conference on Computing Frontiers},
+    pages = {230–236},
+    numpages = {7},
+    keywords = {GPUs, code generation, compiler construction, parallel compilation, parsing},
+    location = {Turin, Italy},
+    series = {CF '22}
 }
 ```
 
