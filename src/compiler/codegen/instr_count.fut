@@ -163,7 +163,7 @@ let instr_count [max_nodes] (tree: Tree[max_nodes]) =
         map2 (instr_count_fix_post tree.nodes initial_result) (iota max_nodes) initial_result |>
         unzip2
     in
-    scatter initial_result fix_idx fix_offsets
+    scatter (copy initial_result) fix_idx fix_offsets
 
 let shift_right [n] 't (x: t) (xs: [n]t) : [n]t =
     xs |>
