@@ -15,7 +15,7 @@ local type bool_expr_node = (i32, i32, bool_expr_node_type)
 local let iter [n] (expr: [n]bool_expr_node): [n]bool_expr_node =
     let is_value_known ptr = expr[ptr].2 == #true || expr[ptr].2 == #false
     let value ptr = expr[ptr].2 == #true
-    let f (left, right, nty) =
+    let f (left, right, nty : bool_expr_node_type) =
         -- If this node already has a concrete value, then do nothing, as we are done with this node.
         if nty == #true || nty == #false then
             (left, right, nty)
@@ -90,4 +90,4 @@ let check_return_paths [n] (node_types: [n]production.t) (parents: [n]i32) (prev
     -- holds whether the program is correct.
     |> (.[0])
     |> (.2)
-    |> (== #true)
+    |> (== (#true : bool_expr_node_type))
