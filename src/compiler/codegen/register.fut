@@ -84,13 +84,13 @@ let lifetime_analyze_valid [n] (instrs: [n]Instr) (symbol_registers: []SymbolDat
 
         let new_lifetime_mask = lifetime_mask & PRESERVED_REGISTER_MASK
         let spilled_register_mask = lifetime_mask & !PRESERVED_REGISTER_MASK
-        let spilled_registers = iota 64i64 |> map (\i -> 
+        let spilled_registers = tabulate 64 (\i ->
                 if spilled_register_mask & (1 << u64.i64 i) != 0 then
                     i
                 else
                     -1
             )
-        let new_register_state = iota 64i64 |> map (\i ->
+        let new_register_state = tabulate 64 (\i ->
                 if new_lifetime_mask & (1 << u64.i64 i) != 0 then
                     register_state[i]
                 else
